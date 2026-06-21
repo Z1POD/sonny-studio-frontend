@@ -1,0 +1,168 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   Sonny Studio — Apple-inspired dark design system
+   ============================================================ */
+
+@theme inline {
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-2xl: 28px;
+  --radius-pill: 9999px;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-overlay: var(--surface-overlay);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+    "Helvetica Neue", Inter, sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", "Fira Code", monospace;
+
+  --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --shadow-elevated: 0 12px 40px -8px oklch(0 0 0 / 0.55);
+  --shadow-glow: 0 0 32px -4px oklch(0.66 0.18 254 / 0.45);
+}
+
+:root {
+  /* Dark by default — Apple/iOS visionOS feel */
+  --background: oklch(0.13 0.005 270);
+  --foreground: oklch(0.97 0.005 270);
+
+  --surface: oklch(0.16 0.006 270);
+  --surface-elevated: oklch(0.19 0.007 270);
+  --surface-overlay: oklch(0.22 0.008 270);
+
+  --card: oklch(0.16 0.006 270);
+  --card-foreground: oklch(0.97 0.005 270);
+  --popover: oklch(0.19 0.007 270);
+  --popover-foreground: oklch(0.97 0.005 270);
+
+  /* --primary: oklch(0.68 0.18 254); */
+  /* --primary-foreground: oklch(0.99 0 0); */
+  --primary: oklch(100% 0.00011 271.152);
+  --primary-foreground: oklch(0% 0 0);
+
+  /* --secondary: oklch(0.22 0.008 270);
+  --secondary-foreground: oklch(0.97 0.005 270); */
+  --secondary: oklch(0% 0 0);
+  --secondary-foreground: oklch(0.97 0.005 270);
+
+  --muted: oklch(0.22 0.008 270);
+  --muted-foreground: oklch(0.65 0.012 270);
+
+  --accent: oklch(0.25 0.01 270);
+  --accent-foreground: oklch(0.97 0.005 270);
+
+  --destructive: oklch(0.65 0.22 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.72 0.17 152);
+
+  --border: oklch(1 0 0 / 0.09);
+  --border-strong: oklch(1 0 0 / 0.16);
+  --input: oklch(1 0 0 / 0.08);
+  --ring: oklch(0.68 0.18 254 / 0.55);
+
+  --sidebar: oklch(0.13 0.005 270);
+  --sidebar-foreground: oklch(0.97 0.005 270);
+  --sidebar-primary: oklch(0.68 0.18 254);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.22 0.008 270);
+  --sidebar-accent-foreground: oklch(0.97 0.005 270);
+  --sidebar-border: oklch(1 0 0 / 0.09);
+  --sidebar-ring: oklch(0.68 0.18 254 / 0.55);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html,
+  body {
+    height: 100%;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    overscroll-behavior-y: none;
+  }
+}
+
+@layer utilities {
+  .glass {
+    background: color-mix(in oklab, var(--surface) 70%, transparent);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
+
+  .glass-strong {
+    background: color-mix(in oklab, var(--surface-elevated) 85%, transparent);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+
+/* Hide scrollbar but keep scrolling */
+/* Hide scrollbar for horizontal scroll rows */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Active scale for touch */
+.tap-highlight-transparent {
+  -webkit-tap-highlight-color: transparent;
+}
