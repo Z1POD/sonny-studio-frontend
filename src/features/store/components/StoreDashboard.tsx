@@ -1,12 +1,11 @@
-/**
- * src/features/store/components/StoreDashboard.tsx
- *
- * Aligned to real API contract:
- *  - pricing is { currency: {code,symbol,name}, base_price, markup_price, retail_price }
- *  - Action buttons always visible (not hover-only) — mobile friendly
- *  - Custom ConfirmModal replaces window.confirm
- *  - "Suggested next step" is now adaptive via DiscountSuggestionCard
- */
+// src/features/store/components/StoreDashboard.tsx
+ 
+// Aligned to real API contract:
+//  - pricing is { currency: {code,symbol,name}, base_price, markup_price, retail_price }
+//  - Action buttons always visible (not hover-only) — mobile friendly
+//  - Custom ConfirmModal replaces window.confirm
+//  - "Suggested next step" is now adaptive via DiscountSuggestionCard
+ 
 
 "use client";
 
