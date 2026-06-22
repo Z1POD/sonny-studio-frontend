@@ -323,10 +323,10 @@ interface ShareDrawerContentProps {
 export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps) {
   const [copied, setCopied] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
-  const { isInTelegramMiniApp, isShareToStoryAvailable, shareToStory, hapticFeedback } =
+  const { isTelegram, isShareToStoryAvailable, shareToStory, hapticFeedback } =
     useTelegram();
 
-  const inTelegram = isInTelegramMiniApp() && isShareToStoryAvailable();
+  const inTelegram = isTelegram && isShareToStoryAvailable();
 
   const handlePublishAndShare = useCallback(async () => {
     if (!target.productId) { toast.error("Product ID not available"); return; }

@@ -1,12 +1,14 @@
 /**
  * src/shared/hooks/use-telegram.ts
  *
- * Breaking change: shareToStory signature updated to match Telegram WebApp API.
- * Before: shareToStory(mediaUrl, text, widgetLink)
- * After:  shareToStory(mediaUrl, params: { text?, widget_link?: { url, name } })
+ * Changes:
+ *  - shareToStory signature updated to match Telegram WebApp API.
+ *    Before: shareToStory(mediaUrl, text, widgetLink)
+ *    After:  shareToStory(mediaUrl, params: { text?, widget_link?: { url, name } })
+ *  - All existing exports preserved (isTelegram, isFullscreen, etc.)
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface TelegramWebApp {
   initDataUnsafe?: {
@@ -114,6 +116,10 @@ interface TelegramWebApp {
   };
   onEvent: (eventType: string, callback: () => void) => void;
   offEvent: (eventType: string, callback: () => void) => void;
+  /** @deprecated Bot API 7.0+ — use disableVerticalSwipes() instead */
+  enableVerticalSwipes?: () => void;
+  /** @deprecated Bot API 7.0+ — use enableVerticalSwipes() instead */
+  disableVerticalSwipes?: () => void;
 }
 
 interface TelegramWindow extends Window {
@@ -136,20 +142,22 @@ export function useTelegram() {
   }, []);
 
   /**
-   * CRITICAL: Checks if we are actually running inside a Telegram Mini App.
-   * This verifies initDataUnsafe exists and contains user data — NOT just
-   * that the WebApp object exists (which is also present in regular browser
-   * when Telegram WebView scripts are loaded).
+   * TRUE when running inside a real Telegram Mini App.
+   * Verified by checking initDataUnsafe contains user data (not just WebApp object presence).
    */
-  const isInTelegramMiniApp = useCallback(() => {
+  const isTelegram = useMemo(() => {
     if (typeof window === "undefined") return false;
     const webApp = (window as unknown as TelegramWindow).Telegram?.WebApp;
     if (!webApp) return false;
-    // Must have initDataUnsafe with user object to be in a real Mini App
     const hasInitData = !!webApp.initDataUnsafe && !!webApp.initDataUnsafe.user;
     const hasInitDataString = !!webApp.initData && webApp.initData.length > 0;
     return hasInitData || hasInitDataString;
   }, []);
+
+  /** TRUE when the Mini App is in expanded/fullscreen mode */
+  const isFullscreen = useMemo(() => {
+    return !!tg?.isExpanded;
+  }, [tg]);
 
   const isShareToStoryAvailable = useCallback(() => {
     return !!tg?.shareToStory;
@@ -279,9 +287,20 @@ export function useTelegram() {
     [tg]
   );
 
+  /** Disable vertical swipe-to-close gesture (Bot API 7.0+) */
+  const disableVerticalSwipes = useCallback(() => {
+    tg?.disableVerticalSwipes?.();
+  }, [tg]);
+
+  /** Re-enable vertical swipe-to-close gesture (Bot API 7.0+) */
+  const enableVerticalSwipes = useCallback(() => {
+    tg?.enableVerticalSwipes?.();
+  }, [tg]);
+
   return {
     tg,
-    isInTelegramMiniApp,
+    isTelegram,
+    isFullscreen,
     isShareToStoryAvailable,
     shareToStory,
     hapticFeedback,
@@ -300,6 +319,8 @@ export function useTelegram() {
     disableClosingConfirmation,
     setHeaderColor,
     setBackgroundColor,
+    disableVerticalSwipes,
+    enableVerticalSwipes,
     themeParams: tg?.themeParams,
     platform: tg?.platform,
     version: tg?.version,
