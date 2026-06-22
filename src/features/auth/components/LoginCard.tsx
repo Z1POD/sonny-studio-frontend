@@ -212,7 +212,7 @@ export function LoginCard() {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ duration: 0.18 }}
-                    className="flex h-12 items-center justify-center gap-2 rounded-xl bg-[#2AABEE] px-4 text-sm font-semibold text-white transition hover:bg-[#229ED9]"
+                    className="flex h-12 items-center justify-center gap-2 rounded-xl  px-4 text-sm font-semibold text-white transition hover:color-[#2a80ee]"
                   >
                     <Send className="h-4 w-4" />
                     Open in Telegram
