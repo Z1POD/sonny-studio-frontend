@@ -10,7 +10,7 @@ export const API_BASE_URL =
   (typeof import.meta !== "undefined" &&
     (import.meta as { env?: { VITE_API_BASE_URL?: string } }).env
       ?.VITE_API_BASE_URL) ||
-  "http://localhost/api/v1";
+  "http://127.0.0.1:8000/api/v1";
 
 export class ApiError extends Error {
   status: number;
@@ -97,8 +97,35 @@ async function request<T>(
   }
 
   if (!res.ok) {
-    const d = data as { detail?: string; message?: string } | null;
-    const msg = d?.detail || d?.message || `HTTP ${res.status}`;
+    const d = data as {
+      detail?: string;
+      message?: string;
+      error?: { message?: string; code?: string; details?: Record<string, string[]> };
+      errors?: Array<{ message?: string }> | Record<string, string[]>;
+      non_field_errors?: string[];
+    } | null;
+
+    const msg =
+      // Sonny API envelope: { error: { message } }
+      d?.error?.message ||
+      // DRF field validation details: { error: { details: { field: ["msg"] } } }
+      (d?.error?.details
+        ? Object.values(d.error.details).flat().join(" ")
+        : undefined) ||
+      // DRF standard: { detail: "..." }
+      d?.detail ||
+      // Top-level message
+      d?.message ||
+      // DRF non-field errors: { non_field_errors: ["..."] }
+      d?.non_field_errors?.[0] ||
+      // DRF field errors dict: { field: ["msg"] }
+      (d && !d.error && !d.detail && !d.message
+        ? Object.values(d as Record<string, unknown>)
+            .flat()
+            .find((v) => typeof v === "string") as string | undefined
+        : undefined) ||
+      `HTTP ${res.status}`;
+
     throw new ApiError(msg, res.status, data);
   }
   return data as T;
@@ -116,4 +143,3 @@ export const api = {
   delete: <T>(path: string, opts?: RequestOptions) =>
     request<T>("DELETE", path, opts),
 };
-
