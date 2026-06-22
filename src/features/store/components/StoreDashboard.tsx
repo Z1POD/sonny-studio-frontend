@@ -333,7 +333,7 @@ export function StoreDashboard() {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-0 sm:gap-3 sm:grid-cols-3 lg:grid-cols-4 rounded-t-2xl overflow-hidden">
+          <div className="grid grid-cols-2 gap-0 sm:gap-3 sm:grid-cols-3 lg:grid-cols-4 rounded-2xl overflow-hidden">
             {productList.map((p) => (
               <ProductCard key={p.id} p={p} onEdit={setEditTarget} onMutated={refresh} />
             ))}

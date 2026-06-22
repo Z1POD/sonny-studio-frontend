@@ -8,7 +8,7 @@
  *  - All existing functionality preserved: tabs, validation, submission, success flow
  */
 
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, type MutableRefObject } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Check,
@@ -67,7 +67,7 @@ interface Variant {
 export interface Props {
   shots: ShotConfig[];
   snapshot: SceneSnapshot;
-  sheetId: string;  // Changed from modalId
+  sheetId: string | MutableRefObject<string>;
   variants: Variant[];
   printAreas: PrintArea[];
   artworks: Record<string, ArtworkState>;
@@ -442,6 +442,10 @@ export function SaveProductDialog({
 }: Props) {
   const closeSheet = useOverlayStore((s) => s.closeSheet);
   const openSheet = useOverlayStore((s) => s.openSheet);
+  // Resolve sheetId whether it was passed as a string or a ref.
+  // Using a getter so it always reads the current ref value at call time.
+  const getSheetId = () =>
+    typeof sheetId === "string" ? sheetId : sheetId.current;
   const resetStore = useStudioStore((s) => s.reset);
   const navigate = useNavigate();
   const { openShareDrawer } = useShareDrawer();
@@ -485,13 +489,15 @@ export function SaveProductDialog({
   ];
 
   const handleDone = useCallback(() => {
-    closeSheet(sheetId);
+    // Form sheet is already closed by handleCreate before we get here.
+    // onDone in SuccessScreen closes the success sheet before calling this,
+    // but guard anyway in case handleDone is ever called from elsewhere.
     if (successSheetIdRef.current) {
       closeSheet(successSheetIdRef.current);
     }
     resetStore();
     navigate({ to: "/store" });
-  }, [closeSheet, sheetId, resetStore, navigate]);
+  }, [closeSheet, resetStore, navigate]);
 
   // This function reads from the ref, so it's never stale
   const handleShareFromRef = useCallback(() => {
@@ -690,7 +696,6 @@ export function SaveProductDialog({
         production_ready: isProductionReady,
       });
 
-      toast.info("Uploading mockup images…");
       const blobs = await Promise.all(
         enabledShots.map(async (shot) => ({
           blob: await blobFromDataUrl(shot.dataUrl!),
@@ -711,8 +716,11 @@ export function SaveProductDialog({
       // Store in ref BEFORE opening the sheet so the callback can access it
       resultRef.current = finalResult;
 
-      // Close form drawer and open success sheet
-      closeSheet(sheetId);
+      // Close form drawer, then open success sheet.
+      // IMPORTANT: successSheetIdRef is used inside onDone (not the local const)
+      // because the JSX closure captures the const before it is assigned — the ref
+      // is always readable by the time the user taps Done.
+      closeSheet(getSheetId());
 
       const successSheetId = openSheet({
         title: null,
@@ -720,7 +728,7 @@ export function SaveProductDialog({
           <SuccessScreen
             result={finalResult}
             onDone={() => {
-              closeSheet(successSheetId);
+              closeSheet(successSheetIdRef.current);
               handleDone();
             }}
             onShare={handleShareFromRef}
@@ -867,7 +875,7 @@ export function SaveProductDialog({
                 )}
               </Button>
             </div>
-            <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => closeSheet(sheetId)} disabled={isSubmitting}>
+            <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => closeSheet(getSheetId())} disabled={isSubmitting}>
               Cancel
             </Button>
           </motion.div>

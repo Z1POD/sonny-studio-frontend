@@ -34,14 +34,6 @@ export function LightboxRoot() {
           transition={{ duration: 0.2 }}
           className="fixed inset-0 z-[220] flex items-center justify-center bg-black/92 backdrop-blur-xl"
         >
-          <button
-            type="button"
-            onClick={close}
-            className="absolute right-4 top-4 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
-            aria-label="Close"
-          >
-            <X className="h-5 w-5" />
-          </button>
 
           {lightbox.images.length > 1 && lightbox.index > 0 && (
             <button
@@ -73,6 +65,14 @@ export function LightboxRoot() {
             transition={{ duration: 0.22 }}
             className="flex max-h-[92vh] max-w-[92vw] flex-col items-center"
           >
+            <button
+              type="button"
+              onClick={close}
+              className="z-10 inline-flex h-10 w-10 mb-2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
             <img
               src={lightbox.images[lightbox.index].src}
               alt={lightbox.images[lightbox.index].alt ?? ""}

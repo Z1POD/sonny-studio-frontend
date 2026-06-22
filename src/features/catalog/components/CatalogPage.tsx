@@ -111,7 +111,7 @@ export function CatalogPage() {
       </div>
 
       {isLoading ? (
-        <div className="mt-6 grid grid-cols-2 overflow-hidden rounded-t-2xl border-border gap-0 sm:grid-cols-3 lg:grid-cols-4 sm:gap-3">
+        <div className="mt-6 grid grid-cols-2 overflow-hidden rounded-2xl border-border gap-0 sm:grid-cols-3 lg:grid-cols-4 sm:gap-3">
           {Array.from({ length: 8 }).map((_, i) => (
             <div
               key={i}
@@ -130,7 +130,7 @@ export function CatalogPage() {
           </p>
         </div>
       ) : (
-        <div className="mt-6 grid grid-cols-2 overflow-hidden rounded-t-2xl border-border gap-0 sm:grid-cols-3 lg:grid-cols-4 sm:gap-3">
+        <div className="mt-6 grid grid-cols-2 overflow-hidden rounded-2xl border-border gap-0 sm:grid-cols-3 lg:grid-cols-4 sm:gap-3">
           {items.map((b) => (
             <motion.div
               key={b.id}

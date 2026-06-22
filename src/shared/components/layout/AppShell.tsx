@@ -106,7 +106,7 @@ function StudioNavFab() {
   return (
     <>
       {/* FAB — top-left, mobile only */}
-      <div className="fixed left-1/2 bottom-20 z-40 md:hidden -translate-x-1/2">
+      <div className="fixed left-1/2 bottom-20 z-20 md:hidden -translate-x-1/2">
         <motion.button
           onClick={() => setOpen((v) => !v)}
           aria-label="Toggle navigation"
@@ -261,7 +261,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Bottom tab bar — mobile only, non-studio pages */}
       {!isStudio && (
-        <nav className="sticky bottom-2 w-[95%] z-30 glass-strong border-t border-border rounded-2xl mx-auto safe-bottom md:hidden">
+        <nav className="sticky bottom-3 w-[95%] z-30 glass-strong border-t border-border rounded-2xl mx-auto safe-bottom md:hidden">
           <div className="mx-auto grid max-w-md grid-cols-5">
             {NAV.map(({ to, label, icon: Icon }) => {
               const active = location.pathname.startsWith(to);

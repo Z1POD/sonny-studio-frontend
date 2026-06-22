@@ -25,12 +25,15 @@ const CM = 0.01;
 
 export function StudioWorkspace() {
   const canvasRef = useRef<StudioCanvasHandle>(null);
+  const saveSheetIdRef = useRef<string>("");
   const [mounted, setMounted] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
 
   const modal = useModal();
-  const sheet = useSheet();
+  const sheet  = useSheet();
+  
   const routerState = useRouterState();
+
 
   const locationState = routerState.location.state as { apparelId?: string } | undefined;
   const apparelId = locationState?.apparelId ?? null;
@@ -164,6 +167,9 @@ export function StudioWorkspace() {
     });
   }, [data, setProduct]);
 
+  
+
+
   const handleSave = async () => {
     if (!canvasRef.current || !product) { 
       toast.error("Canvas not ready"); 
@@ -175,16 +181,17 @@ export function StudioWorkspace() {
       const snapshot = buildSceneSnapshot(useStudioStore.getState());
       const renderConfig = buildCompleteRenderConfig(useStudioStore.getState(), capturedShots);
 
-      let sheetId: string;  // Declare first
-
-      sheetId = sheet.open({  // Then assign
+      // Use a ref so SaveProductDialog always reads the real sheetId.
+      // Passing sheetId={sheetId} directly captures `undefined` because
+      // JS evaluates the JSX argument before sheet.open() returns.
+      saveSheetIdRef.current = sheet.open({
         title: "Publish product",
         content: (
           <SaveProductDialog
             shots={capturedShots}
             snapshot={snapshot}
             renderConfig={renderConfig}
-            sheetId={sheetId}  // Now accessible
+            sheetId={saveSheetIdRef}
             variants={product.variants ?? []}
             printAreas={product.printAreas}
             artworks={artworks}
@@ -203,6 +210,7 @@ export function StudioWorkspace() {
       setIsCapturing(false);
     }
   };
+
 
   /* ── Apply artwork ────────────────────────────────────────────────────── */
   const handleArtworkSelect = ({ url, aspect }: { url: string; aspect: number }) => {

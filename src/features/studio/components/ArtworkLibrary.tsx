@@ -294,7 +294,6 @@ export function ArtworkLibrary({ onSelect }: ArtworkLibraryProps) {
   const handleSelect = useCallback(
     (artwork: ArtworkItem) => {
       onSelect({ url: artwork.url, aspect: artwork.width / artwork.height || 1 });
-      toast.success(`Selected "${artwork.name}"`);
       if (isMobile) setIsOpen(false);
     },
     [onSelect, isMobile],
