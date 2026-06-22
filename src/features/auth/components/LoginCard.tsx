@@ -185,7 +185,7 @@ export function LoginCard() {
               </Button>
 
               <AnimatePresence>
-                {signupLink && (
+                {signupLink && !isInTelegramMiniApp && (
                   <motion.a
                     href={signupLink}
                     target="_blank"

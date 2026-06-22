@@ -91,6 +91,13 @@ interface TelegramWebApp {
   showAlert: (message: string, callback?: () => void) => void;
   showConfirm: (message: string, callback?: (confirmed: boolean) => void) => void;
   isVersionAtLeast: (version: string) => boolean;
+  /** Bot API 7.7+ — fullscreen mode */
+  isFullscreen?: boolean;
+  requestFullscreen?: () => void;
+  exitFullscreen?: () => void;
+  /** Bot API 7.7+ — prevent swipe-down-to-close */
+  disableVerticalSwipes?: () => void;
+  enableVerticalSwipes?: () => void;
 }
 
 declare global {
@@ -106,6 +113,7 @@ declare global {
 export function useTelegram() {
   const [webApp, setWebApp] = useState<TelegramWebApp | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -113,6 +121,12 @@ export function useTelegram() {
       setWebApp(tg);
       tg.ready();
       setIsReady(true);
+      // Detect fullscreen mode (Bot API 7.7+)
+      setIsFullscreen(!!tg.isFullscreen);
+      // Keep in sync if TG fires fullscreen change events
+      const onFullscreenChanged = () => setIsFullscreen(!!tg.isFullscreen);
+      tg.onEvent?.("fullscreenChanged", onFullscreenChanged);
+      return () => tg.offEvent?.("fullscreenChanged", onFullscreenChanged);
     }
   }, []);
 
@@ -165,9 +179,22 @@ export function useTelegram() {
     [webApp],
   );
 
+  /** Prevent swipe-down-to-close (Bot API 7.7+). Safe to call on older versions. */
+  const disableVerticalSwipes = useCallback(() => {
+    webApp?.disableVerticalSwipes?.();
+  }, [webApp]);
+
+  /** Re-enable swipe-down-to-close (Bot API 7.7+). */
+  const enableVerticalSwipes = useCallback(() => {
+    webApp?.enableVerticalSwipes?.();
+  }, [webApp]);
+
   return {
     webApp,
     isReady,
+    /** True when running inside a Telegram Mini App (has initData). */
+    isTelegram: isInTelegramMiniApp(),
+    isFullscreen,
     isInTelegramMiniApp,
     isShareToStoryAvailable,
     shareToStory,
@@ -175,6 +202,8 @@ export function useTelegram() {
     openTelegramLink,
     showAlert,
     hapticFeedback,
+    disableVerticalSwipes,
+    enableVerticalSwipes,
   };
 }
 

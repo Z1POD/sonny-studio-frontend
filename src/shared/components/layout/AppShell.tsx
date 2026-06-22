@@ -195,9 +195,22 @@ function StudioNavFab() {
 export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const isStudio = location.pathname.startsWith("/studio");
+  const { isTelegram, isFullscreen, disableVerticalSwipes, enableVerticalSwipes } = useTelegram();
+
+  // Block swipe-down-to-close in studio (fullscreen TG miniapp only).
+  // Falls back gracefully on older Bot API versions — the methods simply won't exist.
+  useEffect(() => {
+    if (!isTelegram || !isStudio) return;
+    disableVerticalSwipes();
+    return () => enableVerticalSwipes();
+  }, [isTelegram, isStudio, disableVerticalSwipes, enableVerticalSwipes]);
+
+  // Extra top clearance on mobile when running in TG fullscreen mode so our
+  // elements don't clash with the native close / menu icons (~52 px covers them).
+  const tgSafeTop = isTelegram && isFullscreen ? "pt-[52px] md:pt-0" : "";
 
   return (
-    <div className="flex min-h-dvh flex-col bg-background">
+    <div className={cn("flex min-h-dvh flex-col bg-background", tgSafeTop)}>
       {/* Top bar — desktop only */}
       <header className="sticky top-0 z-30 glass border-b border-border safe-top hidden md:block">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-5 sm:px-8">
@@ -247,7 +260,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Bottom tab bar — mobile only, non-studio pages */}
       {!isStudio && (
-        <nav className="sticky bottom-0 z-30 glass border-t border-border safe-bottom md:hidden">
+        <nav className="sticky bottom-2 w-[95%] z-30 glass-strong border-t border-border rounded-2xl mx-auto safe-bottom md:hidden">
           <div className="mx-auto grid max-w-md grid-cols-5">
             {NAV.map(({ to, label, icon: Icon }) => {
               const active = location.pathname.startsWith(to);
