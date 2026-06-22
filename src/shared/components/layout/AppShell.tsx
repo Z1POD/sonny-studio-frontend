@@ -8,6 +8,7 @@ import {
   LayoutGrid,
   LogOut,
   Menu,
+  MenuSquareIcon,
   Palette,
   Store as StoreIcon,
   Wallet as WalletIcon,
@@ -105,16 +106,16 @@ function StudioNavFab() {
   return (
     <>
       {/* FAB — top-left, mobile only */}
-      <div className="fixed left-[50%] top-4 z-40 md:hidden">
+      <div className="fixed left-1/2 bottom-20 z-40 md:hidden -translate-x-1/2">
         <motion.button
           onClick={() => setOpen((v) => !v)}
           aria-label="Toggle navigation"
           whileTap={{ scale: 0.92 }}
           className={cn(
-            "flex h-9 w-9 items-center justify-center rounded-full border shadow-lg backdrop-blur-md transition-colors duration-200",
+            "flex h-9 w-9 items-center justify-center rounded-full border shadow-lg backdrop-blur-md transition-colors duration-200 backdrop-blur-xl",
             open
               ? "border-border/60 bg-surface text-foreground"
-              : "border-border/40 bg-surface/70 text-muted-foreground",
+              : "border-border/40 bg-surface/90 text-muted-foreground",
           )}
         >
           <AnimatePresence mode="wait" initial={false}>
@@ -126,7 +127,7 @@ function StudioNavFab() {
               transition={{ duration: 0.15 }}
               className="flex items-center justify-center"
             >
-              {open ? <X className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+              {open ? <X className="h-4 w-4" /> : <MenuSquareIcon className="h-4 w-4" />}
             </motion.span>
           </AnimatePresence>
         </motion.button>
@@ -154,9 +155,9 @@ function StudioNavFab() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 16 }}
               transition={{ type: "spring", damping: 28, stiffness: 340 }}
-              className="fixed top-0 inset-x-0 z-40 md:hidden safe-top"
+              className="fixed bottom-28 inset-x-0 z-40 md:hidden safe-top"
             >
-              <div className="mx-4 mt-4 overflow-hidden rounded-2xl border border-border/60 bg-surface/90 shadow-2xl backdrop-blur-xl">
+              <div className="mx-4 mb-4 overflow-hidden rounded-2xl border border-border/60 bg-surface/90 shadow-2xl backdrop-blur-xl">
                 <div className="grid grid-cols-5">
                   {NAV.map(({ to, label, icon: Icon }) => {
                     const active = location.pathname.startsWith(to);
@@ -207,7 +208,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   // Extra top clearance on mobile when running in TG fullscreen mode so our
   // elements don't clash with the native close / menu icons (~52 px covers them).
-  const tgSafeTop = isTelegram && isFullscreen ? "pt-[52px] md:pt-0" : "";
+  const tgSafeTop = isTelegram && isFullscreen && !isStudio ? "pt-[52px] md:pt-0" : "";
 
   return (
     <div className={cn("flex min-h-dvh flex-col bg-background", tgSafeTop)}>

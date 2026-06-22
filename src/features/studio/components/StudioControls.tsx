@@ -30,7 +30,7 @@ export function StudioControls({ onSave, isSaving }: Props) {
   return (
     <>
       {/* Reset — fixed top corner */}
-      <div className="pointer-events-auto absolute right-4 top-4 z-20">
+      <div className="pointer-events-auto absolute right-4 bottom-20 z-20">
         <Button
           variant="ghost"
           size="icon"

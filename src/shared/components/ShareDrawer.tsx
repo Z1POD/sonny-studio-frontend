@@ -1,18 +1,10 @@
 /**
- * src/shared/components/ShareDrawer.tsx — v2
+ * src/shared/components/ShareDrawer.tsx — v3
  *
- * Apple HIG–inspired share sheet.
- *
- * Design principles applied:
- *  - Frosted glass bottom sheet with spring animation (matching iOS share sheet feel)
- *  - Pill drag handle, rounded corners, clean hierarchy
- *  - Social icons in a single horizontal scroll row with circular buttons
- *  - No borders on icon cells — colour IS the affordance
- *  - Subtle haptic-style spring on mount; tap targets ≥ 44pt
- *  - Telegram Story share gets prominent CTA when available (primary brand colour)
- *  - Product preview at top: blurred backdrop + centred image (like AirDrop preview)
- *  - Actions in a grouped "menu card" with inset separators (iOS Settings style)
- *  - Copy link shows inline checkmark confirmation instead of toast
+ * Changes:
+ *  - ShareTarget now accepts price + currencySymbol for Telegram Story
+ *  - composeStoryText() generates dynamic CTA lines based on product flags
+ *  - shareToStory now passes full StoryShareParams with text + widget_link
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
@@ -30,6 +22,11 @@ import {
   ExternalLink,
   Loader2,
   Share2,
+  Zap,
+  Tag,
+  Clock,
+  Gem,
+  TrendingUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -46,6 +43,87 @@ export interface ShareTarget {
   productId?: string;
   /** If true, auto-publishes the product before sharing */
   shouldPublish?: boolean;
+  /** Product price for Telegram Story text */
+  price?: string;
+  /** Currency symbol (e.g. "ETB", "$") */
+  currencySymbol?: string;
+  /** Product flags to drive dynamic CTA generation */
+  flags?: ProductStoryFlags;
+}
+
+/** Flags that drive dynamic story CTA composition */
+export interface ProductStoryFlags {
+  /** Has active discount / coupon */
+  hasDiscount?: boolean;
+  /** Is a limited edition drop */
+  isLimited?: boolean;
+  /** Low stock warning */
+  lowStock?: boolean;
+  /** Is a best-seller / trending */
+  isTrending?: boolean;
+  /** Custom print / personalized */
+  isCustom?: boolean;
+  /** Production ready / premium quality badge */
+  isPremium?: boolean;
+}
+
+// ─── Story Text Composer ──────────────────────────────────────────────────────
+
+/**
+ * Composes a clean, engaging Telegram Story caption from product data.
+ * Generates 2-3 dynamic CTA lines based on active flags.
+ */
+function composeStoryText(target: ShareTarget): string {
+  const { title, price, currencySymbol, flags } = target;
+  const sym = currencySymbol || "";
+  const priceLine = price ? `${sym}${price}` : null;
+
+  // Build dynamic CTA lines based on flags (priority-ordered)
+  const ctas: string[] = [];
+
+  if (flags?.isLimited) {
+    ctas.push("🔥 Limited drop — grab yours before it sells out!");
+  }
+  if (flags?.lowStock) {
+    ctas.push("⚡ Only a few left in stock!");
+  }
+  if (flags?.hasDiscount) {
+    ctas.push("🏷️ Discount active — tap to claim!");
+  }
+  if (flags?.isTrending) {
+    ctas.push("📈 Trending now — join the hype!");
+  }
+  if (flags?.isCustom) {
+    ctas.push("✨ Custom designed — made just for you.");
+  }
+  if (flags?.isPremium) {
+    ctas.push("✅ Production-ready quality guaranteed.");
+  }
+
+  // Fallback CTAs if no flags matched
+  if (ctas.length === 0) {
+    ctas.push("👆 Tap the link to shop now!");
+  }
+
+  // Compose final text — clean, no excessive emojis, scannable
+  const lines: string[] = [];
+
+  if (title) {
+    lines.push(title);
+  }
+
+  if (priceLine) {
+    lines.push(`💰 ${priceLine}`);
+  }
+
+  // Add 1-2 best CTAs (keep it concise for stories)
+  const selectedCt = ctas.slice(0, 2);
+  lines.push(...selectedCt);
+
+  // Final CTA line always pointing to the button
+  lines.push("🔗 Link in story 👇");
+
+  return lines.join("\n");
 }
 
 // ─── Icon wrappers ─────────────────────────────────────────────────────────────
@@ -255,9 +333,23 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
     try {
       await storeProductApi.publish(target.productId);
       toast.success("Published!");
+
       if (inTelegram && target.imageUrl) {
         hapticFeedback("success");
-        shareToStory(target.imageUrl, target.title, { url: target.url, name: "View Product" });
+
+        // Compose rich story text with product name, price, CTA
+        const storyText = composeStoryText(target);
+
+        // Build proper StoryShareParams
+        const storyParams = {
+          text: storyText,
+          widget_link: {
+            url: target.url,
+            name: "View Product",
+          },
+        };
+
+        shareToStory(target.imageUrl, storyParams);
         toast.info("Story editor opened.");
       }
     } catch (err: any) {
@@ -317,7 +409,6 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
             onClick={handlePublishAndShare}
             disabled={isPublishing}
             className="w-full h-[50px] rounded-2xl text-[15px] font-semibold gap-2"
-            style={{ backgroundColor: "#229ED9", borderColor: "#229ED9" }}
           >
             {isPublishing ? (
               <Loader2 className="h-4 w-4 animate-spin" />

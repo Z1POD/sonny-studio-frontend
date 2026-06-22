@@ -335,8 +335,8 @@ export function ArtworkLibrary({ onSelect }: ArtworkLibraryProps) {
       onClick={() => setIsOpen((v) => !v)}
       className={
         isMobile
-          ? "pointer-events-auto absolute top-4 left-8 z-30 flex h-10 items-center gap-2 rounded-full border border-border/60 bg-surface/90 px-4 text-foreground shadow-elevated backdrop-blur-xl hover:scale-105 transition"
-          : "pointer-events-auto absolute left-4 top-4 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-surface/90 text-foreground shadow-elevated backdrop-blur-xl hover:scale-105 transition"
+          ? "pointer-events-auto absolute bottom-20 left-4 z-30 flex h-10 w-10 items-center gap-2 rounded-full border border-border/60 bg-surface/90 px-3 text-foreground shadow-elevated backdrop-blur-xl hover:scale-105 transition"
+          : "pointer-events-auto absolute left-4 bottom-20 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-surface/90 px-3 text-foreground shadow-elevated backdrop-blur-xl hover:scale-105 transition"
       }
       title="Artwork Library"
     >
