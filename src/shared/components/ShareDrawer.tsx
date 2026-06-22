@@ -99,7 +99,7 @@ function composeStoryText(target: ShareTarget): string {
     ctas.push("✨ Custom designed — made just for you.");
   }
   if (flags?.isPremium) {
-    ctas.push("✅ Production-ready quality guaranteed.");
+    ctas.push("Production-ready quality guaranteed.");
   }
 
   // Fallback CTAs if no flags matched
@@ -128,7 +128,7 @@ function composeStoryText(target: ShareTarget): string {
   }
 
   // Final CTA line pointing to the button for premium users who get the widget
-  lines.push("👇 Tap the button below");
+  // lines.push("👇 Tap the button below");
 
   return lines.join("\n");
 }
