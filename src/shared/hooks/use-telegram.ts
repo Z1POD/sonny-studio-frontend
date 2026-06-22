@@ -1,26 +1,15 @@
 /**
  * src/shared/hooks/use-telegram.ts
  *
- * Telegram Mini App integration utilities.
+ * Breaking change: shareToStory signature updated to match Telegram WebApp API.
+ * Before: shareToStory(mediaUrl, text, widgetLink)
+ * After:  shareToStory(mediaUrl, params: { text?, widget_link?: { url, name } })
  */
 
 import { useCallback, useEffect, useState } from "react";
 
-// ─── Types for Telegram WebApp ─────────────────────────────────────────────
-
-interface StoryWidgetLink {
-  url: string;
-  name?: string;
-}
-
-interface StoryShareParams {
-  text?: string;
-  widget_link?: StoryWidgetLink;
-}
-
 interface TelegramWebApp {
-  initData: string;
-  initDataUnsafe: {
+  initDataUnsafe?: {
     user?: {
       id: number;
       first_name: string;
@@ -28,27 +17,43 @@ interface TelegramWebApp {
       username?: string;
       language_code?: string;
     };
-    query_id?: string;
+    start_param?: string;
     auth_date?: number;
     hash?: string;
+    query_id?: string;
   };
-  version: string;
-  platform: string;
-  colorScheme: "light" | "dark";
-  themeParams: Record<string, string>;
-  isExpanded: boolean;
-  viewportHeight: number;
-  viewportStableHeight: number;
-  headerColor: string;
-  backgroundColor: string;
-  isClosingConfirmationEnabled: boolean;
-  BackButton: {
-    isVisible: boolean;
-    onClick: (callback: () => void) => void;
-    offClick: (callback: () => void) => void;
-    show: () => void;
-    hide: () => void;
+  initData: string;
+  ready: () => void;
+  expand: () => void;
+  close: () => void;
+  enableClosingConfirmation: () => void;
+  disableClosingConfirmation: () => void;
+  setHeaderColor: (color: string) => void;
+  setBackgroundColor: (color: string) => void;
+  HapticFeedback?: {
+    impactOccurred: (style: "light" | "medium" | "heavy" | "rigid" | "soft") => void;
+    notificationOccurred: (type: "error" | "success" | "warning") => void;
+    selectionChanged: () => void;
   };
+  shareToStory?: (
+    mediaUrl: string,
+    params?: {
+      text?: string;
+      widget_link?: {
+        url: string;
+        name: string;
+      };
+    }
+  ) => void;
+  openTelegramLink: (url: string) => void;
+  openLink: (url: string) => void;
+  showPopup: (params: {
+    title?: string;
+    message: string;
+    buttons?: Array<{ id?: string; type?: string; text: string }>;
+  }) => void;
+  showAlert: (message: string) => void;
+  showConfirm: (message: string) => Promise<boolean>;
   MainButton: {
     text: string;
     color: string;
@@ -65,155 +70,246 @@ interface TelegramWebApp {
     disable: () => void;
     showProgress: (leaveActive: boolean) => void;
     hideProgress: () => void;
+    setParams: (params: {
+      text?: string;
+      color?: string;
+      text_color?: string;
+      is_active?: boolean;
+      is_visible?: boolean;
+    }) => void;
   };
-  HapticFeedback: {
-    impactOccurred: (style: "light" | "medium" | "heavy" | "rigid" | "soft") => void;
-    notificationOccurred: (type: "error" | "success" | "warning") => void;
-    selectionChanged: () => void;
+  BackButton: {
+    isVisible: boolean;
+    onClick: (callback: () => void) => void;
+    offClick: (callback: () => void) => void;
+    show: () => void;
+    hide: () => void;
   };
-  shareToStory: (mediaUrl: string, params?: StoryShareParams) => void;
-  openLink: (url: string, options?: { try_instant_view?: boolean }) => void;
-  openTelegramLink: (url: string) => void;
-  close: () => void;
-  ready: () => void;
-  expand: () => void;
-  enableClosingConfirmation: () => void;
-  disableClosingConfirmation: () => void;
-  onEvent: (eventType: string, callback: (...args: any[]) => void) => void;
-  offEvent: (eventType: string, callback: (...args: any[]) => void) => void;
-  sendData: (data: string) => void;
-  switchInlineQuery: (query: string, chooseChatTypes?: string[]) => void;
-  showPopup: (params: {
-    title?: string;
-    message: string;
-    buttons?: Array<{ id?: string; type?: string; text?: string }>;
-  }) => void;
-  showAlert: (message: string, callback?: () => void) => void;
-  showConfirm: (message: string, callback?: (confirmed: boolean) => void) => void;
-  isVersionAtLeast: (version: string) => boolean;
-  /** Bot API 7.7+ — fullscreen mode */
-  isFullscreen?: boolean;
-  requestFullscreen?: () => void;
-  exitFullscreen?: () => void;
-  /** Bot API 7.7+ — prevent swipe-down-to-close */
-  disableVerticalSwipes?: () => void;
-  enableVerticalSwipes?: () => void;
+  themeParams: {
+    bg_color?: string;
+    text_color?: string;
+    hint_color?: string;
+    link_color?: string;
+    button_color?: string;
+    button_text_color?: string;
+    secondary_bg_color?: string;
+  };
+  platform: string;
+  version: string;
+  colorScheme: "light" | "dark";
+  isExpanded: boolean;
+  viewportHeight: number;
+  viewportStableHeight: number;
+  safeAreaInset: {
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+  };
+  contentSafeAreaInset: {
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+  };
+  onEvent: (eventType: string, callback: () => void) => void;
+  offEvent: (eventType: string, callback: () => void) => void;
 }
 
-declare global {
-  interface Window {
-    Telegram?: {
-      WebApp?: TelegramWebApp;
-    };
-  }
+interface TelegramWindow extends Window {
+  Telegram?: {
+    WebApp: TelegramWebApp;
+  };
 }
-
-// ─── Hook ───────────────────────────────────────────────────────────────────
 
 export function useTelegram() {
-  const [webApp, setWebApp] = useState<TelegramWebApp | null>(null);
-  const [isReady, setIsReady] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [tg, setTg] = useState<TelegramWebApp | null>(null);
 
   useEffect(() => {
-    const tg = window.Telegram?.WebApp;
-    if (tg) {
-      setWebApp(tg);
-      tg.ready();
-      setIsReady(true);
-      // Detect fullscreen mode (Bot API 7.7+)
-      setIsFullscreen(!!tg.isFullscreen);
-      // Keep in sync if TG fires fullscreen change events
-      const onFullscreenChanged = () => setIsFullscreen(!!tg.isFullscreen);
-      tg.onEvent?.("fullscreenChanged", onFullscreenChanged);
-      return () => tg.offEvent?.("fullscreenChanged", onFullscreenChanged);
+    if (typeof window !== "undefined") {
+      const telegram = (window as unknown as TelegramWindow).Telegram?.WebApp;
+      if (telegram) {
+        setTg(telegram);
+        telegram.ready();
+      }
     }
   }, []);
 
+  /**
+   * CRITICAL: Checks if we are actually running inside a Telegram Mini App.
+   * This verifies initDataUnsafe exists and contains user data — NOT just
+   * that the WebApp object exists (which is also present in regular browser
+   * when Telegram WebView scripts are loaded).
+   */
   const isInTelegramMiniApp = useCallback(() => {
-    return !!webApp && !!webApp.initData && webApp.initData.length > 0;
-  }, [webApp]);
+    if (typeof window === "undefined") return false;
+    const webApp = (window as unknown as TelegramWindow).Telegram?.WebApp;
+    if (!webApp) return false;
+    // Must have initDataUnsafe with user object to be in a real Mini App
+    const hasInitData = !!webApp.initDataUnsafe && !!webApp.initDataUnsafe.user;
+    const hasInitDataString = !!webApp.initData && webApp.initData.length > 0;
+    return hasInitData || hasInitDataString;
+  }, []);
 
   const isShareToStoryAvailable = useCallback(() => {
-    return isInTelegramMiniApp() && !!webApp?.shareToStory;
-  }, [webApp, isInTelegramMiniApp]);
+    return !!tg?.shareToStory;
+  }, [tg]);
 
+  /**
+   * Opens the native Telegram story editor.
+   *
+   * @param mediaUrl - HTTPS URL of the media (image/video)
+   * @param params - StoryShareParams: { text?, widget_link?: { url, name } }
+   *
+   * Breaking change: This now accepts a single params object as the second argument
+   * instead of separate text and widgetLink arguments.
+   */
   const shareToStory = useCallback(
-    (mediaUrl: string, text?: string, widgetLink?: { url: string; name?: string }) => {
-      if (!webApp?.shareToStory) {
-        throw new Error("shareToStory is not available");
+    (
+      mediaUrl: string,
+      params?: {
+        text?: string;
+        widget_link?: { url: string; name: string };
       }
-      const params: StoryShareParams = {};
-      if (text) params.text = text;
-      if (widgetLink) params.widget_link = widgetLink;
-      webApp.shareToStory(mediaUrl, params);
+    ) => {
+      if (!tg?.shareToStory) {
+        console.warn("shareToStory not available");
+        return;
+      }
+      tg.shareToStory(mediaUrl, params);
     },
-    [webApp],
-  );
-
-  const openLink = useCallback(
-    (url: string, options?: { try_instant_view?: boolean }) => {
-      webApp?.openLink(url, options);
-    },
-    [webApp],
-  );
-
-  const openTelegramLink = useCallback(
-    (url: string) => {
-      webApp?.openTelegramLink(url);
-    },
-    [webApp],
-  );
-
-  const showAlert = useCallback(
-    (message: string, callback?: () => void) => {
-      webApp?.showAlert(message, callback);
-    },
-    [webApp],
+    [tg]
   );
 
   const hapticFeedback = useCallback(
-    (type: "success" | "error" | "warning" = "success") => {
-      webApp?.HapticFeedback?.notificationOccurred(type);
+    (type: "success" | "error" | "warning" | "light" | "medium" | "heavy" | "rigid" | "soft") => {
+      if (type === "success" || type === "error" || type === "warning") {
+        tg?.HapticFeedback?.notificationOccurred?.(type);
+      } else {
+        tg?.HapticFeedback?.impactOccurred?.(type as "light" | "medium" | "heavy" | "rigid" | "soft");
+      }
     },
-    [webApp],
+    [tg]
   );
 
-  /** Prevent swipe-down-to-close (Bot API 7.7+). Safe to call on older versions. */
-  const disableVerticalSwipes = useCallback(() => {
-    webApp?.disableVerticalSwipes?.();
-  }, [webApp]);
+  const impactOccurred = useCallback(
+    (style: "light" | "medium" | "heavy" | "rigid" | "soft") => {
+      tg?.HapticFeedback?.impactOccurred?.(style);
+    },
+    [tg]
+  );
 
-  /** Re-enable swipe-down-to-close (Bot API 7.7+). */
-  const enableVerticalSwipes = useCallback(() => {
-    webApp?.enableVerticalSwipes?.();
-  }, [webApp]);
+  const notificationOccurred = useCallback(
+    (type: "error" | "success" | "warning") => {
+      tg?.HapticFeedback?.notificationOccurred?.(type);
+    },
+    [tg]
+  );
+
+  const selectionChanged = useCallback(() => {
+    tg?.HapticFeedback?.selectionChanged?.();
+  }, [tg]);
+
+  const openTelegramLink = useCallback(
+    (url: string) => {
+      tg?.openTelegramLink?.(url);
+    },
+    [tg]
+  );
+
+  const openLink = useCallback(
+    (url: string) => {
+      tg?.openLink?.(url);
+    },
+    [tg]
+  );
+
+  const showPopup = useCallback(
+    (params: { title?: string; message: string; buttons?: Array<{ id?: string; type?: string; text: string }> }) => {
+      tg?.showPopup?.(params);
+    },
+    [tg]
+  );
+
+  const showAlert = useCallback(
+    (message: string) => {
+      tg?.showAlert?.(message);
+    },
+    [tg]
+  );
+
+  const showConfirm = useCallback(
+    (message: string) => {
+      return tg?.showConfirm?.(message) ?? Promise.resolve(false);
+    },
+    [tg]
+  );
+
+  const ready = useCallback(() => {
+    tg?.ready?.();
+  }, [tg]);
+
+  const expand = useCallback(() => {
+    tg?.expand?.();
+  }, [tg]);
+
+  const close = useCallback(() => {
+    tg?.close?.();
+  }, [tg]);
+
+  const enableClosingConfirmation = useCallback(() => {
+    tg?.enableClosingConfirmation?.();
+  }, [tg]);
+
+  const disableClosingConfirmation = useCallback(() => {
+    tg?.disableClosingConfirmation?.();
+  }, [tg]);
+
+  const setHeaderColor = useCallback(
+    (color: string) => {
+      tg?.setHeaderColor?.(color);
+    },
+    [tg]
+  );
+
+  const setBackgroundColor = useCallback(
+    (color: string) => {
+      tg?.setBackgroundColor?.(color);
+    },
+    [tg]
+  );
 
   return {
-    webApp,
-    isReady,
-    /** True when running inside a Telegram Mini App (has initData). */
-    isTelegram: isInTelegramMiniApp(),
-    isFullscreen,
+    tg,
     isInTelegramMiniApp,
     isShareToStoryAvailable,
     shareToStory,
-    openLink,
-    openTelegramLink,
-    showAlert,
     hapticFeedback,
-    disableVerticalSwipes,
-    enableVerticalSwipes,
+    impactOccurred,
+    notificationOccurred,
+    selectionChanged,
+    openTelegramLink,
+    openLink,
+    showPopup,
+    showAlert,
+    showConfirm,
+    ready,
+    expand,
+    close,
+    enableClosingConfirmation,
+    disableClosingConfirmation,
+    setHeaderColor,
+    setBackgroundColor,
+    themeParams: tg?.themeParams,
+    platform: tg?.platform,
+    version: tg?.version,
+    colorScheme: tg?.colorScheme,
+    isExpanded: tg?.isExpanded,
+    viewportHeight: tg?.viewportHeight,
+    viewportStableHeight: tg?.viewportStableHeight,
+    safeAreaInset: tg?.safeAreaInset,
+    contentSafeAreaInset: tg?.contentSafeAreaInset,
+    MainButton: tg?.MainButton,
+    BackButton: tg?.BackButton,
   };
-}
-
-// ─── Standalone utility ─────────────────────────────────────────────────────
-
-export function getTelegramWebApp(): TelegramWebApp | null {
-  return window.Telegram?.WebApp ?? null;
-}
-
-export function isTelegramMiniApp(): boolean {
-  const tg = getTelegramWebApp();
-  return !!tg && !!tg.initData && tg.initData.length > 0;
 }

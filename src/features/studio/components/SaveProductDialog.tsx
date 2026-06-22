@@ -497,12 +497,26 @@ export function SaveProductDialog({
 
     const primaryMockup = result.mockup_images?.find((m) => m.is_primary) ?? result.mockup_images?.[0];
 
+    // Extract price and currency from result
+    const price = result.pricing?.retail_price;
+    const currencySymbol = typeof result.pricing?.currency === "object"
+      ? result.pricing.currency.symbol
+      : result.pricing?.currency;
+
     openShareDrawer({
       title: result.title || "My Custom Product",
       url: result.public_link || "",
       imageUrl: primaryMockup?.url ?? result.thumbnail_url,
       productId: result.id,
       shouldPublish: true,
+      price,
+      currencySymbol,
+      flags: {
+        isCustom: true,
+        isPremium: true,
+        isLimited: false,
+        hasDiscount: false,
+      },
     });
   }, [openShareDrawer]);
 

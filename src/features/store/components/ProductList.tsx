@@ -3,6 +3,7 @@
  *
  * Changes:
  *  - Shows "Not production ready" tag on products where production_ready is false/absent
+ *  - Share button now passes price, currencySymbol, and flags for Telegram Story
  */
 
 "use client";
@@ -107,12 +108,26 @@ function ProductRow({
   const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!product.public_link) return;
+
+    // Extract price and currency from product data
+    const productData = product as any;
+    const price = productData.pricing?.retail_price ?? productData.retail_price;
+    const currencySymbol = productData.pricing?.currency?.symbol ?? productData.currency?.symbol;
+
     openShareDrawer({
       title: product.title,
       url: product.public_link,
       imageUrl: product.thumbnail_url,
       productId: product.id,
       shouldPublish: false,
+      price,
+      currencySymbol,
+      flags: {
+        isCustom: true,
+        isPremium: productData.production_ready === true,
+        isTrending: (productData.sold_quantity ?? 0) > 10,
+        lowStock: productData.stock_quantity != null && productData.stock_quantity < 10,
+      },
     });
   };
 

@@ -2,31 +2,33 @@
  * src/shared/components/ShareDrawer.tsx — v3
  *
  * Changes:
- *  - ShareTarget now accepts price + currencySymbol for Telegram Story
+ *  - ShareTarget now accepts price + currencySymbol + flags for Telegram Story
  *  - composeStoryText() generates dynamic CTA lines based on product flags
  *  - shareToStory now passes full StoryShareParams with text + widget_link
+ *  - Updated useTelegram hook signature: shareToStory(mediaUrl, params)
  */
 
-import { useState, useCallback, useRef, useEffect } from "react";
-import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
+import { useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Send,
   Instagram,
   Twitter,
   Facebook,
-  Music2,
   Link2,
   MessageCircle,
   X,
   Check,
-  ExternalLink,
   Loader2,
   Share2,
-  Zap,
   Tag,
   Clock,
   Gem,
   TrendingUp,
+  Zap,
+  PackageCheck,
+  Percent,
+  Flame,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -35,6 +37,21 @@ import { useTelegram } from "@/shared/hooks/use-telegram";
 import { storeProductApi } from "@/features/store/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface ProductStoryFlags {
+  /** Has active discount / coupon */
+  hasDiscount?: boolean;
+  /** Is a limited edition drop */
+  isLimited?: boolean;
+  /** Low stock warning */
+  lowStock?: boolean;
+  /** Is a best-seller / trending */
+  isTrending?: boolean;
+  /** Custom print / personalized */
+  isCustom?: boolean;
+  /** Production ready / premium quality badge */
+  isPremium?: boolean;
+}
 
 export interface ShareTarget {
   title: string;
@@ -49,22 +66,6 @@ export interface ShareTarget {
   currencySymbol?: string;
   /** Product flags to drive dynamic CTA generation */
   flags?: ProductStoryFlags;
-}
-
-/** Flags that drive dynamic story CTA composition */
-export interface ProductStoryFlags {
-  /** Has active discount / coupon */
-  hasDiscount?: boolean;
-  /** Is a limited edition drop */
-  isLimited?: boolean;
-  /** Low stock warning */
-  lowStock?: boolean;
-  /** Is a best-seller / trending */
-  isTrending?: boolean;
-  /** Custom print / personalized */
-  isCustom?: boolean;
-  /** Production ready / premium quality badge */
-  isPremium?: boolean;
 }
 
 // ─── Story Text Composer ──────────────────────────────────────────────────────

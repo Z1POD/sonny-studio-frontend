@@ -1,11 +1,11 @@
 // src/features/store/components/StoreDashboard.tsx
- 
+
 // Aligned to real API contract:
 //  - pricing is { currency: {code,symbol,name}, base_price, markup_price, retail_price }
 //  - Action buttons always visible (not hover-only) — mobile friendly
 //  - Custom ConfirmModal replaces window.confirm
 //  - "Suggested next step" is now adaptive via DiscountSuggestionCard
- 
+//  - ShareDrawer calls now include price, currencySymbol, and flags for Telegram Story
 
 "use client";
 
@@ -99,12 +99,26 @@ function ProductCard({
   const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!p.public_link) return;
+
+    // Extract price and currency from product data
+    const productData = p as any;
+    const price = productData.pricing?.retail_price ?? productData.retail_price;
+    const currencySymbol = productData.pricing?.currency?.symbol ?? productData.currency?.symbol;
+
     openShareDrawer({
       title: p.title,
       url: p.public_link,
       imageUrl: p.thumbnail_url,
       productId: p.id,
       shouldPublish: false,
+      price,
+      currencySymbol,
+      flags: {
+        isCustom: true,
+        isPremium: productData.production_ready === true,
+        isTrending: (productData.sold_quantity ?? 0) > 10,
+        lowStock: productData.stock_quantity != null && productData.stock_quantity < 10,
+      },
     });
   };
 
