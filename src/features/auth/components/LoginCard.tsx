@@ -28,7 +28,7 @@ function getTelegramLink(details?: Record<string, string>): string | null {
   // Prefer link from server error details
   if (details?.signup_link) return details.signup_link;
   // Fall back to env var handle → https://t.me/handle
-  if (MINIAPP_HANDLE) return `https://t.me/${MINIAPP_HANDLE.replace(/^@/, "")}`;
+  if (MINIAPP_HANDLE) return MINIAPP_HANDLE;
   return null;
 }
 
