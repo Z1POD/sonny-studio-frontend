@@ -15,9 +15,6 @@ import { ApiError } from "@/shared/api/client";
 
 type Stage = "username" | "code";
 
-const DEMO_USERNAME = "user1";
-const DEMO_CODE = "123456";
-
 const MINIAPP_HANDLE =
   (typeof import.meta !== "undefined" &&
     (import.meta as { env?: { VITE_MINIAPP_HANDLE?: string } }).env
@@ -75,11 +72,6 @@ export function LoginCard() {
     setLoading(true);
 
     try {
-      if (username.trim() === DEMO_USERNAME) {
-        toast.success(`Demo account — use code ${DEMO_CODE}`);
-        setStage("code");
-        return;
-      }
       await authApi.requestOtp(username.trim());
       toast.success("Code sent. Check your messages.");
       setStage("code");
@@ -106,16 +98,6 @@ export function LoginCard() {
     if (!code.trim()) return;
     setLoading(true);
     try {
-      if (username.trim() === DEMO_USERNAME && code.trim() === DEMO_CODE) {
-        setToken("demo-token", {
-          id: "demo-user-1",
-          username: DEMO_USERNAME,
-          role: "creator",
-        });
-        toast.success("Welcome, demo user");
-        navigate({ to: redirectTo });
-        return;
-      }
       const data = await authApi.verifyOtp(username.trim(), code.trim());
       setToken(data.token, data.user);
       toast.success("Welcome back");
