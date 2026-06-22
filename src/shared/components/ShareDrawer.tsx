@@ -29,6 +29,7 @@ import {
   PackageCheck,
   Percent,
   Flame,
+  CircleFadingPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -75,7 +76,7 @@ export interface ShareTarget {
  * Generates 2-3 dynamic CTA lines based on active flags.
  */
 function composeStoryText(target: ShareTarget): string {
-  const { title, price, currencySymbol, flags } = target;
+  const { title, price, currencySymbol, flags, url } = target;
   const sym = currencySymbol || "";
   const priceLine = price ? `${sym}${price}` : null;
 
@@ -121,8 +122,13 @@ function composeStoryText(target: ShareTarget): string {
   const selectedCt = ctas.slice(0, 2);
   lines.push(...selectedCt);
 
-  // Final CTA line always pointing to the button
-  lines.push("🔗 Link in story 👇");
+  // Always include the raw URL in the caption (non-premium users may not see the widget button)
+  if (url) {
+    lines.push(`🔗 ${url}`);
+  }
+
+  // Final CTA line pointing to the button for premium users who get the widget
+  lines.push("👇 Tap the button below");
 
   return lines.join("\n");
 }
@@ -414,7 +420,7 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
             {isPublishing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Send className="h-4 w-4" />
+              <CircleFadingPlus className="h-4 w-4" />
             )}
             {isPublishing ? "Publishing…" : "Share to Story"}
           </Button>
@@ -475,6 +481,12 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
 
       {/* ── Action menu card ── */}
       <div className="mx-4 mb-8 overflow-hidden rounded-2xl bg-surface-elevated border border-border/40">
+        <MenuRow
+          icon={<Link2 className="h-4 w-4" />}
+          label={copied ? "Copied!" : "Copy Link"}
+          rightContent={copied ? <Check className="h-4 w-4 text-green-500" /> : undefined}
+          onClick={copyLink}
+        />
         <MenuRow
           icon={<X className="h-4 w-4" />}
           label="Close"
