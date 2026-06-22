@@ -1,8 +1,11 @@
 /**
- * src/features/studio/components/SaveProductDialog.tsx — v7.2
+ * src/features/studio/components/SaveProductDialog.tsx — v8.0
  *
- * Fix: Share button on success screen now works correctly.
- *      Uses ref to avoid stale closure over result state.
+ * Changes:
+ *  - Converted from Modal to Drawer (sheet) using overlay-store
+ *  - Fixed pricing: markup_price is now actual currency amount (base * pct / 100)
+ *    retail_price = base_price + printCost + markup_price
+ *  - All existing functionality preserved: tabs, validation, submission, success flow
  */
 
 import { useState, useMemo, useCallback, useRef } from "react";
@@ -15,7 +18,7 @@ import {
   Loader2,
   Sparkles,
   Info,
-  Save,  
+  Save,
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
@@ -64,7 +67,7 @@ interface Variant {
 export interface Props {
   shots: ShotConfig[];
   snapshot: SceneSnapshot;
-  modalId: string;
+  sheetId: string;  // Changed from modalId
   variants: Variant[];
   printAreas: PrintArea[];
   artworks: Record<string, ArtworkState>;
@@ -245,6 +248,10 @@ function VariantMatrix({ variants, enabledIds, onToggle }: any) {
   );
 }
 
+/**
+ * FIXED: markup_price is now the actual currency amount (base * pct / 100)
+ * retail_price = base_price + printCost + markup_price
+ */
 function PricingPreview({ basePrice, markupPct, printAreas, artworks, currencySymbol = "ETB" }: any) {
   const base = parseFloat(basePrice) || 0;
   const printCost = useMemo(() => {
@@ -262,9 +269,9 @@ function PricingPreview({ basePrice, markupPct, printAreas, artworks, currencySy
     return total;
   }, [printAreas, artworks]);
 
-  const subtotal = base + printCost;
-  const markupAmt = (subtotal * markupPct) / 100;
-  const retail = subtotal + markupAmt;
+  // FIXED: markup is calculated on base only, as actual currency amount
+  const markupAmt = (base * markupPct) / 100;
+  const retail = base + printCost + markupAmt;
 
   return (
     <div className="rounded-xl border border-border/40 bg-surface-elevated/30 p-3 space-y-2">
@@ -419,13 +426,13 @@ function SuccessScreen({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// MAIN DIALOG
+// MAIN DRAWER COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export function SaveProductDialog({
   shots: initialShots,
   snapshot,
-  modalId,
+  sheetId,
   variants,
   printAreas,
   artworks,
@@ -433,9 +440,8 @@ export function SaveProductDialog({
   canvasBackground = "#ffffff",
   basePrice = "0",
 }: Props) {
-  const closeModal = useOverlayStore((s) => s.closeModal);
-  const openSheet = useOverlayStore((s) => s.openSheet);
   const closeSheet = useOverlayStore((s) => s.closeSheet);
+  const openSheet = useOverlayStore((s) => s.openSheet);
   const resetStore = useStudioStore((s) => s.reset);
   const navigate = useNavigate();
   const { openShareDrawer } = useShareDrawer();
@@ -456,7 +462,7 @@ export function SaveProductDialog({
 
   // Use a ref to always have the latest result without stale closures
   const resultRef = useRef<SuccessResult | null>(null);
-  const sheetIdRef = useRef<string>("");
+  const successSheetIdRef = useRef<string>("");
 
   const store = useStudioStore();
 
@@ -479,13 +485,13 @@ export function SaveProductDialog({
   ];
 
   const handleDone = useCallback(() => {
-    closeModal(modalId);
-    if (sheetIdRef.current) {
-      closeSheet(sheetIdRef.current);
+    closeSheet(sheetId);
+    if (successSheetIdRef.current) {
+      closeSheet(successSheetIdRef.current);
     }
     resetStore();
     navigate({ to: "/store" });
-  }, [closeModal, modalId, closeSheet, resetStore, navigate]);
+  }, [closeSheet, sheetId, resetStore, navigate]);
 
   // This function reads from the ref, so it's never stale
   const handleShareFromRef = useCallback(() => {
@@ -532,7 +538,10 @@ export function SaveProductDialog({
 
     try {
       const base = parseFloat(basePrice) || 0;
-      const markupAmt = ((base * markupPct) / 100).toFixed(2);
+
+      // FIXED: markup_price is the actual currency amount (base * pct / 100)
+      // NOT a percentage string. The backend expects a real value.
+      const markupAmt = (base * markupPct) / 100;
 
       const printAreasPayload = activeAreas.map((area) => {
         const art = artworks[area.id];
@@ -661,7 +670,7 @@ export function SaveProductDialog({
         title: title.trim(),
         description: description.trim(),
         base_apparel: baseApparelId,
-        markup_price: markupAmt,
+        markup_price: markupAmt, // FIXED: now sends actual currency amount (number)
         print_areas: printAreasPayload,
         snapshot: {
           ...snapshot,
@@ -702,16 +711,16 @@ export function SaveProductDialog({
       // Store in ref BEFORE opening the sheet so the callback can access it
       resultRef.current = finalResult;
 
-      // Close modal and open success sheet
-      closeModal(modalId);
+      // Close form drawer and open success sheet
+      closeSheet(sheetId);
 
-      const sheetId = openSheet({
+      const successSheetId = openSheet({
         title: null,
         content: (
           <SuccessScreen
             result={finalResult}
             onDone={() => {
-              closeSheet(sheetId);
+              closeSheet(successSheetId);
               handleDone();
             }}
             onShare={handleShareFromRef}
@@ -720,7 +729,7 @@ export function SaveProductDialog({
         dismissible: false,
       });
 
-      sheetIdRef.current = sheetId;
+      successSheetIdRef.current = successSheetId;
       setStep("success");
       toast.success("Product created!");
     } catch (err: any) {
@@ -852,13 +861,13 @@ export function SaveProductDialog({
               </Button>
               <Button onClick={handleCreate} disabled={isSubmitting} className="flex-1">
                 {isSubmitting ? (
-                  <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Saveing…</>
+                  <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Saving…</>
                 ) : (
                   <><CloudUpload className="mr-2 h-3.5 w-3.5" /> Save</>
                 )}
               </Button>
             </div>
-            <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => closeModal(modalId)} disabled={isSubmitting}>
+            <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => closeSheet(sheetId)} disabled={isSubmitting}>
               Cancel
             </Button>
           </motion.div>

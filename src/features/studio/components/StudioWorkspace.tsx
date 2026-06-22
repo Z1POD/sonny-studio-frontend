@@ -11,7 +11,7 @@ import { Loader2, Shirt } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { useRouterState } from "@tanstack/react-router";
-import { useModal } from "@/shared/hooks/use-overlays";
+import { useModal, useSheet } from "@/shared/hooks/use-overlays";
 import { buildCompleteRenderConfig, buildSceneSnapshot, useStudioStore, getDefaultArtwork } from "../store";
 import { studioDetailQuery } from "../queries";
 import { SaveProductDialog, DEFAULT_SHOTS, type ShotConfig } from "./SaveProductDialog";
@@ -29,6 +29,7 @@ export function StudioWorkspace() {
   const [isCapturing, setIsCapturing] = useState(false);
 
   const modal = useModal();
+  const sheet = useSheet();
   const routerState = useRouterState();
 
   const locationState = routerState.location.state as { apparelId?: string } | undefined;
@@ -163,26 +164,27 @@ export function StudioWorkspace() {
     });
   }, [data, setProduct]);
 
-  /* ── Save: capture shots then open dialog ─────────────────────────────── */
   const handleSave = async () => {
-    if (!canvasRef.current || !product) { toast.error("Canvas not ready"); return; }
+    if (!canvasRef.current || !product) { 
+      toast.error("Canvas not ready"); 
+      return; 
+    }
     setIsCapturing(true);
     try {
-      const capturedShots: ShotConfig[] = await canvasRef.current.captureAllShots(DEFAULT_SHOTS);
+      const capturedShots = await canvasRef.current.captureAllShots(DEFAULT_SHOTS);
       const snapshot = buildSceneSnapshot(useStudioStore.getState());
       const renderConfig = buildCompleteRenderConfig(useStudioStore.getState(), capturedShots);
 
-      modal.open({
-        id: "studio-save",
+      let sheetId: string;  // Declare first
+
+      sheetId = sheet.open({  // Then assign
         title: "Publish product",
-        description: "Review shots, variants, then publish.",
-        size: "xl",
         content: (
           <SaveProductDialog
             shots={capturedShots}
             snapshot={snapshot}
             renderConfig={renderConfig}
-            modalId="studio-save"
+            sheetId={sheetId}  // Now accessible
             variants={product.variants ?? []}
             printAreas={product.printAreas}
             artworks={artworks}
@@ -192,6 +194,7 @@ export function StudioWorkspace() {
             currencySymbol={product.currencySymbol ?? "$"}
           />
         ),
+        dismissible: true,
       });
     } catch (err) {
       toast.error("Failed to capture shots");
