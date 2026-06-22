@@ -168,7 +168,7 @@ const SOCIAL_BUTTONS: SocialBtn[] = [
     id: "telegram",
     label: "Telegram",
     icon: <Send className="h-[18px] w-[18px]" />,
-    bg: "#229ED9",
+    bg: "#227ed9",
     action: (url, title) =>
       window.open(
         `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`,
