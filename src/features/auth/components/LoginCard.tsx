@@ -42,7 +42,7 @@ export function LoginCard() {
   const [tgLoading, setTgLoading] = useState(false);
   const [signupLink, setSignupLink] = useState<string | null>(null);
 
-  const redirectTo = search.redirect || "/store";
+  const redirectTo = search.redirect || "/catalog";
 
   // Auto-login when running inside Telegram WebApp
   useEffect(() => {

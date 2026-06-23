@@ -95,12 +95,14 @@ function StatCard({
   value,
   delta,
   loading,
+  subValue, // Added optional subValue
 }: {
-  icon: typeof TrendingUp;
+  icon: React.ComponentType<any>; // Fixed to accept any Lucide icon type safely
   label: string;
   value: string;
   delta?: number | null;
   loading?: boolean;
+  subValue?: string; // Type definition
 }) {
   return (
     <div className="rounded-2xl border border-border bg-surface p-5 flex flex-col gap-3">
@@ -115,7 +117,12 @@ function StatCard({
         </>
       ) : (
         <>
-          <p className="text-2xl font-semibold tracking-tight tabular-nums">{value}</p>
+          <div className="flex flex-row gap-2 items-baseline">
+            <p className="text-2xl font-semibold tracking-tight tabular-nums">{value}</p>
+            {subValue && (
+              <p className="text-xs text-muted-foreground tabular-nums">{subValue}</p>
+            )}
+          </div>
           {delta !== undefined && (
             <div className="flex items-center gap-1.5">
               <Delta value={delta} />
@@ -344,7 +351,7 @@ export function AnalyticsPage() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.05 }}
-        className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3"
+        className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4"
       >
         <StatCard
           icon={DollarSign}
@@ -353,13 +360,15 @@ export function AnalyticsPage() {
           delta={data?.total_earnings_delta}
           loading={isLoading}
         />
+        
         <StatCard
           icon={ShoppingBag}
           label="Sales"
-          value={data ? data.total_sales : data}
+          value={data ? data.total_sales : "—"}
           delta={data?.total_sales_delta}
           loading={isLoading}
         />
+        
         <StatCard
           icon={Package}
           label="Orders"
@@ -367,24 +376,12 @@ export function AnalyticsPage() {
           delta={data?.total_orders_delta}
           loading={isLoading}
         />
-        <StatCard
-          icon={BarChart2}
-          label="Avg. Order"
-          value={data ? formatCurrency(data.avg_earnings_per_order, sym) : "—"}
-          delta={data?.avg_earnings_per_order_delta}
-          loading={isLoading}
-        />
-        <StatCard
-          icon={TrendingUp}
-          label="Conversion"
-          value={data ? `${data.conversion_rate}%` : "—"}
-          delta={data?.conversion_rate_delta}
-          loading={isLoading}
-        />
+        
         <StatCard
           icon={Eye}
           label="Views"
           value={data ? data.total_views : "—"}
+          subValue={data ? `CVR: ${data.conversion_rate}%` : undefined}
           delta={data?.total_views_delta}
           loading={isLoading}
         />

@@ -77,6 +77,7 @@ function ProductCard({
 
   const isDraft = !p.is_published && p.status !== "archived";
   const isPublished = p.is_published || p.status === "published";
+  const isArchived = !p.is_published && p.status === "archived";
 
   const publishMutation = useMutation({
     mutationFn: () => storeProductApi.publish(p.id),
@@ -190,10 +191,21 @@ function ProductCard({
                 <Archive className="h-3 w-3" />
               </OverlayBtn>
             )}
-            {!isPublished && (
-              <OverlayBtn onClick={handleDelete} title="Delete" loading={deleteMutation.isPending}>
-                <Trash2 className="h-3 w-3" />
-              </OverlayBtn>
+            {isArchived && (
+              <>
+                <OverlayBtn
+                  onClick={(e) => { e.stopPropagation(); publishMutation.mutate(); }}
+                  title="Publish" loading={publishMutation.isPending}
+                >
+                  <Globe className="h-3 w-3" />
+                </OverlayBtn>
+                <OverlayBtn onClick={(e) => { e.stopPropagation(); onEdit(p); }} title="Edit">
+                  <Pencil className="h-3 w-3" />
+                </OverlayBtn>
+                <OverlayBtn onClick={handleDelete} title="Delete" loading={deleteMutation.isPending}>
+                  <Trash2 className="h-3 w-3" />
+                </OverlayBtn>
+              </>
             )}
           </div>
         </div>
