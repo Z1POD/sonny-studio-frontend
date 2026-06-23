@@ -107,6 +107,7 @@ function ProductCard({
     const currencySymbol = productData.pricing?.currency?.symbol ?? productData.currency?.symbol;
 
     openShareDrawer({
+      id: p.id,
       title: p.title,
       url: p.public_link,
       imageUrl: p.thumbnail_url,

@@ -307,7 +307,7 @@ export const StudioCanvas = forwardRef<StudioCanvasHandle>(
           background={render.background}
           modelPosition={render.modelPosition}
           captureDistance={new THREE.Vector3(...cam.position).distanceTo(new THREE.Vector3(...render.modelPosition))}
-          captureDistanceScale={cam.captureDistanceScale ?? 0.42}
+          captureDistanceScale={cam.captureDistanceScale ?? 0.41}
           captureLookAtOffset={cam.captureLookAtOffset ?? [0, -0.08, 0]}
         />
 

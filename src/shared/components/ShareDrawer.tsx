@@ -55,6 +55,7 @@ export interface ProductStoryFlags {
 }
 
 export interface ShareTarget {
+  id: string;
   title: string;
   url: string;
   imageUrl?: string;
@@ -76,7 +77,7 @@ export interface ShareTarget {
  * Generates 2-3 dynamic CTA lines based on active flags.
  */
 function composeStoryText(target: ShareTarget): string {
-  const { title, price, currencySymbol, flags, url } = target;
+  const { id, title, price, currencySymbol, flags, url } = target;
   const sym = currencySymbol || "";
   const priceLine = price ? `${sym}${price}` : null;
 
@@ -123,8 +124,10 @@ function composeStoryText(target: ShareTarget): string {
   lines.push(...selectedCt);
 
   // Always include the raw URL in the caption (non-premium users may not see the widget button)
-  if (url) {
-    lines.push(`🔗 ${url}`);
+  if (id) {
+    const miniAppHandle = import.meta.env.VITE_VIT_MINIAPP_HANDLE;
+    const uri = `https://t.me/${miniAppHandle}?startapp=product_${id}`;
+    lines.push(`🔗 ${uri}`);
   }
 
   // Final CTA line pointing to the button for premium users who get the widget
