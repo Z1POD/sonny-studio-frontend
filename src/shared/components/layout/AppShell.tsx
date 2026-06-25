@@ -5,10 +5,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowDown,
   BarChart3,
+  ChevronUp,
   LayoutGrid,
   LogOut,
   Menu,
-  MenuSquareIcon,
+  MenuSquare,
   Palette,
   Store as StoreIcon,
   Wallet as WalletIcon,
@@ -106,7 +107,7 @@ function StudioNavFab() {
   return (
     <>
       {/* FAB — top-left, mobile only */}
-      <div className="fixed left-1/2 bottom-20 z-20 md:hidden -translate-x-1/2">
+      {/* <div className="fixed left-1/2 bottom-20 z-20 md:hidden -translate-x-1/2">
         <motion.button
           onClick={() => setOpen((v) => !v)}
           aria-label="Toggle navigation"
@@ -127,11 +128,11 @@ function StudioNavFab() {
               transition={{ duration: 0.15 }}
               className="flex items-center justify-center"
             >
-              {open ? <X className="h-4 w-4" /> : <MenuSquareIcon className="h-4 w-4" />}
+              {open ? <X className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
             </motion.span>
           </AnimatePresence>
         </motion.button>
-      </div>
+      </div> */}
 
       {/* Slide-up nav tray */}
       <AnimatePresence>

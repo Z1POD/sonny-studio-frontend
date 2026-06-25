@@ -1,4 +1,9 @@
 // src/features/studio/components/StudioControls.tsx
+/**
+ * StudioControls.tsx — v3
+ * Passes onContinue through to StudioBottomNav for fused price bar.
+ * Passes artwork library toggle state.
+ */
 
 import { useState } from "react";
 import { RotateCcw } from "lucide-react";
@@ -14,6 +19,9 @@ import { StudioBottomNav, type StudioPanelId } from "./StudioBottomNav";
 interface Props {
   onSave: () => void;
   isSaving: boolean;
+  onContinue: () => void;
+  onToggleArtworkLibrary?: () => void;
+  artworkLibraryOpen?: boolean;
 }
 
 const PANEL_META: Record<NonNullable<StudioPanelId>, { title: string }> = {
@@ -23,25 +31,14 @@ const PANEL_META: Record<NonNullable<StudioPanelId>, { title: string }> = {
   decal: { title: "Artwork" },
 };
 
-export function StudioControls({ onSave, isSaving }: Props) {
+export function StudioControls({ onSave, isSaving, onContinue, onToggleArtworkLibrary, artworkLibraryOpen }: Props) {
   const [activePanel, setActivePanel] = useState<StudioPanelId>(null);
   const reset = useStudioStore((s) => s.reset);
 
   return (
     <>
       {/* Reset — fixed top corner */}
-      <div className="pointer-events-auto absolute right-4 bottom-20 z-20">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={reset}
-          title="Reset"
-          aria-label="Reset"
-          className="h-10 w-10 rounded-full border border-border/60 bg-surface/90 shadow-elevated backdrop-blur-xl"
-        >
-          <RotateCcw className="h-4 w-4" />
-        </Button>
-      </div>
+      
 
       <PanelShell
         open={activePanel === "info"}
@@ -80,6 +77,9 @@ export function StudioControls({ onSave, isSaving }: Props) {
         onTogglePanel={setActivePanel}
         onSave={onSave}
         isSaving={isSaving}
+        onContinue={onContinue}
+        onToggleArtworkLibrary={onToggleArtworkLibrary}
+        artworkLibraryOpen={artworkLibraryOpen}
       />
     </>
   );

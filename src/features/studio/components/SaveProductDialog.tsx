@@ -8,7 +8,7 @@
  *  - All existing functionality preserved: tabs, validation, submission, success flow
  */
 
-import { useState, useMemo, useCallback, useRef, type MutableRefObject } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Check,
@@ -67,7 +67,7 @@ interface Variant {
 export interface Props {
   shots: ShotConfig[];
   snapshot: SceneSnapshot;
-  sheetId: string | MutableRefObject<string>;
+  sheetId: string;  // Changed from modalId
   variants: Variant[];
   printAreas: PrintArea[];
   artworks: Record<string, ArtworkState>;
@@ -144,7 +144,7 @@ function HeroMockup({ shots, primaryShotId, onSetPrimary, onToggle, canvasBackgr
 
       <div className="grid grid-cols-1 gap-4">
         {thumbnails.length > 0 && (
-          <div className="flex gap-1.5 overflow-x-auto">
+          <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
             {thumbnails.map((shot: ShotConfig) => (
               <button
                 key={shot.id}
@@ -197,7 +197,7 @@ function VariantMatrix({ variants, enabledIds, onToggle }: any) {
           {variants.every((v: Variant) => enabledIds.has(v.id)) ? "Deselect all" : "Select all"}
         </button>
       </div>
-      <div className="overflow-x-auto rounded-xl border border-border/40">
+      <div className="overflow-x-auto rounded-xl border border-border/40 no-scrollbar">
         <table className="w-full min-w-[240px] text-xs">
           <thead>
             <tr className="border-b border-border/40 bg-surface-elevated/40">
@@ -442,10 +442,6 @@ export function SaveProductDialog({
 }: Props) {
   const closeSheet = useOverlayStore((s) => s.closeSheet);
   const openSheet = useOverlayStore((s) => s.openSheet);
-  // Resolve sheetId whether it was passed as a string or a ref.
-  // Using a getter so it always reads the current ref value at call time.
-  const getSheetId = () =>
-    typeof sheetId === "string" ? sheetId : sheetId.current;
   const resetStore = useStudioStore((s) => s.reset);
   const navigate = useNavigate();
   const { openShareDrawer } = useShareDrawer();
@@ -720,8 +716,8 @@ export function SaveProductDialog({
       // IMPORTANT: successSheetIdRef is used inside onDone (not the local const)
       // because the JSX closure captures the const before it is assigned — the ref
       // is always readable by the time the user taps Done.
-      closeSheet(getSheetId());
-
+      closeSheet(sheetId);
+      console.log(closeSheet(sheetId));
       const successSheetId = openSheet({
         title: null,
         content: (
@@ -875,7 +871,7 @@ export function SaveProductDialog({
                 )}
               </Button>
             </div>
-            <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => closeSheet(getSheetId())} disabled={isSubmitting}>
+            <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => closeSheet(sheetId)} disabled={isSubmitting}>
               Cancel
             </Button>
           </motion.div>

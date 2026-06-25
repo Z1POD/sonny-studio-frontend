@@ -1,6 +1,9 @@
+// src/features/studio/components/ArtworkLibrary.tsx
+
+
 "use client";
 
-import { useState, useRef, useCallback, useEffect, useLayoutEffect } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { ImageIcon, Upload, X, Loader2, Plus, Trash2, ChevronDown } from "lucide-react";
@@ -13,6 +16,8 @@ import { artworkLibraryInfiniteQuery, artworkKeys } from "../queries";
 
 interface ArtworkLibraryProps {
   onSelect: (artwork: { url: string; aspect: number }) => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 /* ─── ArtworkCard ─────────────────────────────────────────────────────────── */
@@ -162,7 +167,7 @@ function PanelBody({
       </div>
 
       {/* Grid */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 pb-[12rem] max-h-[calc(100dvh-12rem)]">
+      <div className="flex-1 overflow-y-auto px-3 py-3 pb-[12rem] max-h-[calc(100dvh-12rem)] no-scrollbar">
         {isLoading ? (
           <div className="flex h-32 items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -232,13 +237,23 @@ function PanelBody({
 
 /* ─── ArtworkLibrary ──────────────────────────────────────────────────────── */
 
-export function ArtworkLibrary({ onSelect }: ArtworkLibraryProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export function ArtworkLibrary({ onSelect, isOpen: controlledIsOpen, onClose }: ArtworkLibraryProps) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
+
+  // Use controlled state if provided, otherwise internal
+  const isOpen = controlledIsOpen ?? internalIsOpen;
+  const handleClose = () => {
+    if (onClose) {
+      onClose();
+    } else {
+      setInternalIsOpen(false);
+    }
+  };
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -294,9 +309,9 @@ export function ArtworkLibrary({ onSelect }: ArtworkLibraryProps) {
   const handleSelect = useCallback(
     (artwork: ArtworkItem) => {
       onSelect({ url: artwork.url, aspect: artwork.width / artwork.height || 1 });
-      if (isMobile) setIsOpen(false);
+      if (isMobile) handleClose();
     },
-    [onSelect, isMobile],
+    [onSelect, isMobile, handleClose],
   );
 
   const handleDelete = useCallback(
@@ -314,7 +329,7 @@ export function ArtworkLibrary({ onSelect }: ArtworkLibraryProps) {
 
   const bodyProps = {
     onUploadClick: () => fileInputRef.current?.click(),
-    onClose: () => setIsOpen(false),
+    onClose: handleClose,
     onSelect: handleSelect,
     onDelete: handleDelete,
     isDragging,
@@ -327,11 +342,14 @@ export function ArtworkLibrary({ onSelect }: ArtworkLibraryProps) {
     isMobile,
   };
 
-  const toggleBtn = (
+  // If not controlled, show the toggle button
+  const showToggleButton = controlledIsOpen === undefined;
+
+  const toggleBtn = showToggleButton ? (
     <motion.button
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      onClick={() => setIsOpen((v) => !v)}
+      onClick={() => setInternalIsOpen((v) => !v)}
       className={
         isMobile
           ? "pointer-events-auto absolute bottom-20 left-4 z-30 flex h-10 w-10 items-center gap-2 rounded-full border border-border/60 bg-surface/90 px-3 text-foreground shadow-elevated backdrop-blur-xl hover:scale-105 transition"
@@ -339,9 +357,9 @@ export function ArtworkLibrary({ onSelect }: ArtworkLibraryProps) {
       }
       title="Artwork Library"
     >
-      <ImageIcon className="h-4 w-4" />
+      <ImageIcon className="h-8 w-8" />
     </motion.button>
-  );
+  ) : null;
 
   /* ── Desktop: slide-in side panel ── */
   if (!isMobile) {
@@ -378,7 +396,7 @@ export function ArtworkLibrary({ onSelect }: ArtworkLibraryProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="pointer-events-auto absolute inset-0 z-30 bg-black/40"
-            onClick={() => setIsOpen(false)}
+            onClick={handleClose}
           />
         )}
       </AnimatePresence>
@@ -393,7 +411,7 @@ export function ArtworkLibrary({ onSelect }: ArtworkLibraryProps) {
             transition={{ type: "spring", damping: 28, stiffness: 280 }}
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
-            onDragEnd={(_, info) => { if (info.offset.y > 80) setIsOpen(false); }}
+            onDragEnd={(_, info) => { if (info.offset.y > 80) handleClose(); }}
             className="pointer-events-auto absolute bottom-0 left-0 right-0 z-40 max-h-[70%] overflow-hidden rounded-t-2xl"
           >
             <PanelBody {...bodyProps} showHandle />

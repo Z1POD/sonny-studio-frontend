@@ -126,8 +126,8 @@ function composeStoryText(target: ShareTarget): string {
   // Always include the raw URL in the caption (non-premium users may not see the widget button)
   if (id) {
     const miniAppHandle = import.meta.env.VITE_VIT_MINIAPP_HANDLE;
-    const uri = `https://t.me/${miniAppHandle}?startapp=product_${id}`;
-    lines.push(`🔗 ${uri}`);
+    const url = `https://t.me/${miniAppHandle}?startapp=product_${id}`;
+    lines.push(`🔗 ${url}`);
   }
 
   // Final CTA line pointing to the button for premium users who get the widget
