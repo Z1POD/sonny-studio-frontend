@@ -14,6 +14,8 @@ import {
   Store as StoreIcon,
   Wallet as WalletIcon,
   X,
+  PenLine,
+  ShoppingBag,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useAuthStore } from "@/features/auth/store";
@@ -21,11 +23,14 @@ import { useTelegram } from "@/shared/hooks/use-telegram";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { to: "/store", label: "Store", icon: StoreIcon },
-  { to: "/studio", label: "Studio", icon: Palette },
+  // { to: "/store", label: "Store", icon: StoreIcon },
+  // { to: "/analytics", label: "Analytics", icon: BarChart3 },
+  // { to: "/wallet", label: "Wallet", icon: WalletIcon },
   { to: "/catalog", label: "Catalog", icon: LayoutGrid },
-  { to: "/analytics", label: "Analytics", icon: BarChart3 },
-  { to: "/wallet", label: "Wallet", icon: WalletIcon },
+  { to: "/studio", label: "Studio", icon: Palette },
+  { to: "/designs", label: "Designs", icon: PenLine },
+  { to: "/orders", label: "Orders", icon: ShoppingBag },
+
 ] as const;
 
 // ─── Avatar dropdown ──────────────────────────────────────────────────────────
@@ -263,7 +268,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Bottom tab bar — mobile only, non-studio pages */}
       {!isStudio && (
         <nav className="sticky bottom-2 w-[95%] z-30 glass-strong border-t border-border rounded-2xl mx-auto safe-bottom shadow-2xl md:hidden">
-          <div className="mx-auto grid max-w-md grid-cols-5">
+          <div className="mx-auto grid max-w-md grid-cols-4">
             {NAV.map(({ to, label, icon: Icon }) => {
               const active = location.pathname.startsWith(to);
               return (
