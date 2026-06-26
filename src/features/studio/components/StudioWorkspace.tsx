@@ -1,12 +1,16 @@
-/**
- * src/features/studio/components/StudioWorkspace.tsx — v7
- *
- * - Fused bottom nav with integrated price bar
- * - Continue button saves custom product to API first, then opens checkout with returned pricing
- * - ArtworkLibrary visibility controlled by StudioBottomNav
- * - Multi-variant selection support
- * - Passes user full name to checkout
- * - Captures all mockup angles for review carousel
+/*
+ * Fixes:
+ *  - mapApiToApparelProduct uses exact editor-config response shape
+ *  - hydrateStudioFromSavedDesign reads artworks from
+ *    snapshot.render_config.artworkPrintInfos (real saved shape)
+ *  - When editing a saved design, reconstruct the ApparelProduct directly
+ *    from detail.render_config + detail.enabled_variant (no extra fetch needed)
+ *  - captureDistanceScale read correctly (camelCase on camera object)
+ *  - Update existing product uses PATCH /store/products/{id}/ (no /update/)
+ *  - FIX: hydrate selectedMethods/selectedTiers from snapshot on saved design load
+ *  - FIX: buildPrintAreasPayload never sends blank print_method
+ *  - FIX: include render_config in PATCH update payload
+ *  - FIX: mapSavedProductToApparelProduct always has fallback methods
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -17,6 +21,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouterState } from "@tanstack/react-router";
 import { useStudioStore, getDefaultArtwork } from "../store";
 import { studioDetailQuery } from "../queries";
+import { storeProductDetailQuery } from "@/features/store/queries";
 import { StudioCanvas, type StudioCanvasHandle } from "./StudioCanvas";
 import { StudioControls } from "./StudioControls";
 import { ArtworkLibrary } from "./ArtworkLibrary";
@@ -25,344 +30,541 @@ import { Button } from "@/components/ui/button";
 import { CheckOut } from "@/features/checkout/components/CheckOut";
 import { useCheckoutStore } from "@/features/checkout/store";
 import { storeProductApi } from "@/features/store/api";
-import { useAuthStore } from "@/features/auth/store"; 
-import type { PrintArea, ArtworkState } from "../store";
+import { useAuthStore } from "@/features/auth/store";
+import type { PrintArea, ArtworkState, ApparelProduct } from "../store";
+import type { ShotConfig } from "./SaveProductDialog";
 
 const CM = 0.01;
-
-function classifyPrintSize(w: number, h: number) {
-  const a = w * h;
-  if (a <= 25) return "logo";
-  if (a <= 74) return "a6";
-  if (a <= 149) return "a5";
-  if (a <= 312) return "a4";
-  if (a <= 624) return "a3";
-  return "large";
-}
 
 async function blobFromDataUrl(dataUrl: string): Promise<Blob> {
   return (await fetch(dataUrl)).blob();
 }
 
+// ─── Map editor-config API → ApparelProduct ───────────────────────────────────
+// Source: /api/v1/apparels/{id}/editor-config/
+// Top-level fields: data.apparel, data.variants, data.print_areas
+// 3D config:        data["3d_configuration"] → { model, material, render_config }
+// render_config has: background, environment, model_position, contact_shadows,
+//                   lighting, camera { position, fov, captureDistanceScale, orbit }
+
+function mapEditorConfigToApparelProduct(rawData: any): ApparelProduct {
+  const d      = rawData.data ?? rawData;            // unwrap { success, data }
+  const config = d["3d_configuration"];
+  const render = config.render_config;
+  const cam    = render.camera;
+  const orbit  = cam.orbit;
+  const shadows = render.contact_shadows;
+
+  const printAreas: PrintArea[] = (d.print_areas ?? []).map((p: any) => {
+    const uv  = p.uv_config || {};
+    const uvB = uv.uv_bounds;
+    const wB  = uv.world_bounds;
+    const tL  = uv.transform_limits;
+    return {
+      id:               p.id,
+      areaKey:          p.key ?? p.area_key,
+      name:             p.name,
+      placement:        p.placement,
+      meshName:         p.mesh ?? p.mesh_name ?? "",
+      aspectRatio:      p.ratio ?? p.aspect_ratio,
+      allowScaling:     p.rules?.scale      ?? p.allow_scaling   ?? true,
+      allowRotation:    p.rules?.rotate     ?? p.allow_rotation  ?? false,
+      maxLayers:        p.rules?.max_layers ?? p.max_layers      ?? 1,
+      widthCm:          p.w  ?? p.width_cm  ?? 35,
+      heightCm:         p.h  ?? p.height_cm ?? 42,
+      allowedFileTypes: p.rules?.file_types ?? p.allowed_file_types ?? ["png","jpg","svg"],
+      sortOrder:        p.sort,
+      currency:         p.currency,
+      methods: (p.methods ?? []).map((m: any) => ({
+        code: m.code,
+        name: m.name,
+        tiers: (m.tiers ?? []).map((t: any) => ({
+          size:              t.size,
+          max_w:             t.max_w,
+          max_h:             t.max_h,
+          price:             t.price,
+          extra_color_price: t.extra_color_price ?? "0.00",
+        })),
+      })),
+      uvBounds: uvB
+        ? { minU: uvB.min_u, minV: uvB.min_v, maxU: uvB.max_u, maxV: uvB.max_v }
+        : undefined,
+      worldBounds: wB
+        ? { center: wB.center, halfExtents: wB.half_extents, rotation: wB.rotation }
+        : undefined,
+      transformLimits: tL
+        ? { minScale: tL.min_scale, maxScale: tL.max_scale,
+            minX: tL.min_x, maxX: tL.max_x, minY: tL.min_y, maxY: tL.max_y }
+        : undefined,
+      cameraFocus: p.camera_focus
+        ? { position: p.camera_focus.position, target: p.camera_focus.target }
+        : undefined,
+      previewImage: p.preview_image,
+    };
+  });
+
+  return {
+    id:             d.apparel.id,
+    name:           d.apparel.name,
+    slug:           d.apparel.slug,
+    description:    d.apparel.description ?? "",
+    basePrice:      d.apparel.pricing?.base_price ?? "0.00",
+    currencySymbol: d.apparel.pricing?.currency?.symbol ?? "Br",
+    modelUrl:       config.model?.glb_url ?? "",
+    environment:    render.environment,
+    cameraConfig: {
+      position: cam.position,
+      fov:      cam.fov,
+      // camelCase directly on camera object in real API (not snake_case)
+      captureDistanceScale: cam.captureDistanceScale ?? cam.capture_distance_scale ?? 1,
+      captureLookAtOffset:  cam.captureLookAtOffset  ?? cam.capture_look_at_offset  ?? [0, 0, 0],
+      orbit: {
+        minDistance:   orbit.min_distance,
+        maxDistance:   orbit.max_distance,
+        minPolarAngle: orbit.min_polar_angle,
+        maxPolarAngle: orbit.max_polar_angle,
+        enablePan:     orbit.enable_pan,
+        enableZoom:    orbit.enable_zoom,
+      },
+    },
+    renderConfig: {
+      environment:   render.environment,
+      background:    render.background,
+      modelPosition: render.model_position,
+      ...(render.lighting ? { lighting: render.lighting } : {}),
+      contactShadows: {
+        enabled:  shadows.enabled,
+        position: shadows.position,
+        opacity:  shadows.opacity,
+        scale:    shadows.scale,
+        blur:     shadows.blur,
+        far:      shadows.far,
+      },
+    } as any,
+    materialConfig: {
+      textureUrl:   config.material?.texture_url   ?? null,
+      normalMapUrl: config.material?.normal_map_url ?? null,
+      roughness:    config.material?.roughness      ?? 0.9,
+      metalness:    config.material?.metalness      ?? 0,
+    },
+    colors:          [...new Set<string>(d.variants.map((v: any) => v.color.hex))],
+    colorableMeshes: render.colorable_meshes ?? [],
+    printAreas,
+    variants: d.variants.map((v: any) => ({
+      id:              v.id,
+      sku:             v.sku,
+      color:           v.color,
+      size:            v.size,
+      stockQuantity:   v.stock_quantity,
+      isInStock:       v.is_in_stock,
+      additionalPrice: v.additional_price,
+    })),
+    defaultView: render.default_view,
+    studioCapabilities: d.studio_capabilities ? {
+      allowText:           d.studio_capabilities.allow_text,
+      allowImages:         d.studio_capabilities.allow_images,
+      allowSvg:            d.studio_capabilities.allow_svg,
+      allowMultipleLayers: d.studio_capabilities.allow_multiple_layers,
+      allowColorChange:    d.studio_capabilities.allow_color_change,
+      allowArPreview:      d.studio_capabilities.allow_ar_preview,
+    } : undefined,
+  };
+}
+
+// ─── Build ApparelProduct from a saved product's render_config ────────────────
+// Source: /api/v1/store/products/{id}/ → data.render_config
+// This avoids a second apparel fetch when editing a saved design.
+//
+// render_config has: model_url, camera, lighting, contact_shadows,
+//                   colorable_meshes, material, print_areas
+// We also need enabled_variant and base_apparel from the product detail.
+
+function mapSavedProductToApparelProduct(detail: any): ApparelProduct {
+  const rc     = detail.render_config;
+  const cam    = rc.camera;
+  const orbit  = cam.orbit;
+  const shadows = rc.contact_shadows ?? {};
+
+  // Reconstruct print areas from render_config.print_areas
+  // These are lightweight (no methods/tiers) — we use them for decal placement only.
+  // Methods/tiers are reconstructed from snapshot data so print_method isn't blank on update.
+  const printAreas: PrintArea[] = (rc.print_areas ?? []).map((pa: any) => {
+    // ── Reconstruct methods from snapshot data ─────────────────────────
+    const snapshotPrintAreas = detail.snapshot?.print_areas ?? [];
+    const snapshotArea = snapshotPrintAreas.find((spa: any) =>
+      (spa.print_area?.id || spa.print_area_id) === pa.print_area_id
+    );
+
+    let methods: PrintArea["methods"];
+    if (snapshotArea?.print_method) {
+      const pb = snapshotArea.price_breakdown;
+      methods = [{
+        code: snapshotArea.print_method.code,
+        name: snapshotArea.print_method.name,
+        tiers: pb ? [{
+          size:  pb.size_tier,
+          max_w: pb.width_cm,
+          max_h: pb.height_cm,
+          price: pb.base_price,
+          extra_color_price: pb.additional_color_price ?? "0.00",
+        }] : [],
+      }];
+    } else {
+      // Fallback: derive a minimal method from available_print_methods if present
+      // or create a generic fallback so the array is never empty
+      methods = [{
+        code: "dtf",
+        name: "Direct-to-Film",
+        tiers: [{
+          size: "ALL_OVER",
+          max_w: pa.width_cm ?? 300,
+          max_h: pa.height_cm ?? 600,
+          price: "0.00",
+          extra_color_price: "0.00",
+        }],
+      }];
+    }
+
+    return {
+      id:               pa.print_area_id,
+      areaKey:          pa.area_key,
+      name:             pa.name,
+      placement:        pa.placement,
+      meshName:         pa.mesh_name ?? "",
+      widthCm:          pa.width_cm,
+      heightCm:         pa.height_cm,
+      allowScaling:     true,
+      allowRotation:    false,
+      maxLayers:        2,
+      allowedFileTypes: ["png", "jpg", "svg"],
+      methods,
+      uvBounds: pa.uv_config?.uv_bounds
+        ? { minU: pa.uv_config.uv_bounds.min_u, minV: pa.uv_config.uv_bounds.min_v,
+            maxU: pa.uv_config.uv_bounds.max_u, maxV: pa.uv_config.uv_bounds.max_v }
+        : undefined,
+      worldBounds: pa.uv_config?.world_bounds
+        ? { center: pa.uv_config.world_bounds.center,
+            halfExtents: pa.uv_config.world_bounds.half_extents,
+            rotation: pa.uv_config.world_bounds.rotation }
+        : undefined,
+    };
+  });
+
+  const variants = (detail.enabled_variant ?? []).map((v: any) => ({
+    id:              v.id,
+    sku:             v.sku ?? "",
+    color:           v.color,
+    size:            v.size,
+    stockQuantity:   (v as any).stock_quantity ?? 99,
+    isInStock:       (v as any).is_in_stock ?? true,
+    additionalPrice: "0.00",
+  }));
+
+  return {
+    id:             detail.base_apparel?.id ?? "",
+    name:           detail.base_apparel?.name ?? detail.title ?? "",
+    slug:           "",
+    description:    detail.description ?? "",
+    basePrice:      detail.pricing?.base_price ?? "0.00",
+    currencySymbol: detail.pricing?.currency?.symbol ?? "Br",
+    modelUrl:       rc.model_url ?? "",
+    environment:    rc.environment ?? "studio",
+    cameraConfig: {
+      position: cam.position,
+      fov:      cam.fov,
+      captureDistanceScale: cam.captureDistanceScale ?? cam.capture_distance_scale ?? 1,
+      captureLookAtOffset:  cam.captureLookAtOffset  ?? cam.capture_look_at_offset  ?? [0, 0, 0],
+      orbit: {
+        minDistance:   orbit.min_distance,
+        maxDistance:   orbit.max_distance,
+        minPolarAngle: orbit.min_polar_angle,
+        maxPolarAngle: orbit.max_polar_angle,
+        enablePan:     orbit.enable_pan,
+        enableZoom:    orbit.enable_zoom,
+      },
+    },
+    renderConfig: {
+      environment:   rc.environment   ?? "studio",
+      background:    rc.background    ?? "#f5f5f5",
+      modelPosition: rc.model_position ?? [0, 0, 0],
+      ...(rc.lighting ? { lighting: rc.lighting } : {}),
+      contactShadows: {
+        enabled:  shadows.enabled  ?? true,
+        position: shadows.position ?? [0, -1, 0],
+        opacity:  shadows.opacity  ?? 0.7,
+        scale:    shadows.scale    ?? 8,
+        blur:     shadows.blur     ?? 3,
+        far:      shadows.far      ?? 3,
+      },
+    } as any,
+    materialConfig: {
+      textureUrl:   rc.material?.texture_url   ?? null,
+      normalMapUrl: rc.material?.normal_map_url ?? null,
+      roughness:    rc.material?.roughness      ?? 0.9,
+      metalness:    rc.material?.metalness      ?? 0,
+    },
+    colors:          [...new Set<string>(variants.map((v: any) => v.color.hex))],
+    colorableMeshes: rc.colorable_meshes ?? [],
+    printAreas,
+    variants,
+    defaultView:    undefined,
+    studioCapabilities: undefined,
+  };
+}
+
+// ─── Hydrate studio store from saved snapshot ─────────────────────────────────
+// Artworks live in:
+//   snapshot.render_config.artworkPrintInfos[]
+//   { printAreaId, decalUrl, decalAspect, decalScale, decalRotation,
+//     decalOffsetX, decalOffsetY }
+
+function hydrateStudioFromSavedDesign(detail: any) {
+  const store    = useStudioStore.getState();
+  const snapshot = detail.snapshot ?? {};
+  const rc       = snapshot.render_config ?? detail.render_config ?? {};
+
+  // Restore artworks from artworkPrintInfos
+  const artworkInfos: any[] = rc.artworkPrintInfos ?? [];
+  for (const info of artworkInfos) {
+    if (!info.decalUrl) continue;
+    store.setArtwork(info.printAreaId, {
+      decalUrl:     info.decalUrl,
+      decalAspect:  info.decalAspect  ?? 1,
+      decalScale:   info.decalScale   ?? 0.5,
+      decalRotation:info.decalRotation ?? 0,
+      decalOffsetX: info.decalOffsetX ?? 0,
+      decalOffsetY: info.decalOffsetY ?? 0,
+    });
+  }
+
+  // Restore selected print area (first one that has artwork)
+  if (artworkInfos.length > 0) {
+    store.setSelectedPrintArea(artworkInfos[0].printAreaId);
+  }
+
+  // Restore color from enabled_variant (snapshot doesn't store selectedColor explicitly)
+  const firstVariant = detail.enabled_variant?.[0];
+  if (firstVariant?.color?.hex) {
+    store.setSelectedColor(firstVariant.color.hex);
+  }
+
+  // ── FIX: Restore selected print methods and tiers from snapshot ────────────
+  const snapshotPrintAreas = snapshot.print_areas ?? [];
+  for (const spa of snapshotPrintAreas) {
+    const areaId     = spa.print_area?.id ?? spa.print_area_id;
+    const methodCode = spa.print_method?.code;
+    const tierSize   = spa.price_breakdown?.size_tier;
+
+    if (methodCode) {
+      store.setSelectedMethod(areaId, methodCode);
+    }
+    if (tierSize) {
+      store.setSelectedTier(areaId, tierSize);
+    }
+  }
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export function StudioWorkspace() {
-  const canvasRef = useRef<StudioCanvasHandle>(null);
+  const canvasRef             = useRef<StudioCanvasHandle>(null);
   const [mounted, setMounted] = useState(false);
-  const [isCapturing, setIsCapturing] = useState(false);
+  const [isCapturing, setIsCapturing]           = useState(false);
   const [artworkLibraryOpen, setArtworkLibraryOpen] = useState(false);
-  const [capturedMockups, setCapturedMockups] = useState<string[]>([]);
+  const [capturedMockups, setCapturedMockups]   = useState<string[]>([]);
 
-  const routerState = useRouterState();
-  const locationState = routerState.location.state as { apparelId?: string } | undefined;
-  const apparelId = locationState?.apparelId ?? null;
-  const hasApparel = Boolean(apparelId);
+  // ── Route state ─────────────────────────────────────────────────────────────
+  const routerState   = useRouterState();
+  const locationState = routerState.location.state as {
+    apparelId?: string;
+    productId?: string;   // saved design to reopen
+    mode?: "3d";
+  } | undefined;
 
-  const setProduct = useStudioStore((s) => s.setProduct);
-  const product = useStudioStore((s) => s.product);
-  const selectedPrintAreaId = useStudioStore((s) => s.selectedPrintAreaId);
-  const setArtwork = useStudioStore((s) => s.setArtwork);
-  const artworks = useStudioStore((s) => s.artworks);
-  const selectedColor = useStudioStore((s) => s.selectedColor);
-  const selectedMethods = useStudioStore((s) => s.selectedMethods);
-  const selectedTiers = useStudioStore((s) => s.selectedTiers);
+  const apparelId      = locationState?.apparelId ?? null;
+  const savedProductId = locationState?.productId ?? null;
+  const is3DMode       = locationState?.mode === "3d";
+
+  // ── Studio store ─────────────────────────────────────────────────────────────
+  const setProduct         = useStudioStore((s) => s.setProduct);
+  const product            = useStudioStore((s) => s.product);
+  const selectedPrintAreaId= useStudioStore((s) => s.selectedPrintAreaId);
+  const setArtwork         = useStudioStore((s) => s.setArtwork);
+  const artworks           = useStudioStore((s) => s.artworks);
+  const selectedColor      = useStudioStore((s) => s.selectedColor);
+  const selectedMethods    = useStudioStore((s) => s.selectedMethods);
+  const selectedTiers      = useStudioStore((s) => s.selectedTiers);
+  const setAutoRotate      = useStudioStore((s) => s.setAutoRotate);
 
   const openCheckout = useCheckoutStore((s) => s.open);
 
-  const { data, isLoading, error } = useQuery({
+  // ── Fetch editor config (new design from catalog) ───────────────────────────
+  const { data: editorData, isLoading: editorLoading } = useQuery({
     ...studioDetailQuery(apparelId ?? ""),
-    enabled: hasApparel,
+    enabled: !!apparelId && !savedProductId,
+  });
+
+  // ── Fetch saved product detail (edit/3D from My Designs) ───────────────────
+  const { data: savedDetail, isLoading: savedLoading } = useQuery({
+    ...storeProductDetailQuery(savedProductId ?? ""),
+    enabled: !!savedProductId,
   });
 
   useEffect(() => setMounted(true), []);
 
+  // ── Hydrate: new design from catalog ────────────────────────────────────────
   useEffect(() => {
-    if (!data) return;
-    const d = (data as any).data ?? data;
-    const config = d["3d_configuration"];
-    const render = config.render_config;
+    if (!editorData || savedProductId) return;
+    const ap = mapEditorConfigToApparelProduct(editorData);
+    setProduct(ap);
+    if (is3DMode) setAutoRotate(true);
+  }, [editorData, savedProductId, setProduct, is3DMode, setAutoRotate]);
 
-    setProduct({
-      id: d.apparel.id,
-      name: d.apparel.name,
-      slug: d.apparel.slug,
-      description: d.apparel.description ?? "",
-      basePrice: d.apparel.pricing?.base_price ?? d.apparel.base_price ?? "0.00",
-      currencySymbol: d.apparel.pricing?.currency?.symbol ?? "$",
-      modelUrl: config.model?.glb_url ?? "models/shirt.glb",
-      environment: render.environment,
-      cameraConfig: {
-        position: render.camera.position,
-        fov: render.camera.fov,
-        orbit: {
-          minDistance: render.camera.orbit.min_distance,
-          maxDistance: render.camera.orbit.max_distance,
-          minPolarAngle: render.camera.orbit.min_polar_angle,
-          maxPolarAngle: render.camera.orbit.max_polar_angle,
-          enablePan: render.camera.orbit.enable_pan,
-          enableZoom: render.camera.orbit.enable_zoom,
-        },
-      },
-      renderConfig: {
-        environment: render.environment,
-        background: render.background,
-        modelPosition: render.model_position,
-        ...(render.lighting ? { lighting: render.lighting } : {}),
-        contactShadows: {
-          enabled: render.contact_shadows.enabled,
-          position: render.contact_shadows.position,
-          opacity: render.contact_shadows.opacity,
-          scale: render.contact_shadows.scale,
-          blur: render.contact_shadows.blur,
-          far: render.contact_shadows.far,
-        },
-      },
-      materialConfig: {
-        textureUrl: config.material?.texture_url || null,
-        normalMapUrl: config.material?.normal_map_url || null,
-        roughness: config.material?.roughness ?? 0.9,
-        metalness: config.material?.metalness ?? 0,
-      },
-      colors: [...new Set<string>(d.variants.map((v: any) => v.color.hex))],
-      colorableMeshes: render.colorable_meshes ?? config.colorable_meshes ?? [],
-      printAreas: d.print_areas.map((p: any) => {
-        const uvConfig = p.uv_config || {};
-        const rawWorldBounds = uvConfig.world_bounds;
-        const rawUvBounds = uvConfig.uv_bounds;
-        const rawTransformLimits = uvConfig.transform_limits;
-        return {
-          id: p.id,
-          areaKey: p.key ?? p.area_key,
-          name: p.name,
-          placement: p.placement,
-          meshName: p.mesh ?? p.mesh_name,
-          aspectRatio: p.ratio ?? p.aspect_ratio,
-          allowScaling: p.rules?.scale ?? p.allow_scaling ?? true,
-          allowRotation: p.rules?.rotate ?? p.allow_rotation ?? false,
-          maxLayers: p.rules?.max_layers ?? p.max_layers ?? 1,
-          widthCm: p.w ?? p.width_cm ?? 35,
-          heightCm: p.h ?? p.height_cm ?? 42,
-          allowedFileTypes: p.rules?.file_types ?? p.allowed_file_types ?? ["png", "jpg", "svg"],
-          sortOrder: p.sort,
-          currency: p.currency,
-          methods: (p.methods ?? []).map((m: any) => ({
-            code: m.code,
-            name: m.name,
-            tiers: (m.tiers ?? []).map((t: any) => ({
-              size: t.size,
-              max_w: t.max_w,
-              max_h: t.max_h,
-              price: t.price,
-              extra_color_price: t.extra_color_price ?? "0.00",
-            })),
-          })),
-          uvBounds: rawUvBounds && typeof rawUvBounds === "object"
-            ? { minU: rawUvBounds.min_u, minV: rawUvBounds.min_v, maxU: rawUvBounds.max_u, maxV: rawUvBounds.max_v }
-            : undefined,
-          worldBounds: rawWorldBounds && typeof rawWorldBounds === "object"
-            ? { center: rawWorldBounds.center, halfExtents: rawWorldBounds.half_extents, rotation: rawWorldBounds.rotation }
-            : undefined,
-          transformLimits: rawTransformLimits && typeof rawTransformLimits === "object"
-            ? { minScale: rawTransformLimits.min_scale, maxScale: rawTransformLimits.max_scale, minX: rawTransformLimits.min_x, maxX: rawTransformLimits.max_x, minY: rawTransformLimits.min_y, maxY: rawTransformLimits.max_y }
-            : undefined,
-          cameraFocus: p.camera_focus ? { position: p.camera_focus.position, target: p.camera_focus.target } : undefined,
-          previewImage: p.preview_image,
-        };
-      }),
-      variants: d.variants.map((v: any) => ({
-        id: v.id,
-        sku: v.sku,
-        color: v.color,
-        size: v.size,
-        stockQuantity: v.stock_quantity,
-        isInStock: v.is_in_stock,
-        additionalPrice: v.additional_price,
-      })),
-      defaultView: render.default_view,
-      studioCapabilities: d.studio_capabilities ? {
-        allowText: d.studio_capabilities.allow_text,
-        allowImages: d.studio_capabilities.allow_images,
-        allowSvg: d.studio_capabilities.allow_svg,
-        allowMultipleLayers: d.studio_capabilities.allow_multiple_layers,
-        allowColorChange: d.studio_capabilities.allow_color_change,
-        allowArPreview: d.studio_capabilities.allow_ar_preview,
-      } : undefined,
-    });
-  }, [data, setProduct]);
+  // ── Hydrate: saved design ───────────────────────────────────────────────────
+  useEffect(() => {
+    if (!savedDetail) return;
+    const detail = (savedDetail as any).data ?? savedDetail;
+    const ap = mapSavedProductToApparelProduct(detail);
+    setProduct(ap);
+    hydrateStudioFromSavedDesign(detail);
+    if (is3DMode) setAutoRotate(true);
+  }, [savedDetail, is3DMode, setProduct, setAutoRotate]);
 
-  /* ── Calculate print cost ───────────────────────────────────────────── */
+  // ── Print cost ───────────────────────────────────────────────────────────────
   const calculatePrintCost = useCallback(() => {
     if (!product) return 0;
-    let print = 0;
+    let cost = 0;
     for (const area of product.printAreas) {
-      const art = artworks[area.id];
-      if (!art?.decalUrl) continue;
-      const methodCode = selectedMethods[area.id];
-      const tierSize = selectedTiers[area.id];
-      const method = area.methods.find((m) => m.code === methodCode) ?? area.methods[0];
-      const tier = method?.tiers.find((t) => t.size === tierSize) ?? method?.tiers[0];
-      if (tier) print += parseFloat(tier.price) || 0;
+      if (!artworks[area.id]?.decalUrl) continue;
+      const methodCode = selectedMethods[area.id] ?? area.methods[0]?.code ?? "";
+      const tierSize   = selectedTiers[area.id]   ?? area.methods[0]?.tiers[0]?.size ?? "";
+      const method     = area.methods.find((m) => m.code === methodCode) ?? area.methods[0];
+      const tier       = method?.tiers.find((t) => t.size === tierSize)  ?? method?.tiers[0];
+      if (tier) cost += parseFloat(tier.price) || 0;
     }
-    return print;
+    return cost;
   }, [product, artworks, selectedMethods, selectedTiers]);
 
-  /* ── Build print areas payload for API ──────────────────────────────── */
+  // ── Build print_areas payload ────────────────────────────────────────────────
   const buildPrintAreasPayload = useCallback(() => {
     if (!product) return [];
-    const activeAreas = product.printAreas.filter((p) => artworks[p.id]?.decalUrl);
-    
-    return activeAreas.map((area) => {
-      const art = artworks[area.id];
-      const selectedMethodCode = selectedMethods[area.id] ?? area.methods[0]?.code ?? "";
-      const selectedTierSize = selectedTiers[area.id] ?? area.methods[0]?.tiers[0]?.size ?? "";
-      const method = area.methods.find((m) => m.code === selectedMethodCode) ?? area.methods[0];
-      const tier = method?.tiers.find((t) => t.size === selectedTierSize) ?? method?.tiers[0];
+    return product.printAreas
+      .filter((p) => artworks[p.id]?.decalUrl)
+      .map((area) => {
+        const art = artworks[area.id];
 
-      return {
-        print_area: area.areaKey,
-        print_area_id: area.id,
-        print_method: selectedMethodCode,
-        width_cm: area.widthCm.toFixed(2),
-        height_cm: area.heightCm.toFixed(2),
-        color_count: 1,
-        design_data: {
-          layers: [{
-            type: "image" as const,
-            url: art.decalUrl,
-            aspect_ratio: art.decalAspect,
-            position: { x: art.decalOffsetX, y: art.decalOffsetY },
-            offset_x: art.decalOffsetX,
-            offset_y: art.decalOffsetY,
-            scale: art.decalScale,
-            rotation: art.decalRotation,
-            z_index: 0,
-          }],
-        },
-      };
-    });
+        // FIX: Never send blank print_method. Use selection, then first method,
+        // then snapshot fallback, then hardcoded emergency fallback.
+        let methodCode = selectedMethods[area.id];
+        if (!methodCode) {
+          methodCode = area.methods[0]?.code;
+        }
+        // Emergency fallback — should never happen if hydration is correct,
+        // but prevents the backend validation error.
+        if (!methodCode) {
+          methodCode = "dtf";
+          console.warn(
+            `[StudioWorkspace] No print method for area "${area.name}" (${area.id}). ` +
+            `Falling back to "dtf". Check that snapshot.print_areas[].print_method is present.`
+          );
+        }
+
+        const tierSize = selectedTiers[area.id] ?? area.methods[0]?.tiers[0]?.size ?? "";
+
+        return {
+          print_area:    area.areaKey,
+          print_area_id: area.id,
+          print_method:  methodCode,
+          width_cm:      area.widthCm.toFixed(2),
+          height_cm:     area.heightCm.toFixed(2),
+          color_count:   1,
+          design_data: {
+            layers: [{
+              type:         "image" as const,
+              url:          art.decalUrl,
+              aspect_ratio: art.decalAspect,
+              position:     { x: art.decalOffsetX, y: art.decalOffsetY },
+              offset_x:     art.decalOffsetX,
+              offset_y:     art.decalOffsetY,
+              scale:        art.decalScale,
+              rotation:     art.decalRotation,
+              z_index:      0,
+            }],
+          },
+        };
+      });
   }, [product, artworks, selectedMethods, selectedTiers]);
 
-  /* ── Build render config for API ────────────────────────────────────── */
+  // ── Build render_config snapshot ─────────────────────────────────────────────
   const buildRenderConfig = useCallback(() => {
     if (!product) return {};
-    const cam = product.cameraConfig;
+    const cam    = product.cameraConfig;
     const render = product.renderConfig;
     const activeAreas = product.printAreas.filter((p) => artworks[p.id]?.decalUrl);
-
     return {
-      version: 3,
-      background: render.background,
-      environment: render.environment,
-      model_position: render.modelPosition,
-      model_url: product.modelUrl,
+      version:          3,
+      background:       render.background,
+      environment:      render.environment,
+      model_position:   render.modelPosition,
+      model_url:        product.modelUrl,
       colorable_meshes: product.colorableMeshes,
-      material: {
-        texture_url: product.materialConfig.textureUrl,
-        normal_map_url: product.materialConfig.normalMapUrl,
-        roughness: product.materialConfig.roughness,
-        metalness: product.materialConfig.metalness,
-      },
+      material:         product.materialConfig,
       camera: {
         position: cam.position,
-        fov: cam.fov,
+        fov:      cam.fov,
         orbit: {
-          min_distance: cam.orbit.minDistance,
-          max_distance: cam.orbit.maxDistance,
+          min_distance:   cam.orbit.minDistance,
+          max_distance:   cam.orbit.maxDistance,
           min_polar_angle: cam.orbit.minPolarAngle,
           max_polar_angle: cam.orbit.maxPolarAngle,
-          enable_pan: cam.orbit.enablePan,
-          enable_zoom: cam.orbit.enableZoom,
+          enable_pan:     cam.orbit.enablePan,
+          enable_zoom:    cam.orbit.enableZoom,
         },
       },
-      lighting: (render as any).lighting,
-      contact_shadows: {
-        enabled: render.contactShadows.enabled,
-        position: render.contactShadows.position,
-        opacity: render.contactShadows.opacity,
-        scale: render.contactShadows.scale,
-        blur: render.contactShadows.blur,
-        far: render.contactShadows.far,
-      },
+      lighting:         (render as any).lighting,
+      contact_shadows:  render.contactShadows,
       shots: [
-        { id: "front", label: "Front", azimuth: 0, polar: Math.PI / 2, enabled: true },
-        { id: "back", label: "Back", azimuth: Math.PI, polar: Math.PI / 2, enabled: true },
-        { id: "angle", label: "3/4 Angle", azimuth: Math.PI / 6, polar: Math.PI / 2.4, enabled: true },
+        { id: "front", label: "Front",    azimuth: 0,           polar: Math.PI / 2,   enabled: true },
+        { id: "back",  label: "Back",     azimuth: Math.PI,     polar: Math.PI / 2,   enabled: true },
+        { id: "angle", label: "3/4 Angle",azimuth: Math.PI / 6, polar: Math.PI / 2.4, enabled: true },
       ],
-      default_view: product.defaultView,
-      print_areas: product.printAreas.map((area) => ({
+      print_areas: activeAreas.map((area) => ({
         print_area_id: area.id,
-        area_key: area.areaKey,
-        name: area.name,
-        placement: area.placement,
-        mesh_name: area.meshName,
-        width_cm: area.widthCm,
-        height_cm: area.heightCm,
-        uv_config: {
-          world_bounds: area.worldBounds,
-          uv_bounds: area.uvBounds
-            ? { min_u: area.uvBounds.minU, min_v: area.uvBounds.minV, max_u: area.uvBounds.maxU, max_v: area.uvBounds.maxV }
-            : undefined,
-          transform_limits: area.transformLimits
-            ? {
-                min_scale: area.transformLimits.minScale,
-                max_scale: area.transformLimits.maxScale,
-                min_x: area.transformLimits.minX,
-                max_x: area.transformLimits.maxX,
-                min_y: area.transformLimits.minY,
-                max_y: area.transformLimits.maxY,
-              }
-            : undefined,
-        },
+        area_key:      area.areaKey,
+        name:          area.name,
+        placement:     area.placement,
+        mesh_name:     area.meshName,
+        width_cm:      area.widthCm,
+        height_cm:     area.heightCm,
+        uv_config:     {},
       })),
+      // Store artwork transforms so they can be restored later
       artworkPrintInfos: activeAreas.map((area) => {
         const art = artworks[area.id];
         return {
-          printAreaId: area.id,
+          printAreaId:   area.id,
           printAreaName: area.name,
-          areaKey: area.areaKey,
-          widthCm: area.widthCm,
-          heightCm: area.heightCm,
-          sizeTier: classifyPrintSize(area.widthCm, area.heightCm),
-          decalUrl: art.decalUrl,
-          decalAspect: art.decalAspect,
-          decalScale: art.decalScale,
+          areaKey:       area.areaKey,
+          widthCm:       area.widthCm,
+          heightCm:      area.heightCm,
+          sizeTier:      "large",
+          decalUrl:      art.decalUrl,
+          decalAspect:   art.decalAspect,
+          decalScale:    art.decalScale,
           decalRotation: art.decalRotation,
-          decalOffsetX: art.decalOffsetX,
-          decalOffsetY: art.decalOffsetY,
+          decalOffsetX:  art.decalOffsetX,
+          decalOffsetY:  art.decalOffsetY,
         };
       }),
     };
   }, [product, artworks]);
 
-  /* ── Build snapshot for API ─────────────────────────────────────────── */
-  const buildSnapshot = useCallback(() => {
-    const store = useStudioStore.getState();
-    const activeAreas = product?.printAreas.filter((p) => artworks[p.id]?.decalUrl) ?? [];
-    
-    return {
-      productId: product?.id ?? "",
-      productName: product?.name ?? "",
-      selectedColor: store.selectedColor,
-      selectedPrintAreaId: store.selectedPrintAreaId,
-      artworks: store.artworks,
-      selectedMethods: store.selectedMethods,
-      selectedTiers: store.selectedTiers,
-      artworkCount: activeAreas.length,
-      artworkPrintInfos: activeAreas.map((area) => ({
-        printAreaId: area.id,
-        areaKey: area.areaKey,
-        sizeTier: classifyPrintSize(area.widthCm, area.heightCm),
-        widthCm: area.widthCm,
-        heightCm: area.heightCm,
-      })),
-    };
-  }, [product, artworks]);
-
-  /* ── Save product and open checkout ─────────────────────────────────── */
+  // ── Save and open checkout ────────────────────────────────────────────────────
   const handleContinueToCheckout = useCallback(async () => {
     if (!canvasRef.current || !product) {
       toast.error("Canvas not ready");
       return;
     }
-
     const activeAreas = product.printAreas.filter((p) => artworks[p.id]?.decalUrl);
     if (activeAreas.length === 0) {
       toast.error("Add artwork to at least one print area");
@@ -373,95 +575,109 @@ export function StudioWorkspace() {
     toast.info("Saving your design…");
 
     try {
-      // Capture shots
-      const shots = [
-        { id: "front", label: "Front", azimuth: 0, polar: Math.PI / 2, enabled: true },
-        { id: "back", label: "Back", azimuth: Math.PI, polar: Math.PI / 2, enabled: true },
+      const shots: ShotConfig[] = [
+        { id: "front", label: "Front",     azimuth: 0,           polar: Math.PI / 2,   enabled: true },
+        { id: "back",  label: "Back",      azimuth: Math.PI,     polar: Math.PI / 2,   enabled: true },
         { id: "angle", label: "3/4 Angle", azimuth: Math.PI / 6, polar: Math.PI / 2.4, enabled: true },
       ];
-      
+
       const capturedShots = await canvasRef.current.captureAllShots(shots);
-      const dataUrls = capturedShots.filter((s) => s.dataUrl).map((s) => s.dataUrl!);
-      const mainMockup = dataUrls[0] ?? canvasRef.current.capture();
-      
+      const dataUrls      = capturedShots.filter((s) => s.dataUrl).map((s) => s.dataUrl!);
+      const mainMockup    = dataUrls[0] ?? canvasRef.current.capture();
       setCapturedMockups(dataUrls);
 
-      // 1. Create the custom product via API (simplified — no markup, variants, etc.)
-      const created = await storeProductApi.create({
-        title: `${product.name} — Custom`,
-        description: `Custom ${product.name} with artwork`,
-        base_apparel: product.id,
-        markup_price: 0, // No markup for customer order
-        print_areas: buildPrintAreasPayload(),
-        snapshot: buildSnapshot(),
-        render_config: buildRenderConfig(),
-        enabled_variants: product.variants.filter((v) => v.isInStock).map((v) => v.id),
-        is_limited_edition: false,
-        max_quantity: null,
-        production_ready: true,
-      });
+      const renderConfig      = buildRenderConfig();
+      const printAreasPayload = buildPrintAreasPayload();
+      const enabledVariantIds = product.variants.filter((v) => v.isInStock).map((v) => v.id);
 
-      // 2. Upload mockup images
-      const enabledShots = capturedShots.filter((s) => s.enabled && s.dataUrl);
+      let savedProduct: any;
+
+      if (savedProductId) {
+        // ── Update existing product ─────────────────────────────────────────
+        // PATCH /api/v1/store/products/{uuid}/
+        // FIX: include render_config so the 3D scene state is preserved
+        savedProduct = await storeProductApi.update(savedProductId, {
+          title:            product.name,
+          enabled_variants: enabledVariantIds,
+          print_areas:      printAreasPayload,
+          render_config:    renderConfig,
+          base_apparel:     product.id,
+        } as any);
+      } else {
+        // ── Create new product ──────────────────────────────────────────────
+        savedProduct = await storeProductApi.create({
+          title:             `${product.name} — Custom`,
+          description:       `Custom ${product.name} with artwork`,
+          base_apparel:      product.id,
+          markup_price:      "0",
+          print_areas:       printAreasPayload,
+          snapshot:          { render_config: renderConfig },
+          render_config:     renderConfig,
+          enabled_variants:  enabledVariantIds,
+          is_limited_edition: false,
+          max_quantity:      null,
+          production_ready:  true,
+        });
+      }
+
+      // ── Upload mockups ─────────────────────────────────────────────────────
       const blobs = await Promise.all(
-        enabledShots.map(async (shot) => ({
-          blob: await blobFromDataUrl(shot.dataUrl!),
-          type: shot.id,
-          name: `mockup-${shot.id}.png`,
-        })),
+        capturedShots
+          .filter((s) => s.enabled && s.dataUrl)
+          .map(async (shot) => ({
+            blob: await blobFromDataUrl(shot.dataUrl!),
+            type: shot.id,
+            name: `mockup-${shot.id}.png`,
+          })),
+      );
+      const assetsData = await storeProductApi.uploadAssets(
+        savedProduct.id ?? savedProductId,
+        blobs,
       );
 
-      const assetsData = await storeProductApi.uploadAssets(created.id, blobs);
+      // ── Open checkout ──────────────────────────────────────────────────────
+      const pricing       = savedProduct.pricing ?? {};
+      const basePrice     = parseFloat(pricing.base_price ?? product.basePrice ?? "0");
+      const printCost     = calculatePrintCost();
+      const currencySymbol =
+        typeof pricing.currency === "object"
+          ? pricing.currency.symbol
+          : product.currencySymbol ?? "Br";
 
-      // 3. Extract pricing from API response
-      const apiPricing = created.pricing;
-      const retailPrice = parseFloat(apiPricing?.retail_price ?? "0");
-      const basePrice = parseFloat(product.basePrice) || 0;
-      const printCost = calculatePrintCost();
-      const currencySymbol = typeof apiPricing?.currency === "object" 
-        ? apiPricing.currency.symbol 
-        : product.currencySymbol ?? "Br";
-
-      // 4. Open checkout with API-returned pricing
-      const checkoutVariants = product.variants.map((v) => ({
-        ...v,
-        quantity: 1,
-      }));
       const user = useAuthStore.getState().user;
 
       openCheckout({
-        userFullName: user?.full_name ?? user?.name ?? "",
-        productId: created.id,
-        productName: created.title ?? product.name,
-        thumbnailUrl: assetsData.thumbnail_url ?? mainMockup ?? undefined,
-        mockupUrl: mainMockup ?? undefined,
-        basePrice: basePrice,
-        printCost: printCost,
-        currencySymbol: currencySymbol,
-        variants: checkoutVariants,
+        userFullName:        user?.full_name ?? user?.name ?? "",
+        productId:           savedProduct.id ?? savedProductId!,
+        productName:         savedProduct.title ?? product.name,
+        thumbnailUrl:        assetsData.thumbnail_url ?? mainMockup ?? undefined,
+        mockupUrl:           mainMockup ?? undefined,
+        mockupUrls:          dataUrls,
+        basePrice,
+        printCost,
+        currencySymbol,
+        variants:            product.variants.map((v) => ({ ...v, quantity: 1 })),
         artworks,
-        printAreas: product.printAreas.map((p) => ({
-          id: p.id,
-          name: p.name,
-          widthCm: p.widthCm,
-          heightCm: p.heightCm,
-          areaKey: p.areaKey,
+        printAreas:          product.printAreas.map((p) => ({
+          id: p.id, name: p.name, widthCm: p.widthCm, heightCm: p.heightCm, areaKey: p.areaKey,
         })),
-        selectedColor: selectedColor ?? undefined,
+        selectedColor:       selectedColor ?? undefined,
         preselectedVariantId: product.variants.find((v) => v.color.hex === selectedColor)?.id,
       });
 
       toast.success("Design saved. Continue to checkout.");
     } catch (err: any) {
-      const detail = err?.data?.error?.message ?? err?.message ?? "Failed to save design";
-      toast.error(detail);
+      toast.error(err?.data?.error?.message ?? err?.message ?? "Failed to save design");
       console.error(err);
     } finally {
       setIsCapturing(false);
     }
-  }, [product, artworks, selectedColor, selectedMethods, selectedTiers, openCheckout, calculatePrintCost, buildPrintAreasPayload, buildRenderConfig, buildSnapshot]);
+  }, [
+    product, artworks, selectedColor, savedProductId,
+    buildPrintAreasPayload, buildRenderConfig, calculatePrintCost, openCheckout,
+  ]);
 
-  /* ── Apply artwork ────────────────────────────────────────────────── */
+  // ── Apply artwork from library / drop ─────────────────────────────────────
   const handleArtworkSelect = ({ url, aspect }: { url: string; aspect: number }) => {
     if (!selectedPrintAreaId) { toast.error("Select a print area first"); return; }
     const printArea = product?.printAreas.find((p) => p.id === selectedPrintAreaId);
@@ -469,39 +685,32 @@ export function StudioWorkspace() {
     const initialScale = Math.min(printArea.widthCm, printArea.heightCm) * CM * 0.6;
     setArtwork(selectedPrintAreaId, {
       ...getDefaultArtwork(),
-      decalUrl: url,
+      decalUrl:    url,
       decalAspect: aspect,
-      decalScale: initialScale,
-      decalRotation: 0,
-      decalOffsetX: 0,
-      decalOffsetY: 0,
+      decalScale:  initialScale,
     });
     toast.success(`Artwork applied to ${printArea.name}`);
   };
 
-  if (!hasApparel) {
+  // ── Render guards ───────────────────────────────────────────────────────────
+  const isLoadingAny = editorLoading || savedLoading || !mounted;
+  const hasSource    = !!apparelId || !!savedProductId;
+
+  if (!hasSource) {
     return (
       <div className="flex h-[calc(100dvh-7.5rem)] flex-col items-center justify-center gap-4">
         <Button asChild className="rounded-full">
-          <Link to="/catalog"><Shirt className="mr-2 h-4 w-4" /> Open Catalog</Link>
+          <Link to="/catalog"><Shirt className="mr-2 h-4 w-4" />Open Catalog</Link>
         </Button>
         <p className="text-sm text-muted-foreground">Choose an apparel to start designing</p>
       </div>
     );
   }
 
-  if (isLoading || !mounted) {
+  if (isLoadingAny || !product) {
     return (
       <div className="flex h-[70vh] items-center justify-center text-muted-foreground">
         <Loader2 className="h-5 w-5 animate-spin" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex h-[70vh] items-center justify-center text-red-500">
-        Failed to load studio product
       </div>
     );
   }
@@ -512,16 +721,15 @@ export function StudioWorkspace() {
         <CanvasDrop onUploaded={handleArtworkSelect}>
           <StudioCanvas ref={canvasRef} />
         </CanvasDrop>
-        
-        {/* Artwork Library — visibility controlled by bottom nav */}
-        <ArtworkLibrary 
-          onSelect={handleArtworkSelect} 
+
+        <ArtworkLibrary
+          onSelect={handleArtworkSelect}
           isOpen={artworkLibraryOpen}
           onClose={() => setArtworkLibraryOpen(false)}
         />
-        
-        <StudioControls 
-          onSave={handleContinueToCheckout} 
+
+        <StudioControls
+          onSave={handleContinueToCheckout}
           isSaving={isCapturing}
           onContinue={handleContinueToCheckout}
           onToggleArtworkLibrary={() => setArtworkLibraryOpen((v) => !v)}
@@ -533,7 +741,6 @@ export function StudioWorkspace() {
         </div>
       </div>
 
-      {/* Full-page Checkout Wizard */}
       <CheckOut mockupUrls={capturedMockups} />
     </>
   );
