@@ -490,7 +490,7 @@ export function StepPayment() {
         <div className="mt-6 space-y-2 w-full max-w-xs">
           <Button
             onClick={() => {
-              window.location.href = `/orders/${order?.id}`;
+              window.location.href = `/orders`;
             }}
             className="w-full h-12 rounded-2xl text-base font-semibold"
           >

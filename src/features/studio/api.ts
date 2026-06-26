@@ -1,12 +1,14 @@
 // src/features/studio/api.ts
 
 import { api } from "@/shared/api/client";
-import type { StudioData } from "./store";
+import { demoStudio, isDemo, mockDelay } from "@/shared/api/mocks";
+import type { StudioData } from "@/shared/api/mocks";
 
 /* ─── Studio product ──────────────────────────────────────────────────────── */
 
 export const studioApi = {
   get: async (slugOrId: string): Promise<StudioData> => {
+    if (isDemo()) return mockDelay(demoStudio);
     return api.get<StudioData>(`/apparels/${slugOrId}/editor-config/`);
   },
 };
@@ -107,5 +109,3 @@ export const artworkApi = {
     await api.delete(`/store/artworks/${id}/`);
   },
 };
-
-

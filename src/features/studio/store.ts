@@ -105,6 +105,8 @@ export interface CameraConfig {
   position: [number, number, number];
   fov: number;
   orbit: OrbitConfig;
+  captureDistanceScale?: number;
+  captureLookAtOffset?: number;
 }
 
 export interface Variant {
@@ -188,181 +190,6 @@ export interface StudioState {
   setSelectedMethod: (areaId: string, methodCode: string) => void;
   setSelectedTier: (areaId: string, tierSize: string) => void;
   reset: () => void;
-}
-
-
-
-export interface StudioVariant {
-  id: string;
-  sku: string;
-  color: { name: string; hex: string };
-  size: string;
-  age_group: string;
-  stock_quantity: number;
-  is_in_stock: boolean;
-  additional_price: string;
-}
-
-export interface StudioPricingTier {
-  size_tier: string;
-  print_method: string;
-  print_method_name: string;
-  max_width_cm: number;
-  max_height_cm: number;
-  price: string;
-  additional_color_price: string;
-}
-
-export interface StudioPrintArea {
-  id: string;
-  area_key: string;
-  name: string;
-  mesh_name: string;
-  placement: string;
-  uv_config?: Record<string, unknown>;
-  canvas_width_px: number;
-  canvas_height_px: number;
-  width_cm: number;
-  height_cm: number;
-  aspect_ratio: number;
-  allow_scaling: boolean;
-  allow_rotation: boolean;
-  max_layers: number;
-  allowed_file_types: string[];
-  sort_order: number;
-  pricing_tiers: StudioPricingTier[];
-  transform_limits?: {
-    min_scale: number;
-    max_scale: number;
-    min_x: number;
-    max_x: number;
-    min_y: number;
-    max_y: number;
-  };
-  camera_focus?: {
-    position: [number, number, number];
-    target: [number, number, number];
-  };
-  preview_image?: string;
-}
-
-export interface StudioMaterial {
-  id: string;
-  name: string;
-  material_type: string;
-  texture_url: string;
-  normal_map_url: string;
-  roughness: number;
-  metalness: number;
-}
-
-export interface StudioModel {
-  id: string;
-  name: string;
-  version: string;
-  glb_url: string;
-  usdz_url: string;
-  preview_image_url: string;
-  polygon_count: number;
-  vertex_count: number;
-}
-
-export interface StudioRenderConfig {
-  environment: "studio" | "city" | "sunset" | "warehouse" | "dawn";
-  background: string;
-  model_position: [number, number, number];
-  contact_shadows: {
-    enabled: boolean;
-    position: [number, number, number];
-    opacity: number;
-    scale: number;
-    blur: number;
-    far: number;
-  };
-  lighting?: {
-    type: string;
-    intensity: number;
-    ambient?: number;
-    key?: { position: [number, number, number]; intensity: number };
-    fill?: { position: [number, number, number]; intensity: number };
-    rim?: { position: [number, number, number]; intensity: number };
-  };
-}
-
-export interface StudioCamera {
-  position: [number, number, number];
-  fov: number;
-  orbit: {
-    min_distance: number;
-    max_distance: number;
-    min_polar_angle: number;
-    max_polar_angle: number;
-    enable_pan: boolean;
-    enable_zoom: boolean;
-  };
-}
-
-export interface Studio3DConfiguration {
-  model: StudioModel;
-  material: StudioMaterial;
-  render_config: StudioRenderConfig;
-  camera: StudioCamera;
-  colorable_meshes?: string[];
-  default_view?: string;
-}
-
-export interface StudioPrintMethod {
-  id: string;
-  name: string;
-  code: string;
-  supports_gradient: boolean;
-  supports_transparency: boolean;
-}
-
-export interface StudioApparel {
-  id: string;
-  name: string;
-  slug: string;
-  description?: string;
-  fit?: string;
-  gender?: string;
-  thumbnail_url?: string;
-  base_price?: string;
-  weight_grams?: number;
-  care_instructions?: string[];
-  tags?: string[];
-}
-
-export interface StudioBrand {
-  id: string;
-  name: string;
-  slug: string;
-  logo_url: string;
-}
-
-export interface StudioCategory {
-  id: string;
-  name: string;
-  slug: string;
-}
-
-export interface StudioData {
-  success?: boolean;
-  apparel: StudioApparel;
-  brand?: StudioBrand;
-  category?: StudioCategory;
-  variants: StudioVariant[];
-  print_areas: StudioPrintArea[];
-  "3d_configuration": Studio3DConfiguration;
-  available_print_methods: StudioPrintMethod[];
-  studio_capabilities?: {
-    allow_text: boolean;
-    allow_images: boolean;
-    allow_svg: boolean;
-    allow_multiple_layers: boolean;
-    allow_color_change: boolean;
-    allow_ar_preview: boolean;
-  };
 }
 
 const initialState: Omit<
@@ -554,6 +381,8 @@ export interface CompleteRenderConfig {
   camera: {
     position: [number, number, number];
     fov: number;
+    captureDistanceScale: number;
+    captureLookAtOffset: number;
     orbit: {
       min_distance: number;
       max_distance: number;
@@ -652,6 +481,8 @@ export function buildCompleteRenderConfig(
     camera: {
       position: cam.position,
       fov: cam.fov,
+      captureDistanceScale: cam.captureDistanceScale,
+      captureLookAtOffset: cam.captureLookAtOffset,
       orbit: {
         min_distance: cam.orbit.minDistance,
         max_distance: cam.orbit.maxDistance,

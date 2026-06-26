@@ -1,35 +1,25 @@
 /**
- * src/features/designs/components/UserDesignsPage.tsx
+ * src/features/userDesigns/components/UserDesignsPage.tsx — v2
  *
- * "My Designs" — lists all designs the user has created.
- * Similar layout to StoreDashboard but focused on the customer/creator
- * who wants to browse, reorder, edit, or delete their saved designs.
- *
- * Features:
- * - Filter tabs (All / Draft / Published / Archived)
- * - Design cards with thumbnail, mockup strip, pricing, actions
- * - Tap thumbnail → lightbox
- * - Tap card → DesignDetailSheet
- * - Quick actions: Edit, 3D view, Reorder, Delete
- * - Infinite scroll / load more
+ * My Designs grid page. Quick-actions on card still work for Edit/3D/Delete.
+ * Reorder is delegated to DesignDetailSheet (which has full apparel context).
+ * <CheckOut /> overlay is rendered here so it mounts once for the whole page.
  */
 
 import { useState } from "react";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Pencil, Box, ShoppingCart, Trash2, Loader2,
-  PenLine, ImageIcon, Globe, Archive, Plus, AlertCircle,
+  Pencil, Box, Trash2, Loader2, PenLine,
+  ImageIcon, Globe, Archive, Plus, AlertCircle, ShoppingCart,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { designsInfiniteQuery, designKeys } from "../queries";
 import { storeProductApi, getRetailPrice } from "@/features/store/api";
 import type { ProductListItem } from "@/features/store/api";
 import { useConfirm } from "@/features/store/components/ConfirmModal";
-import { useCheckoutStore } from "@/features/checkout/store";
 import { DesignDetailSheet } from "./DesignDetailSheet";
 import { DesignLightbox } from "./DesignLightbox";
 import { CheckOut } from "@/features/checkout/components/CheckOut";
@@ -46,29 +36,28 @@ const FILTER_TABS = [
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
 function StatusBadge({ design }: { design: ProductListItem }) {
-  const isDraft = !design.is_published && design.status !== "archived";
   const isPublished = design.is_published || design.status === "published";
   const isArchived = design.status === "archived";
 
   if (isPublished)
     return (
-      <Badge variant="default" className="gap-1 text-[10px] bg-green-500/15 text-green-600 border-green-500/20">
+      <span className="flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-[10px] font-medium text-green-600">
         <Globe className="h-2.5 w-2.5" />
         Live
-      </Badge>
+      </span>
     );
   if (isArchived)
     return (
-      <Badge variant="secondary" className="gap-1 text-[10px]">
+      <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
         <Archive className="h-2.5 w-2.5" />
         Archived
-      </Badge>
+      </span>
     );
   return (
-    <Badge variant="outline" className="gap-1 text-[10px] text-muted-foreground">
+    <span className="flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
       <PenLine className="h-2.5 w-2.5" />
       Draft
-    </Badge>
+    </span>
   );
 }
 
@@ -78,14 +67,14 @@ function QuickBtn({
   onClick,
   title,
   loading,
-  children,
   danger,
+  children,
 }: {
   onClick: (e: React.MouseEvent) => void;
   title: string;
   loading?: boolean;
-  children: React.ReactNode;
   danger?: boolean;
+  children: React.ReactNode;
 }) {
   return (
     <button
@@ -116,7 +105,6 @@ function DesignCard({
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const openCheckout = useCheckoutStore((s) => s.open);
   const [confirm, ConfirmModal] = useConfirm();
   const [lightbox, setLightbox] = useState(false);
 
@@ -143,39 +131,30 @@ function DesignCard({
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate({ to: "/studio", state: { productId: design.id } });
+    navigate({
+      to: "/studio",
+      state: { productId: design.id },
+    });
   };
 
   const handle3D = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate({ to: "/studio", state: { productId: design.id, mode: "3d" } });
+    navigate({
+      to: "/studio",
+      state: { productId: design.id, mode: "3d" },
+    });
   };
 
-  const handleReorder = (e: React.MouseEvent) => {
+  // Reorder from card → open detail sheet which has the full apparel context
+  const handleReorderClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Open checkout with basic info — detail sheet has the full variant data
-    openCheckout({
-      productId: design.id,
-      productName: design.title,
-      thumbnailUrl: design.thumbnail_url,
-      basePrice: parseFloat(design.pricing?.base_price ?? "0"),
-      printCost: 0,
-      currencySymbol:
-        typeof design.pricing?.currency === "object"
-          ? design.pricing.currency.symbol
-          : "Br",
-      variants: [],
-      artworks: {},
-      printAreas: [],
-    });
+    onOpenDetail(design);
   };
 
   const handleThumbnailClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setLightbox(true);
   };
-
-  const retailPrice = getRetailPrice(design);
 
   return (
     <>
@@ -203,7 +182,7 @@ function DesignCard({
             </div>
           )}
 
-          {/* Top-right overlay actions */}
+          {/* Quick actions overlay */}
           <div className="absolute right-2.5 top-2.5 flex flex-col gap-1.5 opacity-100 md:opacity-0 md:transition-opacity md:group-hover:opacity-100">
             <QuickBtn onClick={handleEdit} title="Edit in Studio">
               <Pencil className="h-3 w-3" />
@@ -211,12 +190,12 @@ function DesignCard({
             <QuickBtn onClick={handle3D} title="3D Canvas">
               <Box className="h-3 w-3" />
             </QuickBtn>
-            <QuickBtn onClick={handleReorder} title="Order / Reorder">
+            <QuickBtn onClick={handleReorderClick} title="Order">
               <ShoppingCart className="h-3 w-3" />
             </QuickBtn>
             <QuickBtn
               onClick={handleDelete}
-              title="Delete design"
+              title="Delete"
               loading={deleteMutation.isPending}
               danger
             >
@@ -230,21 +209,19 @@ function DesignCard({
           </div>
         </div>
 
-        {/* Info — tappable for detail sheet */}
+        {/* Info row — taps open detail sheet */}
         <div
           className="cursor-pointer px-4 py-3"
           onClick={() => onOpenDetail(design)}
         >
           <div className="flex items-start justify-between gap-2">
-            <p className="line-clamp-2 text-sm font-medium leading-snug flex-1">
+            <p className="line-clamp-2 flex-1 text-sm font-medium leading-snug">
               {design.title}
             </p>
-            <p className="shrink-0 text-sm font-semibold text-foreground">
-              {retailPrice}
-            </p>
+            <p className="shrink-0 text-sm font-semibold">{getRetailPrice(design)}</p>
           </div>
 
-          <div className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
             <span>{design.sold_quantity} sold</span>
             <span className="h-1 w-1 rounded-full bg-border" />
             <span>
@@ -255,9 +232,9 @@ function DesignCard({
             </span>
           </div>
 
-          {/* Reorder CTA strip */}
+          {/* Reorder strip */}
           <button
-            onClick={(e) => { e.stopPropagation(); handleReorder(e); }}
+            onClick={(e) => { e.stopPropagation(); onOpenDetail(design); }}
             className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-muted/50 py-2 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
           >
             <ShoppingCart className="h-3.5 w-3.5" />
@@ -266,7 +243,7 @@ function DesignCard({
         </div>
       </motion.div>
 
-      {/* Lightbox (single thumbnail image) */}
+      {/* Thumbnail lightbox */}
       <AnimatePresence>
         {lightbox && design.thumbnail_url && (
           <DesignLightbox
@@ -284,7 +261,13 @@ function DesignCard({
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
 
-function EmptyDesigns({ filtered, onNewDesign }: { filtered: boolean; onNewDesign: () => void }) {
+function EmptyDesigns({
+  filtered,
+  onNewDesign,
+}: {
+  filtered: boolean;
+  onNewDesign: () => void;
+}) {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center px-6">
       <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-muted">
@@ -315,18 +298,23 @@ export function UserDesignsPage() {
   const [activeTab, setActiveTab] = useState("");
   const [selectedDesign, setSelectedDesign] = useState<ProductListItem | null>(null);
 
-  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, error, refetch } =
-    useInfiniteQuery(
-      designsInfiniteQuery({ status: activeTab || undefined }),
-    );
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    error,
+    refetch,
+  } = useInfiniteQuery(
+    designsInfiniteQuery({ status: activeTab || undefined }),
+  );
 
   const allDesigns = data?.pages.flatMap((p) => p.results) ?? [];
 
-  const handleMutated = () => refetch();
-
   return (
     <div className="flex h-full flex-col">
-      {/* Header */}
+      {/* Sticky header + filter tabs */}
       <div className="sticky top-0 z-10 border-b border-border/60 bg-background/90 px-4 pb-0 pt-4 backdrop-blur">
         <div className="mb-3 flex items-center justify-between">
           <h1 className="text-xl font-semibold tracking-tight">My Designs</h1>
@@ -340,7 +328,6 @@ export function UserDesignsPage() {
           </Button>
         </div>
 
-        {/* Filter tabs */}
         <div className="flex gap-1 overflow-x-auto pb-3 scrollbar-none">
           {FILTER_TABS.map((tab) => (
             <button
@@ -379,20 +366,19 @@ export function UserDesignsPage() {
           />
         ) : (
           <AnimatePresence mode="popLayout">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-0 md:gap-3 overflow-hidden rounded-t-3xl md:rounded-0">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-0 md:gap-3 overflow-hidden rounded-t-3xl">
               {allDesigns.map((design) => (
                 <DesignCard
                   key={design.id}
                   design={design}
                   onOpenDetail={setSelectedDesign}
-                  onMutated={handleMutated}
+                  onMutated={() => refetch()}
                 />
               ))}
             </div>
           </AnimatePresence>
         )}
 
-        {/* Load more */}
         {hasNextPage && (
           <div className="mt-5 flex justify-center">
             <Button
@@ -411,14 +397,14 @@ export function UserDesignsPage() {
         )}
       </div>
 
-      {/* Detail sheet */}
+      {/* Design detail sheet */}
       <DesignDetailSheet
         design={selectedDesign}
         onClose={() => setSelectedDesign(null)}
-        onMutated={handleMutated}
+        onMutated={() => refetch()}
       />
 
-      {/* Checkout overlay */}
+      {/* Checkout overlay — mounts once, receives state from useCheckoutStore */}
       <CheckOut />
     </div>
   );

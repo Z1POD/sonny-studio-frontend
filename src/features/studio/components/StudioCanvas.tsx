@@ -140,22 +140,6 @@ export function CaptureBridge({
         // captureDistance is derived from cam.position so it never changes with user zoom.
         const radius = (distance ?? captureDistance ?? (camera.position.distanceTo(captureTarget) || 5)) * captureDistanceScale;
 
-        console.log("[CaptureBridge] captureAt", {
-          azimuth,
-          polar,
-          captureDistance,
-          captureDistanceScale,
-          captureLookAtOffset,
-          radius,
-          captureTarget: captureTarget.toArray(),
-          cameraPosition: [
-            +(captureTarget.x + radius * Math.sin(polar) * Math.sin(azimuth)).toFixed(3),
-            +(captureTarget.y + radius * Math.cos(polar)).toFixed(3),
-            +(captureTarget.z + radius * Math.sin(polar) * Math.cos(azimuth)).toFixed(3),
-          ],
-          outputSize: `${CAPTURE_WIDTH}x${CAPTURE_HEIGHT}`,
-        });
-
         // Position camera on the sphere centred on captureTarget
         camera.position.set(
           captureTarget.x + radius * Math.sin(polar) * Math.sin(azimuth),
@@ -289,6 +273,8 @@ export const StudioCanvas = forwardRef<StudioCanvasHandle>(
     const cam = product.cameraConfig;
     const orbit = cam.orbit;
     const shadows = render.contactShadows;
+    console.log(cam, '--');
+    console.log(cam.captureDistanceScale);
 
     return (
       <Canvas
@@ -307,10 +293,10 @@ export const StudioCanvas = forwardRef<StudioCanvasHandle>(
           background={render.background}
           modelPosition={render.modelPosition}
           captureDistance={new THREE.Vector3(...cam.position).distanceTo(new THREE.Vector3(...render.modelPosition))}
-          captureDistanceScale={cam.captureDistanceScale ?? 0.41}
+          captureDistanceScale={cam.captureDistanceScale ?? 0.42}
           captureLookAtOffset={cam.captureLookAtOffset ?? [0, -0.08, 0]}
         />
-
+        
         <Suspense fallback={null}>
           <Environment preset={product.environment} />
           <Lights lighting={(render as any).lighting} />

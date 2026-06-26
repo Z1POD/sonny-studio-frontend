@@ -33,13 +33,45 @@ function DecalLayer({ artwork, zone, meshNode }: DecalLayerProps) {
   if (!texture) return null;
 
   // Full/all-over print — one decal per surface face
-  if (zone.placement === "full") {
-    return (
-      <FullPrintDecalLayer artwork={artwork} zone={zone} meshNode={meshNode} texture={texture} />
-    );
-  }
+  // if (zone.placement === "full") {
+  //   return (
+  //     <FullPrintDecalLayer artwork={artwork} zone={zone} meshNode={meshNode} texture={texture} />
+  //   );
+  // }
 
-  return <SingleDecalLayer artwork={artwork} zone={zone} meshNode={meshNode} texture={texture} />;
+  // return <SingleDecalLayer artwork={artwork} zone={zone} meshNode={meshNode} texture={texture} />;
+
+  switch (zone.placement) {
+    case "full":
+      return (
+        <SingleDecalLayer
+          artwork={artwork}
+          zone={zone}
+          meshNode={meshNode}
+          texture={texture}
+        />
+      );
+
+    case "wrap":
+      return (
+        <FullPrintDecalLayer
+          artwork={artwork}
+          zone={zone}
+          meshNode={meshNode}
+          texture={texture}
+        />
+      );
+
+    default:
+      return (
+        <SingleDecalLayer
+          artwork={artwork}
+          zone={zone}
+          meshNode={meshNode}
+          texture={texture}
+        />
+      );
+  }
 }
 
 function SingleDecalLayer({ artwork, zone, meshNode, texture }: DecalLayerProps & { texture: THREE.Texture }) {
@@ -182,6 +214,7 @@ export function ProductModel({
       ),
     [nodes],
   );
+  
 
   return (
     <group>
