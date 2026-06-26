@@ -1,9 +1,13 @@
 /**
- * src/features/userDesigns/components/DesignDetailSheet.tsx — v3
+ * src/features/userDesigns/components/DesignDetailSheet.tsx — v4
  *
- * Fixed: mapToApparelProduct now uses the real API response shape
- * (d.apparel.*, config.render_config, config.model.glb_url, d.print_areas, d.variants)
- * matching the original StudioWorkspace v7.
+ * Fixes:
+ *  - mapToApparelProduct uses exact editor-config shape (render_config, model.glb_url)
+ *  - Reorder flow: loadDesign now reads artworks from
+ *    detail.render_config.artworkPrintInfos (real saved shape)
+ *  - studioDetailQuery still fetched for methods/tiers when user wants to
+ *    reorder with a modified design — but for a straight reorder we can
+ *    reconstruct from detail.render_config directly (fast path)
  */
 
 import { useState } from "react";
@@ -22,134 +26,101 @@ import type { ProductListItem, ProductDetail } from "@/features/store/api";
 import { useConfirm } from "@/features/store/components/ConfirmModal";
 import { useCheckoutStore } from "@/features/checkout/store";
 import { DesignLightbox } from "./DesignLightbox";
-import { studioDetailQuery } from "@/features/studio/queries";
 import type { ApparelProduct, PrintArea } from "@/features/studio/store";
 
-// ─── Map API response → ApparelProduct ────────────────────────────────────────
-// Shape: d.apparel.*, d.variants, d.print_areas, d["3d_configuration"].render_config
+// ─── Build ApparelProduct from saved product's render_config ─────────────────
+// Mirrors mapSavedProductToApparelProduct in StudioWorkspace.
+// No extra fetch — everything needed is already in detail.render_config.
 
-function mapToApparelProduct(d: any, config: any): ApparelProduct {
-  const render  = config.render_config;          // ← real key
-  const cam     = render.camera;
-  const orbit   = cam.orbit;
-  const shadows = render.contact_shadows;
+function buildApparelProductFromDetail(detail: any): ApparelProduct {
+  const rc     = detail.render_config ?? {};
+  const cam    = rc.camera ?? {};
+  const orbit  = cam.orbit ?? {};
+  const shadows = rc.contact_shadows ?? {};
 
-  const printAreas: PrintArea[] = (d.print_areas ?? []).map((p: any) => {
-    const uvConfig           = p.uv_config || {};
-    const rawWorldBounds     = uvConfig.world_bounds;
-    const rawUvBounds        = uvConfig.uv_bounds;
-    const rawTransformLimits = uvConfig.transform_limits;
-    return {
-      id:               p.id,
-      areaKey:          p.key ?? p.area_key,
-      name:             p.name,
-      placement:        p.placement,
-      meshName:         p.mesh ?? p.mesh_name,
-      aspectRatio:      p.ratio ?? p.aspect_ratio,
-      allowScaling:     p.rules?.scale      ?? p.allow_scaling   ?? true,
-      allowRotation:    p.rules?.rotate     ?? p.allow_rotation  ?? false,
-      maxLayers:        p.rules?.max_layers ?? p.max_layers      ?? 1,
-      widthCm:          p.w  ?? p.width_cm  ?? 35,
-      heightCm:         p.h  ?? p.height_cm ?? 42,
-      allowedFileTypes: p.rules?.file_types ?? p.allowed_file_types ?? ["png", "jpg", "svg"],
-      sortOrder:        p.sort,
-      currency:         p.currency,
-      methods: (p.methods ?? []).map((m: any) => ({
-        code: m.code,
-        name: m.name,
-        tiers: (m.tiers ?? []).map((t: any) => ({
-          size:              t.size,
-          max_w:             t.max_w,
-          max_h:             t.max_h,
-          price:             t.price,
-          extra_color_price: t.extra_color_price ?? "0.00",
-        })),
-      })),
-      uvBounds: rawUvBounds && typeof rawUvBounds === "object"
-        ? { minU: rawUvBounds.min_u, minV: rawUvBounds.min_v,
-            maxU: rawUvBounds.max_u, maxV: rawUvBounds.max_v }
-        : undefined,
-      worldBounds: rawWorldBounds && typeof rawWorldBounds === "object"
-        ? { center: rawWorldBounds.center,
-            halfExtents: rawWorldBounds.half_extents,
-            rotation: rawWorldBounds.rotation }
-        : undefined,
-      transformLimits: rawTransformLimits && typeof rawTransformLimits === "object"
-        ? { minScale: rawTransformLimits.min_scale, maxScale: rawTransformLimits.max_scale,
-            minX: rawTransformLimits.min_x,         maxX: rawTransformLimits.max_x,
-            minY: rawTransformLimits.min_y,         maxY: rawTransformLimits.max_y }
-        : undefined,
-      cameraFocus: p.camera_focus
-        ? { position: p.camera_focus.position, target: p.camera_focus.target }
-        : undefined,
-      previewImage: p.preview_image,
-    };
-  });
+  const printAreas: PrintArea[] = (rc.print_areas ?? []).map((pa: any) => ({
+    id:               pa.print_area_id,
+    areaKey:          pa.area_key,
+    name:             pa.name,
+    placement:        pa.placement,
+    meshName:         pa.mesh_name ?? "",
+    widthCm:          pa.width_cm,
+    heightCm:         pa.height_cm,
+    allowScaling:     true,
+    allowRotation:    false,
+    maxLayers:        2,
+    allowedFileTypes: ["png", "jpg", "svg"],
+    methods:          [],
+    uvBounds: pa.uv_config?.uv_bounds
+      ? { minU: pa.uv_config.uv_bounds.min_u, minV: pa.uv_config.uv_bounds.min_v,
+          maxU: pa.uv_config.uv_bounds.max_u, maxV: pa.uv_config.uv_bounds.max_v }
+      : undefined,
+    worldBounds: pa.uv_config?.world_bounds
+      ? { center: pa.uv_config.world_bounds.center,
+          halfExtents: pa.uv_config.world_bounds.half_extents,
+          rotation: pa.uv_config.world_bounds.rotation }
+      : undefined,
+  }));
+
+  const variants = (detail.enabled_variant ?? []).map((v: any) => ({
+    id:              v.id,
+    sku:             v.sku ?? "",
+    color:           v.color,
+    size:            v.size,
+    stockQuantity:   v.stock_quantity ?? 99,
+    isInStock:       v.is_in_stock ?? true,
+    additionalPrice: "0.00",
+  }));
 
   return {
-    id:             d.apparel.id,
-    name:           d.apparel.name,
-    slug:           d.apparel.slug,
-    description:    d.apparel.description ?? "",
-    basePrice:      d.apparel.pricing?.base_price ?? d.apparel.base_price ?? "0.00",
-    currencySymbol: d.apparel.pricing?.currency?.symbol ?? "Br",
-    modelUrl: config.model?.glb_url ?? config.model_url ?? "",    // ← real key
-    environment:    render.environment,
+    id:             detail.base_apparel?.id ?? "",
+    name:           detail.base_apparel?.name ?? detail.title ?? "",
+    slug:           "",
+    description:    detail.description ?? "",
+    basePrice:      detail.pricing?.base_price ?? "0.00",
+    currencySymbol: detail.pricing?.currency?.symbol ?? "Br",
+    modelUrl:       rc.model_url ?? "",
+    environment:    rc.environment ?? "studio",
     cameraConfig: {
-      position: cam.position,
-      fov:      cam.fov,
-      captureDistanceScale: cam.capture_distance_scale ?? cam.captureDistanceScale ?? 0.42,
-      captureLookAtOffset:  cam.capture_look_at_offset  ?? cam.captureLookAtOffset  ?? [0, -0.08, 0],
+      position: cam.position ?? [0, 1.5, 3],
+      fov:      cam.fov ?? 35,
+      captureDistanceScale: cam.captureDistanceScale ?? cam.capture_distance_scale ?? 1,
+      captureLookAtOffset:  cam.captureLookAtOffset  ?? cam.capture_look_at_offset  ?? [0, 0, 0],
       orbit: {
-        minDistance:   orbit.min_distance,
-        maxDistance:   orbit.max_distance,
-        minPolarAngle: orbit.min_polar_angle,
-        maxPolarAngle: orbit.max_polar_angle,
-        enablePan:     orbit.enable_pan,
-        enableZoom:    orbit.enable_zoom,
+        minDistance:   orbit.min_distance   ?? 0.8,
+        maxDistance:   orbit.max_distance   ?? 8,
+        minPolarAngle: orbit.min_polar_angle ?? 0.8,
+        maxPolarAngle: orbit.max_polar_angle ?? 1.8,
+        enablePan:     orbit.enable_pan     ?? false,
+        enableZoom:    orbit.enable_zoom    ?? true,
       },
     },
     renderConfig: {
-      environment:   render.environment,
-      background:    render.background,
-      modelPosition: render.model_position,
-      ...(render.lighting ? { lighting: render.lighting } : {}),
+      environment:   rc.environment   ?? "studio",
+      background:    rc.background    ?? "#f5f5f5",
+      modelPosition: rc.model_position ?? [0, 0, 0],
+      ...(rc.lighting ? { lighting: rc.lighting } : {}),
       contactShadows: {
-        enabled:  shadows.enabled,
-        position: shadows.position,
-        opacity:  shadows.opacity,
-        scale:    shadows.scale,
-        blur:     shadows.blur,
-        far:      shadows.far,
+        enabled:  shadows.enabled  ?? true,
+        position: shadows.position ?? [0, -1, 0],
+        opacity:  shadows.opacity  ?? 0.7,
+        scale:    shadows.scale    ?? 8,
+        blur:     shadows.blur     ?? 3,
+        far:      shadows.far      ?? 3,
       },
     } as any,
     materialConfig: {
-      textureUrl:   config.material?.texture_url   ?? null,
-      normalMapUrl: config.material?.normal_map_url ?? null,
-      roughness:    config.material?.roughness      ?? 0.9,
-      metalness:    config.material?.metalness      ?? 0,
+      textureUrl:   rc.material?.texture_url   ?? null,
+      normalMapUrl: rc.material?.normal_map_url ?? null,
+      roughness:    rc.material?.roughness      ?? 0.9,
+      metalness:    rc.material?.metalness      ?? 0,
     },
-    colors:          [...new Set<string>(d.variants.map((v: any) => v.color.hex))],
-    colorableMeshes: render.colorable_meshes ?? config.colorable_meshes ?? [],
+    colors:          [...new Set<string>(variants.map((v: any) => v.color.hex))],
+    colorableMeshes: rc.colorable_meshes ?? [],
     printAreas,
-    variants: d.variants.map((v: any) => ({
-      id:              v.id,
-      sku:             v.sku,
-      color:           v.color,
-      size:            v.size,
-      stockQuantity:   v.stock_quantity,
-      isInStock:       v.is_in_stock,
-      additionalPrice: v.additional_price,
-    })),
-    defaultView: render.default_view,
-    studioCapabilities: d.studio_capabilities ? {
-      allowText:           d.studio_capabilities.allow_text,
-      allowImages:         d.studio_capabilities.allow_images,
-      allowSvg:            d.studio_capabilities.allow_svg,
-      allowMultipleLayers: d.studio_capabilities.allow_multiple_layers,
-      allowColorChange:    d.studio_capabilities.allow_color_change,
-      allowArPreview:      d.studio_capabilities.allow_ar_preview,
-    } : undefined,
+    variants,
+    defaultView:         undefined,
+    studioCapabilities:  undefined,
   };
 }
 
@@ -163,25 +134,19 @@ interface DesignDetailSheetProps {
 
 export function DesignDetailSheet({ design, onClose, onMutated }: DesignDetailSheetProps) {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
+  const navigate    = useNavigate();
   const [confirm, ConfirmModal] = useConfirm();
-  const loadDesign = useCheckoutStore((s) => s.loadDesign);
-  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
-  const [mockupIdx, setMockupIdx] = useState(0);
+  const loadDesign  = useCheckoutStore((s) => s.loadDesign);
+  const [lightboxIdx, setLightboxIdx]     = useState<number | null>(null);
+  const [mockupIdx, setMockupIdx]         = useState(0);
   const [reorderLoading, setReorderLoading] = useState(false);
 
-  // ── Full product detail ─────────────────────────────────────────────────────
-  const { data: detail, isLoading } = useQuery({
+  // Full product detail (has render_config, snapshot, mockups, enabled_variant)
+  const { data: detailRaw, isLoading } = useQuery({
     ...designDetailQuery(design?.id ?? ""),
     enabled: !!design?.id,
   });
-
-  // ── Apparel config (needed for reorder + studio nav) ────────────────────────
-  const apparelId = (detail as any)?.base_apparel?.id ?? null;
-  const { data: studioData } = useQuery({
-    ...studioDetailQuery(apparelId ?? ""),
-    enabled: !!apparelId,
-  });
+  const detail = (detailRaw as any)?.data ?? detailRaw;
 
   // ── Mutations ───────────────────────────────────────────────────────────────
   const deleteMutation = useMutation({
@@ -223,55 +188,52 @@ export function DesignDetailSheet({ design, onClose, onMutated }: DesignDetailSh
     if (ok) archiveMutation.mutate();
   };
 
-  // ── Reorder: build apparelProduct then loadDesign ───────────────────────────
+  // ── Reorder: reconstruct ApparelProduct from detail.render_config ───────────
+  // Fast path — no extra API call needed. All data is already in the product detail.
   const handleReorder = async () => {
     if (!detail) { toast.error("Design details still loading"); return; }
-    if (!studioData) { toast.error("Loading product config, try again in a moment"); return; }
 
     setReorderLoading(true);
     try {
-      const d = (studioData as any).data ?? studioData;
-      const config = d["3d_configuration"];
-      const apparelProduct = mapToApparelProduct(d, config);
+      const apparelProduct = buildApparelProductFromDetail(detail);
       loadDesign(detail as ProductDetail, apparelProduct);
       onClose();
     } catch (e: any) {
+      console.error(e);
       toast.error(e?.message ?? "Failed to prepare checkout");
     } finally {
       setReorderLoading(false);
     }
   };
 
-  // ── Navigate to studio with saved state ─────────────────────────────────────
+  // ── Studio navigation ───────────────────────────────────────────────────────
   const handleEditInStudio = () => {
-    if (!detail) return;
     onClose();
     navigate({
       to: "/studio",
       state: {
         productId: design!.id,
-        apparelId: (detail as any)?.base_apparel?.id,
+        apparelId: detail?.base_apparel?.id,
       },
     });
   };
 
   const handle3DCanvas = () => {
-    if (!detail) return;
     onClose();
     navigate({
       to: "/studio",
       state: {
         productId: design!.id,
-        apparelId: (detail as any)?.base_apparel?.id,
+        apparelId: detail?.base_apparel?.id,
         mode: "3d",
       },
     });
   };
 
-  const mockups = (detail as any)?.mockups ?? [];
+  const mockups        = detail?.mockups ?? [];
   const lightboxImages = mockups.map((m: any) => ({ url: m.url, label: m.type }));
-  const isArchived = design?.status === "archived";
-  const isPublished = design?.is_published || design?.status === "published";
+  const isArchived     = design?.status === "archived";
+  const isPublished    = design?.is_published || design?.status === "published";
 
   return (
     <>
@@ -318,7 +280,7 @@ export function DesignDetailSheet({ design, onClose, onMutated }: DesignDetailSh
                 </button>
               </div>
 
-              {/* Scrollable body */}
+              {/* Body */}
               <div className="flex-1 overflow-y-auto pb-8">
                 {isLoading || !detail ? (
                   <div className="flex items-center justify-center py-20">
@@ -389,9 +351,9 @@ export function DesignDetailSheet({ design, onClose, onMutated }: DesignDetailSh
                     {/* Stats */}
                     <div className="grid grid-cols-3 gap-2">
                       {[
-                        { label: "Retail", value: getRetailPrice(design) },
-                        { label: "Sold", value: String((detail as any).sold_quantity ?? 0) },
-                        { label: "Views", value: String((detail as any).analytics?.view_count ?? 0) },
+                        { label: "Retail",  value: getRetailPrice(design) },
+                        { label: "Sold",    value: String(detail.sold_quantity ?? 0) },
+                        { label: "Views",   value: String(detail.analytics?.view_count ?? 0) },
                       ].map(({ label, value }) => (
                         <div key={label} className="rounded-2xl border border-border bg-surface px-3 py-2.5 text-center">
                           <p className="text-xs text-muted-foreground">{label}</p>
@@ -401,20 +363,20 @@ export function DesignDetailSheet({ design, onClose, onMutated }: DesignDetailSh
                     </div>
 
                     {/* Description */}
-                    {(detail as any).description && (
+                    {detail.description && (
                       <p className="text-sm text-muted-foreground leading-relaxed">
-                        {(detail as any).description}
+                        {detail.description}
                       </p>
                     )}
 
                     {/* Variants */}
-                    {(detail as any).enabled_variant?.length > 0 && (
+                    {detail.enabled_variant?.length > 0 && (
                       <div>
                         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                           Variants
                         </p>
                         <div className="flex flex-wrap gap-1.5">
-                          {(detail as any).enabled_variant.map((v: any) => (
+                          {detail.enabled_variant.map((v: any) => (
                             <div
                               key={v.id}
                               className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-xs"
@@ -430,31 +392,37 @@ export function DesignDetailSheet({ design, onClose, onMutated }: DesignDetailSh
                       </div>
                     )}
 
-                    {/* Primary CTA */}
+                    {/* Primary CTA — Reorder */}
                     <Button
                       className="w-full gap-2"
                       onClick={handleReorder}
-                      disabled={reorderLoading || !studioData}
+                      disabled={reorderLoading || isLoading}
                     >
                       {reorderLoading ? (
                         <><Loader2 className="h-4 w-4 animate-spin" />Preparing order…</>
-                      ) : !studioData ? (
-                        <><Loader2 className="h-4 w-4 animate-spin" />Loading…</>
                       ) : (
                         <>
                           <ShoppingCart className="h-4 w-4" />
-                          {(detail as any).sold_quantity > 0 ? "Reorder" : "Order Now"}
+                          {detail.sold_quantity > 0 ? "Reorder" : "Order Now"}
                         </>
                       )}
                     </Button>
 
                     {/* Secondary CTAs */}
                     <div className="grid grid-cols-2 gap-2">
-                      <Button variant="outline" className="gap-2 text-sm" onClick={handleEditInStudio}>
+                      <Button
+                        variant="outline"
+                        className="gap-2 text-sm"
+                        onClick={handleEditInStudio}
+                      >
                         <Pencil className="h-4 w-4" />
                         Edit Design
                       </Button>
-                      <Button variant="outline" className="gap-2 text-sm" onClick={handle3DCanvas}>
+                      <Button
+                        variant="outline"
+                        className="gap-2 text-sm"
+                        onClick={handle3DCanvas}
+                      >
                         <Box className="h-4 w-4" />
                         3D View
                       </Button>

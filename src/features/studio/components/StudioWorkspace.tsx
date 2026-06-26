@@ -1,4 +1,6 @@
-/*
+/**
+ * src/features/studio/components/StudioWorkspace.tsx — v9
+ *
  * Fixes:
  *  - mapApiToApparelProduct uses exact editor-config response shape
  *  - hydrateStudioFromSavedDesign reads artworks from
@@ -7,10 +9,6 @@
  *    from detail.render_config + detail.enabled_variant (no extra fetch needed)
  *  - captureDistanceScale read correctly (camelCase on camera object)
  *  - Update existing product uses PATCH /store/products/{id}/ (no /update/)
- *  - FIX: hydrate selectedMethods/selectedTiers from snapshot on saved design load
- *  - FIX: buildPrintAreasPayload never sends blank print_method
- *  - FIX: include render_config in PATCH update payload
- *  - FIX: mapSavedProductToApparelProduct always has fallback methods
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -187,68 +185,30 @@ function mapSavedProductToApparelProduct(detail: any): ApparelProduct {
 
   // Reconstruct print areas from render_config.print_areas
   // These are lightweight (no methods/tiers) — we use them for decal placement only.
-  // Methods/tiers are reconstructed from snapshot data so print_method isn't blank on update.
-  const printAreas: PrintArea[] = (rc.print_areas ?? []).map((pa: any) => {
-    // ── Reconstruct methods from snapshot data ─────────────────────────
-    const snapshotPrintAreas = detail.snapshot?.print_areas ?? [];
-    const snapshotArea = snapshotPrintAreas.find((spa: any) =>
-      (spa.print_area?.id || spa.print_area_id) === pa.print_area_id
-    );
-
-    let methods: PrintArea["methods"];
-    if (snapshotArea?.print_method) {
-      const pb = snapshotArea.price_breakdown;
-      methods = [{
-        code: snapshotArea.print_method.code,
-        name: snapshotArea.print_method.name,
-        tiers: pb ? [{
-          size:  pb.size_tier,
-          max_w: pb.width_cm,
-          max_h: pb.height_cm,
-          price: pb.base_price,
-          extra_color_price: pb.additional_color_price ?? "0.00",
-        }] : [],
-      }];
-    } else {
-      // Fallback: derive a minimal method from available_print_methods if present
-      // or create a generic fallback so the array is never empty
-      methods = [{
-        code: "dtf",
-        name: "Direct-to-Film",
-        tiers: [{
-          size: "ALL_OVER",
-          max_w: pa.width_cm ?? 300,
-          max_h: pa.height_cm ?? 600,
-          price: "0.00",
-          extra_color_price: "0.00",
-        }],
-      }];
-    }
-
-    return {
-      id:               pa.print_area_id,
-      areaKey:          pa.area_key,
-      name:             pa.name,
-      placement:        pa.placement,
-      meshName:         pa.mesh_name ?? "",
-      widthCm:          pa.width_cm,
-      heightCm:         pa.height_cm,
-      allowScaling:     true,
-      allowRotation:    false,
-      maxLayers:        2,
-      allowedFileTypes: ["png", "jpg", "svg"],
-      methods,
-      uvBounds: pa.uv_config?.uv_bounds
-        ? { minU: pa.uv_config.uv_bounds.min_u, minV: pa.uv_config.uv_bounds.min_v,
-            maxU: pa.uv_config.uv_bounds.max_u, maxV: pa.uv_config.uv_bounds.max_v }
-        : undefined,
-      worldBounds: pa.uv_config?.world_bounds
-        ? { center: pa.uv_config.world_bounds.center,
-            halfExtents: pa.uv_config.world_bounds.half_extents,
-            rotation: pa.uv_config.world_bounds.rotation }
-        : undefined,
-    };
-  });
+  // Methods/tiers are not needed for the edit flow (they're already baked in the snapshot).
+  const printAreas: PrintArea[] = (rc.print_areas ?? []).map((pa: any) => ({
+    id:               pa.print_area_id,
+    areaKey:          pa.area_key,
+    name:             pa.name,
+    placement:        pa.placement,
+    meshName:         pa.mesh_name ?? "",
+    widthCm:          pa.width_cm,
+    heightCm:         pa.height_cm,
+    allowScaling:     true,
+    allowRotation:    false,
+    maxLayers:        2,
+    allowedFileTypes: ["png", "jpg", "svg"],
+    methods:          [],
+    uvBounds: pa.uv_config?.uv_bounds
+      ? { minU: pa.uv_config.uv_bounds.min_u, minV: pa.uv_config.uv_bounds.min_v,
+          maxU: pa.uv_config.uv_bounds.max_u, maxV: pa.uv_config.uv_bounds.max_v }
+      : undefined,
+    worldBounds: pa.uv_config?.world_bounds
+      ? { center: pa.uv_config.world_bounds.center,
+          halfExtents: pa.uv_config.world_bounds.half_extents,
+          rotation: pa.uv_config.world_bounds.rotation }
+      : undefined,
+  }));
 
   const variants = (detail.enabled_variant ?? []).map((v: any) => ({
     id:              v.id,
@@ -347,21 +307,6 @@ function hydrateStudioFromSavedDesign(detail: any) {
   if (firstVariant?.color?.hex) {
     store.setSelectedColor(firstVariant.color.hex);
   }
-
-  // ── FIX: Restore selected print methods and tiers from snapshot ────────────
-  const snapshotPrintAreas = snapshot.print_areas ?? [];
-  for (const spa of snapshotPrintAreas) {
-    const areaId     = spa.print_area?.id ?? spa.print_area_id;
-    const methodCode = spa.print_method?.code;
-    const tierSize   = spa.price_breakdown?.size_tier;
-
-    if (methodCode) {
-      store.setSelectedMethod(areaId, methodCode);
-    }
-    if (tierSize) {
-      store.setSelectedTier(areaId, tierSize);
-    }
-  }
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -451,26 +396,9 @@ export function StudioWorkspace() {
     return product.printAreas
       .filter((p) => artworks[p.id]?.decalUrl)
       .map((area) => {
-        const art = artworks[area.id];
-
-        // FIX: Never send blank print_method. Use selection, then first method,
-        // then snapshot fallback, then hardcoded emergency fallback.
-        let methodCode = selectedMethods[area.id];
-        if (!methodCode) {
-          methodCode = area.methods[0]?.code;
-        }
-        // Emergency fallback — should never happen if hydration is correct,
-        // but prevents the backend validation error.
-        if (!methodCode) {
-          methodCode = "dtf";
-          console.warn(
-            `[StudioWorkspace] No print method for area "${area.name}" (${area.id}). ` +
-            `Falling back to "dtf". Check that snapshot.print_areas[].print_method is present.`
-          );
-        }
-
-        const tierSize = selectedTiers[area.id] ?? area.methods[0]?.tiers[0]?.size ?? "";
-
+        const art            = artworks[area.id];
+        const methodCode     = selectedMethods[area.id] ?? area.methods[0]?.code ?? "";
+        const tierSize       = selectedTiers[area.id]   ?? area.methods[0]?.tiers[0]?.size ?? "";
         return {
           print_area:    area.areaKey,
           print_area_id: area.id,
@@ -586,7 +514,7 @@ export function StudioWorkspace() {
       const mainMockup    = dataUrls[0] ?? canvasRef.current.capture();
       setCapturedMockups(dataUrls);
 
-      const renderConfig      = buildRenderConfig();
+      const renderConfig   = buildRenderConfig();
       const printAreasPayload = buildPrintAreasPayload();
       const enabledVariantIds = product.variants.filter((v) => v.isInStock).map((v) => v.id);
 
@@ -595,13 +523,10 @@ export function StudioWorkspace() {
       if (savedProductId) {
         // ── Update existing product ─────────────────────────────────────────
         // PATCH /api/v1/store/products/{uuid}/
-        // FIX: include render_config so the 3D scene state is preserved
         savedProduct = await storeProductApi.update(savedProductId, {
           title:            product.name,
           enabled_variants: enabledVariantIds,
           print_areas:      printAreasPayload,
-          render_config:    renderConfig,
-          base_apparel:     product.id,
         } as any);
       } else {
         // ── Create new product ──────────────────────────────────────────────

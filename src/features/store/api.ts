@@ -1,7 +1,11 @@
 /**
- * src/features/store/api.ts
+ * src/features/store/api.ts — v2
  *
- * All store-product API calls, typed against the real backend contract.
+ * Changes from v1:
+ *  - UpdateProductPayload includes snapshot + render_config
+ *  - update() uses PATCH /store/products/{id}/ (no /update/ suffix)
+ *  - markup_price accepts string | number
+ *  - storeProductDetailQuery exported here to avoid circular deps
  */
 
 import { api } from "@/shared/api/client";
@@ -43,7 +47,7 @@ export interface ProductAnalytics {
   share_count: number;
 }
 
-// ─── List item (lightweight) ──────────────────────────────────────────────────
+// ─── List item ────────────────────────────────────────────────────────────────
 
 export interface ProductListItem {
   id: string;
@@ -58,10 +62,9 @@ export interface ProductListItem {
   created_at: string;
 }
 
-/** Helper to extract retail price string from list item */
 export function getRetailPrice(item: ProductListItem): string {
   if (!item.pricing) return "—";
-  const p = item.pricing;
+  const p   = item.pricing;
   const sym = typeof p.currency === "object" ? p.currency.symbol : "$";
   return `${sym}${p.retail_price}`;
 }
@@ -112,8 +115,10 @@ interface DetailApiResponse {
 // ─── Create payload ───────────────────────────────────────────────────────────
 
 export interface PrintAreaPayload {
-  print_area_id: string;
-  print_method_id: string;
+  print_area_id?: string;
+  print_method_id?: string;
+  print_area?: string;
+  print_method?: string;
   width_cm: string;
   height_cm: string;
   color_count: number;
@@ -122,9 +127,13 @@ export interface PrintAreaPayload {
     layers: Array<{
       type: "image" | "text";
       url?: string;
+      aspect_ratio?: number;
       position?: { x: number; y: number };
+      offset_x?: number;
+      offset_y?: number;
       scale?: number;
       rotation?: number;
+      z_index?: number;
       content?: string;
       font?: string;
       size?: number;
@@ -136,7 +145,7 @@ export interface CreateProductPayload {
   title: string;
   description?: string;
   base_apparel: string;
-  markup_price: string;
+  markup_price: string | number;
   print_areas: PrintAreaPayload[];
   snapshot: Record<string, unknown>;
   render_config: Record<string, unknown>;
@@ -157,9 +166,11 @@ export interface UpdateProductPayload {
   is_limited_edition?: boolean;
   production_ready?: boolean;
   max_quantity?: number | null;
+  snapshot?: Record<string, unknown>;
+  render_config?: Record<string, unknown>;
 }
 
-// ─── Assets upload response ───────────────────────────────────────────────────
+// ─── Assets upload ────────────────────────────────────────────────────────────
 
 export interface AssetsUploadResponse {
   success: boolean;
@@ -181,7 +192,7 @@ export const storeProductApi = {
   }): Promise<ProductListResponse> => {
     return api.get<ProductListResponse>("/store/products/", {
       params: {
-        page: params?.page ?? 1,
+        page:      params?.page      ?? 1,
         page_size: params?.page_size ?? 20,
         ...(params?.status ? { status: params.status } : {}),
       },
@@ -193,28 +204,26 @@ export const storeProductApi = {
     return res.data;
   },
 
-  create: async (
-    payload: CreateProductPayload,
-  ): Promise<ProductDetail> => {
+  create: async (payload: CreateProductPayload): Promise<ProductDetail> => {
     const res = await api.post<DetailApiResponse>("/store/products/create/", {
       body: payload,
     });
     return res.data;
   },
 
-  update: async (
-    id: string,
-    payload: UpdateProductPayload,
-  ): Promise<ProductDetail> => {
+  // PATCH /api/v1/store/products/{uuid}/
+  update: async (id: string, payload: UpdateProductPayload): Promise<ProductDetail> => {
     const res = await api.patch<DetailApiResponse>(`/store/products/${id}/`, {
       body: payload,
     });
     return res.data;
   },
 
-
   publish: async (id: string) => {
-    const res = await api.post<{ success: boolean; data: { id: string; status: string; is_published: boolean; public_link: string } }>(`/store/products/${id}/publish/`);
+    const res = await api.post<{
+      success: boolean;
+      data: { id: string; status: string; is_published: boolean; public_link: string };
+    }>(`/store/products/${id}/publish/`);
     return res.data;
   },
 
@@ -226,15 +235,14 @@ export const storeProductApi = {
     await api.delete(`/store/products/${id}/delete/`);
   },
 
-  /** Upload mockup images (multipart). Returns updated mockup list. */
   uploadAssets: async (
     productId: string,
     blobs: Array<{ blob: Blob; type: string; name: string }>,
   ): Promise<AssetsUploadResponse["data"]> => {
     const fd = new FormData();
-    blobs.forEach(({ blob, name, type }, i) => {
+    blobs.forEach(({ blob, name }) => {
       fd.append("files", new File([blob], name, { type: "image/png" }));
-      fd.append("mockup_types", type);
+      fd.append("mockup_types", name.replace("mockup-", "").replace(".png", ""));
     });
     const res = await api.post<AssetsUploadResponse>(
       `/store/products/${productId}/assets/`,
@@ -243,3 +251,14 @@ export const storeProductApi = {
     return res.data;
   },
 };
+
+// ─── Convenience query factory ────────────────────────────────────────────────
+// Exported so StudioWorkspace can import directly without going through queries.ts
+// (avoids a potential circular dep chain: queries → api → queries)
+
+export const storeProductDetailQuery = (id: string) => ({
+  queryKey: ["store-products", "detail", id] as const,
+  queryFn:  () => storeProductApi.detail(id),
+  staleTime: 60_000,
+  enabled:   !!id,
+});
