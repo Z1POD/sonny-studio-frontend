@@ -22,7 +22,7 @@ import type { ProductListItem } from "@/features/store/api";
 import { useConfirm } from "@/features/store/components/ConfirmModal";
 import { DesignDetailSheet } from "./DesignDetailSheet";
 import { DesignLightbox } from "./DesignLightbox";
-import { CheckOut } from "@/features/checkout/components/CheckoutPage";
+import { CheckOut } from "@/features/checkout/components/CheckOut";
 
 // ─── Filter tabs ──────────────────────────────────────────────────────────────
 
