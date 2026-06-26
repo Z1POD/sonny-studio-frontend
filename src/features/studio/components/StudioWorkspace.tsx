@@ -27,7 +27,7 @@ import { StudioControls } from "./StudioControls";
 import { ArtworkLibrary } from "./ArtworkLibrary";
 import { CanvasDrop } from "./CanvasDrop";
 import { Button } from "@/components/ui/button";
-import { CheckOut } from "@/features/checkout/components/CheckOut";
+import { CheckOut } from "@/features/checkout/components/CheckoutPage";
 import { useCheckoutStore } from "@/features/checkout/store";
 import { storeProductApi } from "@/features/store/api";
 import { useAuthStore } from "@/features/auth/store";
