@@ -31,30 +31,35 @@ const MAX_POLL_DURATION_MS = 120_000; // 2 min
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 
-type ReceiptFieldType = "alphanumeric" | "url" | "last8digits";
+type ReceiptFieldType =
+  | "alphanumeric"
+  | "url"
+  | "urlOrTransactionId";
 
-/** Detect what kind of input the bank's reference field expects. */
-function detectFieldType(placeholder = "", helpText = ""): ReceiptFieldType {
-  const combined = `${placeholder} ${helpText}`.toLowerCase();
-  if (combined.includes("url") || combined.includes("http") || combined.includes("link")) {
-    return "url";
-  }
-  if (
-    combined.includes("last") ||
-    combined.includes("digit") ||
-    combined.includes("account") ||
-    combined.includes("number only")
-  ) {
-    return "last8digits";
-  }
-  return "alphanumeric"; // default: transaction ID / reference
-}
+
 
 function validateReceiptField(value: string, type: ReceiptFieldType): string | null {
   const v = value.trim();
   if (!v) return "This field is required.";
 
   switch (type) {
+
+    case "urlOrTransactionId":
+      // Try URL first
+      try {
+        const u = new URL(v);
+        if (["http:", "https:"].includes(u.protocol)) {
+          return null;
+        }
+      } catch {}
+
+      // Otherwise accept transaction ID
+      if (/^[A-Za-z0-9\-_]{4,64}$/.test(v)) {
+        return null;
+      }
+
+      return "Enter a valid receipt URL or transaction ID.";
+
     case "alphanumeric":
       // Transaction IDs: letters, digits, hyphens, underscores — no spaces
       if (!/^[A-Za-z0-9\-_]{4,64}$/.test(v)) {
@@ -72,13 +77,6 @@ function validateReceiptField(value: string, type: ReceiptFieldType): string | n
       } catch {
         return "Enter a valid URL (e.g. https://…).";
       }
-
-    case "last8digits":
-      // Payer account last-N-digits: digits only, 4–12 chars
-      if (!/^\d{4,12}$/.test(v)) {
-        return "Enter digits only (4–12 characters).";
-      }
-      return null;
 
     default:
       return null;
@@ -193,12 +191,41 @@ export function StepPayment() {
     setPollInterval(pollRef.current as unknown as ReturnType<typeof setInterval>);
   }, [stopPolling, invoice, selectedMethod, receiptIdentifier, setVerifyState, setPollInterval]);
 
-  // ── Determine field types from method metadata ─────────────────────────────
-  const refPlaceholder = (selectedMethod as any)?.reference?.placeholder
-    ?? (selectedMethod as any)?.referencePlaceholder ?? "";
-  const refHelpText    = (selectedMethod as any)?.reference?.help_text
-    ?? (selectedMethod as any)?.referenceHelpText ?? "";
-  const fieldType      = detectFieldType(refPlaceholder, refHelpText);
+  
+  const refPlaceholder =
+    (selectedMethod as any)?.reference?.placeholder ??
+    (selectedMethod as any)?.referencePlaceholder ??
+    "";
+
+  const refHelpText =
+    (selectedMethod as any)?.reference?.help_text ??
+    (selectedMethod as any)?.referenceHelpText ??
+    "";
+
+  const supportsUrl =
+    (selectedMethod as any)?.supports_url ?? false;
+
+  const supportsTransactionId =
+    (selectedMethod as any)?.supports_transaction_id ?? true;
+
+  const requiresAccountNumber =
+    (selectedMethod as any)?.requires_account_number ??
+    (selectedMethod as any)?.requires_payer_account ??
+    (selectedMethod as any)?.requiresPayerAccount ??
+    false;
+
+  let fieldType: ReceiptFieldType;
+
+  if (supportsUrl && supportsTransactionId) {
+      fieldType = "urlOrTransactionId";
+  } else if (supportsUrl) {
+    fieldType = "url";
+  } else if (supportsTransactionId) {
+    fieldType = "alphanumeric";
+  } else {
+    // Fallback for invalid backend configuration
+    fieldType = "alphanumeric";
+  }
 
   // ── Submit receipt ─────────────────────────────────────────────────────────
   const handleSubmitReceipt = async () => {
@@ -206,7 +233,7 @@ export function StepPayment() {
 
     // Validate
     const rErr = validateReceiptField(receiptIdentifier, fieldType);
-    const pErr = ((selectedMethod as any).requires_payer_account ?? (selectedMethod as any).requiresPayerAccount)
+    const pErr = requiresAccountNumber
       ? validatePayerAccount(payerAccount)
       : null;
 
@@ -585,8 +612,7 @@ export function StepPayment() {
                   </div>
 
                   {/* Payer account field */}
-                  {((selectedMethod as any)?.requires_payer_account ??
-                    (selectedMethod as any)?.requiresPayerAccount) && (
+                  {requiresAccountNumber && (
                     <div className="space-y-1.5">
                       <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                         {(selectedMethod as any)?.payer_account_label
