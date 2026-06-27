@@ -469,7 +469,7 @@ export function DesignDetailSheet({ design, onClose, onMutated }: DesignDetailSh
                       ) : (
                         <>
                           <ShoppingCart className="h-4 w-4" />
-                          {detail.sold_quantity > 0 ? "Reorder" : "Order Now"}
+                          {detail.sold_quantity > 0 ? "Order Now" : "Order Now"}
                         </>
                       )}
                     </Button>
