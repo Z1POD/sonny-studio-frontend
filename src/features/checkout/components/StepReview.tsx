@@ -299,7 +299,7 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
                 <span className="tabular-nums">{currencySymbol} {total.toFixed(2)}</span>
               </div>
               <p className="text-[10px] text-muted-foreground mt-0.5">
-                Final price will be confirmed by the store after order placement.
+                Final price will be confirmed on payment after order placement.
               </p>
             </div>
           </div>

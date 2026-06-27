@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   X, Pencil, Box, ShoppingCart, Trash2, Loader2,
   ChevronLeft, ChevronRight, ImageIcon, Archive,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
@@ -140,6 +141,7 @@ export function DesignDetailSheet({ design, onClose, onMutated }: DesignDetailSh
   const [lightboxIdx, setLightboxIdx]     = useState<number | null>(null);
   const [mockupIdx, setMockupIdx]         = useState(0);
   const [reorderLoading, setReorderLoading] = useState(false);
+  const [variantsExpanded, setVariantsExpanded] = useState(false);
 
   // Full product detail (has render_config, snapshot, mockups, enabled_variant)
   const { data: detailRaw, isLoading } = useQuery({
@@ -393,37 +395,66 @@ export function DesignDetailSheet({ design, onClose, onMutated }: DesignDetailSh
                     {/* Variants */}
                     {groupedVariants.length > 0 && (
                       <div>
-                        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          Variants
-                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setVariantsExpanded((v) => !v)}
+                          className="mb-2 flex w-full items-center justify-between text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                        >
+                          <span>
+                            Variants ({groupedVariants.length} colors)
+                          </span>
+
+                          <ChevronDown
+                            className={`h-4 w-4 transition-transform ${
+                              variantsExpanded ? "rotate-180" : ""
+                            }`}
+                          />
+                        </button>
+
 
                         <div className="space-y-2">
-                          {groupedVariants.map((color) => (
-                            <div
-                              key={color.name}
-                              className="flex items-start gap-3 rounded-xl border border-border bg-surface p-2.5"
-                            >
-                              <div className="flex min-w-28 items-center gap-2">
-                                <span
-                                  className="h-4 w-4 rounded-full border border-border"
-                                  style={{ backgroundColor: color.hex }}
-                                />
-                                <span className="text-sm font-medium">{color.name}</span>
-                              </div>
-
-                              <div className="flex flex-wrap gap-1.5">
-                                {color.sizes.map((size) => (
+                          {groupedVariants
+                            .slice(0, variantsExpanded ? groupedVariants.length : 1)
+                            .map((color) => (
+                              <div
+                                key={color.name}
+                                className="flex items-start gap-3 rounded-xl border border-border bg-surface p-2.5"
+                              >
+                                <div className="flex min-w-28 items-center gap-2">
                                   <span
-                                    key={size}
-                                    className="rounded-md border border-border bg-background px-2 py-0.5 text-xs font-medium"
-                                  >
-                                    {size}
+                                    className="h-4 w-4 rounded-full border border-border"
+                                    style={{ backgroundColor: color.hex }}
+                                  />
+
+                                  <span className="text-sm font-medium">
+                                    {color.name}
                                   </span>
-                                ))}
+                                </div>
+
+                                <div className="flex flex-wrap gap-1.5">
+                                  {color.sizes.map((size) => (
+                                    <span
+                                      key={size}
+                                      className="rounded-md border border-border bg-background px-2 py-0.5 text-xs font-medium"
+                                    >
+                                      {size}
+                                    </span>
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            ))}
                         </div>
+
+
+                        {groupedVariants.length > 1 && !variantsExpanded && (
+                          <button
+                            type="button"
+                            onClick={() => setVariantsExpanded(true)}
+                            className="mt-2 text-xs font-medium text-primary"
+                          >
+                            + {groupedVariants.length - 1} more colors
+                          </button>
+                        )}
                       </div>
                     )}
 

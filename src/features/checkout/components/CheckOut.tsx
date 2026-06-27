@@ -86,7 +86,7 @@ export function CheckOut({ mockupUrls: mockupUrlsProp }: CheckOutProps) {
       className="fixed inset-0 z-50 flex flex-col bg-background"
     >
       {/* ─── Header ─────────────────────────────────────────────────── */}
-      <header className="flex items-center gap-3 border-b border-border bg-surface/80 px-4 py-3 md:pt-3 pt-[52px] backdrop-blur-xl">
+      <header className="flex items-center gap-3 border-b border-border bg-surface/80 px-4 py-3 md:pt-3 pt-[100px] backdrop-blur-xl">
         {step !== "variants" ? (
           <button
             onClick={goBack}

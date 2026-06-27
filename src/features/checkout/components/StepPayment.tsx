@@ -128,12 +128,6 @@ export function StepPayment() {
         const v = await paymentApi.verify(transactionId);
         setVerifyState(v);
 
-        if (v.isVerified || v.status === "verified") {
-          clearInterval(pollRef.current!);
-          pollRef.current = null;
-          return;
-        }
-
         if (v.isTerminal) {
           clearInterval(pollRef.current!);
           pollRef.current = null;
@@ -153,16 +147,19 @@ export function StepPayment() {
 
   const handleSubmitReceipt = async () => {
     if (!order || !selectedMethod) return;
+
     if (!receiptIdentifier.trim()) {
       toast.error("Please enter your transaction ID or receipt URL");
       return;
     }
+
     if (selectedMethod.requiresPayerAccount && !payerAccount.trim()) {
       toast.error(selectedMethod.payerAccountLabel ?? "Please enter your payer account");
       return;
     }
 
     setSubmittingReceipt(true);
+
     try {
       const submitted = await paymentApi.submitReceipt({
         order_id: order.id,
@@ -172,20 +169,35 @@ export function StepPayment() {
       });
 
       setTxRef(submitted.transactionId);
+
+      // Backend already gave us the real state
       setVerifyState({
         transactionId: submitted.transactionId,
-        status: "submitted",
+        status: submitted.status,
         statusDisplay: submitted.statusDisplay,
-        isVerified: false,
-        isTerminal: false,
+        isVerified: submitted.isVerified,
+        isTerminal: submitted.isTerminal,
         amount: submitted.amount,
         currency: submitted.currency,
         provider: submitted.provider,
-        receiptIdentifier: receiptIdentifier,
+        receiptIdentifier: receiptIdentifier.trim(),
+        errorMessage: submitted.errorMessage,
         submittedAt: submitted.submittedAt,
+        verifiedAt: submitted.verifiedAt,
       });
 
-      startPolling(submitted.transactionId);
+
+      // Only poll when backend says it is still processing
+      if (!submitted.isTerminal) {
+        startPolling(submitted.transactionId);
+      } else {
+        // no polling needed
+        if (pollRef.current) {
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+        }
+      }
+
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to submit receipt");
     } finally {
@@ -249,7 +261,7 @@ export function StepPayment() {
         animate="center"
         exit="exit"
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className="flex h-full flex-col"
+        className="flex h-full flex-col overflow-y-auto no-scrollbar"
       >
         {/* Amount Banner */}
         <div className="mb-4 rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-900/30 via-emerald-800/10 to-emerald-950/40 p-4 text-center">

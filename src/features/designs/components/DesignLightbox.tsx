@@ -50,14 +50,14 @@ export function DesignLightbox({ images, initialIndex = 0, onClose }: DesignLigh
       {/* Close */}
       <button
         onClick={onClose}
-        className="absolute top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+        className="absolute top-16 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
       >
         <X className="h-5 w-5" />
       </button>
 
       {/* Counter */}
       {images.length > 1 && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 rounded-full bg-white/10 px-3 py-1 text-xs text-white">
+        <div className="absolute top-8 left-1/2 -translate-x-1/2 rounded-full bg-white/10 px-3 py-1 text-xs text-white">
           {idx + 1} / {images.length}
         </div>
       )}
