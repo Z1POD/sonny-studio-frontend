@@ -87,15 +87,7 @@ export function CheckOut({ mockupUrls: mockupUrlsProp }: CheckOutProps) {
     >
       {/* ─── Header ─────────────────────────────────────────────────── */}
       <header className="flex items-center gap-3 border-b border-border bg-surface/80 px-4 py-3 md:pt-3 pt-[100px] backdrop-blur-xl">
-        {step !== "variants" ? (
-          <button
-            onClick={goBack}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors hover:bg-muted"
-            aria-label="Go back"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-        ) : (
+        {step == "variants" ? (
           <button
             onClick={handleClose}
             className="grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors hover:bg-muted"
@@ -103,7 +95,17 @@ export function CheckOut({ mockupUrls: mockupUrlsProp }: CheckOutProps) {
           >
             <X className="h-5 w-5" />
           </button>
-        )}
+        ) : step == "payment" ? (
+          ""
+        ):
+        <button
+          onClick={goBack}
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors hover:bg-muted"
+          aria-label="Go back"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        }
 
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-base font-semibold leading-tight">
