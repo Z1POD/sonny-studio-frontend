@@ -444,8 +444,6 @@ export function StepPayment() {
     >
       <div className="flex-1 overflow-y-auto space-y-4 pb-6 no-scrollbar">
 
-        {/* Amount */}
-
         {/* Amount Banner */}
         <div className="mb-4 rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-900/30 via-emerald-800/10 to-emerald-950/40 p-4 text-center">
           <p className="text-[11px] uppercase tracking-[0.18em] text-emerald-300/70">
@@ -462,11 +460,11 @@ export function StepPayment() {
         </div>
 
         {/* Instructions */}
-        {(invoice.payment as any)?.instructions && (
+        {/* {(invoice.payment as any)?.instructions && (
           <p className="text-sm text-muted-foreground text-center leading-relaxed px-1">
             {(invoice.payment as any).instructions}
           </p>
-        )}
+        )} */}
 
         {/* Bank selector */}
         {methods.length > 0 && (
@@ -489,7 +487,7 @@ export function StepPayment() {
                   onClick={() => setSelectedProviderCode(code)}
                   className={`w-full text-left rounded-2xl border-2 p-4 transition ${
                     isSelected
-                      ? "border-primary bg-primary/5"
+                      ? "border-emerald-400/20 bg-primary/5"
                       : "border-border bg-surface hover:border-border/60"
                   }`}
                 >

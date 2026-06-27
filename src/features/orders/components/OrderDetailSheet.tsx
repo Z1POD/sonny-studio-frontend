@@ -131,7 +131,7 @@ function PaymentMethodCard({
     <button
       onClick={onSelect}
       className={`w-full text-left rounded-2xl border-2 p-4 transition ${
-        selected ? "border-primary bg-primary/5" : "border-border bg-surface hover:border-border/60"
+        selected ? "border-emerald-400/20 bg-primary/5" : "border-border bg-surface hover:border-border/60"
       }`}
     >
       <div className="flex items-center gap-3">
