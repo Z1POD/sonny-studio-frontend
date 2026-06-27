@@ -222,8 +222,8 @@ function DesignCard({
           </div>
 
           <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-            <span>{design.sold_quantity} sold</span>
-            <span className="h-1 w-1 rounded-full bg-border" />
+            {/* <span>{design.sold_quantity} sold</span> */}
+            {/* <span className="h-1 w-1 rounded-full bg-border" /> */}
             <span>
               {new Date(design.created_at).toLocaleDateString("en-US", {
                 month: "short",
@@ -238,7 +238,7 @@ function DesignCard({
             className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-muted/50 py-2 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
           >
             <ShoppingCart className="h-3.5 w-3.5" />
-            {design.sold_quantity > 0 ? "Reorder" : "Order Now"}
+            {design.sold_quantity > 0 ? "Order" : "Order Now"}
           </button>
         </div>
       </motion.div>

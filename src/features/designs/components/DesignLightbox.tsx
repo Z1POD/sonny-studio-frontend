@@ -71,7 +71,7 @@ export function DesignLightbox({ images, initialIndex = 0, onClose }: DesignLigh
           initial="enter"
           animate="center"
           exit="exit"
-          transition={{ type: "spring", damping: 30, stiffness: 300 }}
+          transition={{duration: 0.25, ease: "easeInOut", }}
           className="flex max-h-[85dvh] max-w-[90vw] items-center justify-center"
           onClick={(e) => e.stopPropagation()}
         >

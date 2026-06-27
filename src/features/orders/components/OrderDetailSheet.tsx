@@ -521,17 +521,17 @@ function OrderDetailContent({
       </div>
 
       {/* Payment action */}
-      {needsPayment && paymentMethods.length > 0 && (
-        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">
+      {needsPayment && paymentMethods.length > 0 && order.status != 'cancelled'  && (
+        <div className="rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-900/30 via-emerald-800/10 to-emerald-950/40 p-4    ">
           <div className="mb-3 flex items-start gap-2">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
             <div>
               <p className="text-sm font-medium text-amber-600">Payment required</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
+              {/* <p className="mt-0.5 text-xs text-muted-foreground">
                 {order.invoice?.payment?.instructions}
-              </p>
+              </p> */}
               {order.invoice?.payment?.warning && (
-                <p className="mt-1 text-xs font-medium text-amber-600">
+                <p className="mt-1 text-xs font-medium text-emerald-600">
                   {order.invoice.payment.warning}
                 </p>
               )}
@@ -539,9 +539,9 @@ function OrderDetailContent({
           </div>
 
           {/* Amount highlight */}
-          <div className="mb-3 rounded-xl bg-amber-500/10 px-4 py-2 text-center">
-            <p className="text-xs text-muted-foreground">Send exactly</p>
-            <p className="text-2xl font-bold text-amber-600">
+          <div className="mb-3 rounded-xl bg-emerald-500/10 px-4 py-2 text-center">
+            <p className="text-xs text-muted-foreground">Amount to send</p>
+            <p className="text-2xl font-bold text-emerald-100">
               {sym}{order.pricing.total}
             </p>
           </div>
@@ -741,10 +741,10 @@ function OrderDetailContent({
 
       {/* Action buttons */}
       <div className="flex gap-2">
-        <Button variant="outline" className="flex-1 gap-1.5 text-sm" onClick={onInvoice}>
+        {/* <Button variant="outline" className="flex-1 gap-1.5 text-sm" onClick={onInvoice}>
           <FileText className="h-4 w-4" />
           Invoice
-        </Button>
+        </Button> */}
         {order.can_cancel && (
           <Button
             variant="destructive"
