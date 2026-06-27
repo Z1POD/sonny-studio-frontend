@@ -5,8 +5,8 @@
  * mockup carousel with all captured images.
  */
 
-import { useState, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useMemo } from "react";
+import { motion } from "framer-motion";
 import {
   ShoppingBag,
   Truck,
@@ -18,9 +18,7 @@ import {
   ChevronRight,
   Loader2,
   Shield,
-  ChevronLeft,
-  ChevronRight as ChevronRightIcon,
-  ImageIcon,
+  Palette,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCheckoutStore } from "../store";
@@ -57,20 +55,13 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
     getTotalQuantity,
   } = useCheckoutStore();
 
-  const [mockupIndex, setMockupIndex] = useState(0);
 
   const totalQty = getTotalQuantity();
 
-  // Build mockup slides from all captured shots
-  const mockupSlides = useMemo(() => {
-    const slides: string[] = [];
-    if (mockupUrls.length > 0) {
-      slides.push(...mockupUrls);
-    } else if (mockupUrl) {
-      slides.push(mockupUrl);
-    }
-    return slides;
-  }, [mockupUrl, mockupUrls]);
+  const primaryMockup = useMemo(
+  () => mockupUrls[0] ?? mockupUrl ?? null,
+    [mockupUrls, mockupUrl],
+  );
 
   // Get selected variant details
   const selectedItems = useMemo(() => {
@@ -146,7 +137,6 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
   };
 
   const activePrintAreas = printAreas.filter((p) => artworks[p.id]?.decalUrl);
-
   return (
     <motion.div
       initial={{ opacity: 0, x: 40 }}
@@ -163,70 +153,52 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
           <p className="mt-1 text-sm text-muted-foreground">Double-check everything before placing.</p>
         </div>
 
-        {/* Mockup Carousel */}
-        {mockupSlides.length > 0 && (
-          <div className="relative overflow-hidden rounded-2xl border border-border bg-surface">
-            <div className="relative aspect-[4/3] overflow-hidden">
-              <AnimatePresence mode="wait">
-                <motion.img
-                  key={mockupIndex}
-                  src={mockupSlides[mockupIndex]}
-                  alt={`${productName} — view ${mockupIndex + 1}`}
-                  initial={{ opacity: 0, scale: 1.05 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.3 }}
-                  className="h-full w-full object-contain"
-                />
-              </AnimatePresence>
 
-              {/* Carousel Controls */}
-              {mockupSlides.length > 1 && (
-                <>
-                  <button
-                    onClick={() => setMockupIndex((i) => (i - 1 + mockupSlides.length) % mockupSlides.length)}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 grid h-8 w-8 place-items-center rounded-full bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => setMockupIndex((i) => (i + 1) % mockupSlides.length)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 grid h-8 w-8 place-items-center rounded-full bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60"
-                  >
-                    <ChevronRightIcon className="h-4 w-4" />
-                  </button>
-                  {/* Dots */}
-                  <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
-                    {mockupSlides.map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setMockupIndex(i)}
-                        className={`h-1.5 rounded-full transition-all ${
-                          i === mockupIndex ? "w-4 bg-white" : "w-1.5 bg-white/40"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {/* Image counter */}
-              {mockupSlides.length > 1 && (
-                <div className="absolute top-3 right-3 rounded-full bg-black/40 px-2 py-0.5 text-[10px] text-white backdrop-blur-sm">
-                  {mockupIndex + 1} / {mockupSlides.length}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Item Summary */}
-        <div className="space-y-3 rounded-2xl border border-border bg-surface p-4">
-          <div className="flex items-center gap-2">
-            <ShoppingBag className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-semibold">Items</h3>
-            <span className="text-[10px] text-muted-foreground">{totalQty} total</span>
-          </div>
+        <div className="overflow-hidden rounded-2xl border border-border bg-surface">
+
+          {primaryMockup && (
+            <div className="flex items-center gap-5 border-b border-border/60 p-4">
+              <div className="flex h-24 w-24 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-muted/40">
+                <img
+                  src={primaryMockup}
+                  alt={productName}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <h3 className="text-lg font-semibold tracking-tight">
+                  {productName}
+                </h3>
+
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {totalQty} item{totalQty > 1 ? "s" : ""}
+                </p>
+
+                {activePrintAreas.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {activePrintAreas.map((area) => (
+                      <span
+                        key={area.id}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground"
+                      >
+                        <Palette className="h-3 w-3" />
+                        {area.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-3 p-4">
+            <div className="flex items-center gap-2">
+              <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-semibold">Items</h3>
+            </div>
 
           {selectedItems.map(({ variant, quantity }) => (
             <div key={variant.id} className="flex items-center justify-between py-2 border-t border-border/40 first:border-t-0">
@@ -247,25 +219,7 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
               </span>
             </div>
           ))}
-
-          {/* Print areas summary */}
-          {activePrintAreas.length > 0 && (
-            <div className="border-t border-border/40 pt-2">
-              <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground mb-1.5">
-                Custom artwork
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {activePrintAreas.map((area) => (
-                  <span
-                    key={area.id}
-                    className="rounded-full border border-border bg-surface-elevated px-2 py-0.5 text-[10px] text-muted-foreground"
-                  >
-                    {area.name}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
+        </div>
         </div>
 
         {/* Shipping Summary */}

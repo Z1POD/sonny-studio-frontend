@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
+import { useAuthStore } from "@/features/auth/store";
 import {
   Truck,
   MapPin,
@@ -24,6 +25,7 @@ import type { FulfillmentType } from "../types";
 interface Props {
   onContinue: () => void;
 }
+
 
 const slideVariants = {
   enter: (direction: number) => ({
@@ -96,6 +98,7 @@ function validateStreet(street: string): { valid: boolean; message?: string } {
 }
 
 export function StepShipping({ onContinue }: Props) {
+  const user = useAuthStore((s) => s.user);
   const {
     shippingAddress,
     setShippingAddress,
@@ -123,6 +126,21 @@ export function StepShipping({ onContinue }: Props) {
   } = useCheckoutStore();
 
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (
+      user?.display_name &&
+      !shippingAddress.fullName.trim()
+    ) {
+      setShippingAddress({
+        fullName: user.display_name,
+      });
+    }
+  }, [
+    user?.display_name,
+    shippingAddress.fullName,
+    setShippingAddress,
+  ]);
 
   // Fetch cities on mount
   useEffect(() => {

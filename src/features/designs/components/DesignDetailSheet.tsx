@@ -10,7 +10,7 @@
  *    reconstruct from detail.render_config directly (fast path)
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -230,6 +230,27 @@ export function DesignDetailSheet({ design, onClose, onMutated }: DesignDetailSh
     });
   };
 
+  const variants = detail?.enabled_variant ?? [];
+  const groupedVariants = useMemo(() => {
+  const map = new Map();
+
+  variants.forEach((variant) => {
+      const key = variant.color.id ?? variant.color.name;
+
+      if (!map.has(key)) {
+        map.set(key, {
+          name: variant.color.name,
+          hex: variant.color.hex,
+          sizes: [],
+        });
+      }
+
+      map.get(key)!.sizes.push(variant.size);
+    });
+
+    return [...map.values()];
+  }, [variants]);
+
   const mockups        = detail?.mockups ?? [];
   const lightboxImages = mockups.map((m: any) => ({ url: m.url, label: m.type }));
   const isArchived     = design?.status === "archived";
@@ -351,9 +372,9 @@ export function DesignDetailSheet({ design, onClose, onMutated }: DesignDetailSh
                     {/* Stats */}
                     <div className="grid grid-cols-3 gap-2">
                       {[
-                        { label: "Retail",  value: getRetailPrice(design) },
-                        { label: "Sold",    value: String(detail.sold_quantity ?? 0) },
-                        { label: "Views",   value: String(detail.analytics?.view_count ?? 0) },
+                        { label: "Price",  value: getRetailPrice(design) },
+                        // { label: "Sold",    value: String(detail.sold_quantity ?? 0) },
+                        // { label: "Views",   value: String(detail.analytics?.view_count ?? 0) },
                       ].map(({ label, value }) => (
                         <div key={label} className="rounded-2xl border border-border bg-surface px-3 py-2.5 text-center">
                           <p className="text-xs text-muted-foreground">{label}</p>
@@ -370,22 +391,36 @@ export function DesignDetailSheet({ design, onClose, onMutated }: DesignDetailSh
                     )}
 
                     {/* Variants */}
-                    {detail.enabled_variant?.length > 0 && (
+                    {groupedVariants.length > 0 && (
                       <div>
                         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                           Variants
                         </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {detail.enabled_variant.map((v: any) => (
+
+                        <div className="space-y-2">
+                          {groupedVariants.map((color) => (
                             <div
-                              key={v.id}
-                              className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-xs"
+                              key={color.name}
+                              className="flex items-start gap-3 rounded-xl border border-border bg-surface p-2.5"
                             >
-                              <span
-                                className="h-3 w-3 rounded-full border border-border/60"
-                                style={{ background: v.color.hex }}
-                              />
-                              {v.color.name} · {v.size}
+                              <div className="flex min-w-28 items-center gap-2">
+                                <span
+                                  className="h-4 w-4 rounded-full border border-border"
+                                  style={{ backgroundColor: color.hex }}
+                                />
+                                <span className="text-sm font-medium">{color.name}</span>
+                              </div>
+
+                              <div className="flex flex-wrap gap-1.5">
+                                {color.sizes.map((size) => (
+                                  <span
+                                    key={size}
+                                    className="rounded-md border border-border bg-background px-2 py-0.5 text-xs font-medium"
+                                  >
+                                    {size}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
                           ))}
                         </div>
