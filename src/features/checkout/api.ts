@@ -1,13 +1,19 @@
-// src/features/checkout/api.ts
+// src/features/checkout/api.ts — v2
+/**
+ * Fix: submitReceipt response now maps ALL fields the backend returns:
+ *   is_verified, is_terminal, error_message, verified_at, order_status
+ * This is critical — without is_terminal the frontend always starts polling
+ * even when the backend already returned a terminal result (verified/failed).
+ *
+ * The ReceiptSubmission type is extended to carry isVerified, isTerminal,
+ * errorMessage, verifiedAt so StepPayment can branch immediately on submit.
+ */
 
 import { api } from "@/shared/api/client";
 import type {
   City,
-  DeliveryOption,
   FulfillmentType,
-  InvoiceData,
   OrderResponse,
-  PaymentMethod,
   PickupLocation,
   ReceiptSubmission,
   ShippingAddress,
@@ -19,47 +25,31 @@ import type {
 
 interface ShippingCitiesResponse {
   success: boolean;
-  data: Array<{
-    id: string;
-    name: string;
-    state: string;
-  }>;
+  data: Array<{ id: string; name: string; state: string }>;
 }
 
 interface ShippingOptionsApiResponse {
   success: boolean;
   data: {
     delivery: Array<{
-      vendor_code: string;
-      vendor_name: string;
-      service_name: string;
-      service_level: "standard" | "express";
-      cost: string;
-      currency: string;
-      estimated_days: string;
-      is_free: boolean;
+      vendor_code: string; vendor_name: string; service_name: string;
+      service_level: "standard" | "express"; cost: string; currency: string;
+      estimated_days: string; is_free: boolean;
     }>;
     pickup: Array<{
-      location_id: string;
-      name: string;
-      address: string;
-      landmark?: string;
-      phone?: string;
-      instructions?: string;
-      estimated_days: string;
-      is_free: boolean;
+      location_id: string; name: string; address: string;
+      landmark?: string; phone?: string; instructions?: string;
+      estimated_days: string; is_free: boolean;
     }>;
   };
 }
 
 export const checkoutApi = {
-  /** GET /api/v1/shipping/cities/ */
   getCities: async (): Promise<City[]> => {
     const res = await api.get<ShippingCitiesResponse>("/shipping/cities/");
     return res.data.map((c) => ({ id: c.id, name: c.name, state: c.state }));
   },
 
-  /** GET /api/v1/shipping/options/?city_id={cityId}&item_count={count}&subtotal={subtotal} */
   getShippingOptions: async (
     cityId: string,
     itemCount: number,
@@ -70,24 +60,15 @@ export const checkoutApi = {
     });
     return {
       delivery: res.data.delivery.map((d) => ({
-        vendorCode: d.vendor_code,
-        vendorName: d.vendor_name,
-        serviceName: d.service_name,
-        serviceLevel: d.service_level,
-        cost: d.cost,
-        currency: d.currency,
-        estimatedDays: d.estimated_days,
-        isFree: d.is_free,
+        vendorCode: d.vendor_code, vendorName: d.vendor_name,
+        serviceName: d.service_name, serviceLevel: d.service_level,
+        cost: d.cost, currency: d.currency,
+        estimatedDays: d.estimated_days, isFree: d.is_free,
       })),
       pickup: res.data.pickup.map((p) => ({
-        locationId: p.location_id,
-        name: p.name,
-        address: p.address,
-        landmark: p.landmark,
-        phone: p.phone,
-        instructions: p.instructions,
-        estimatedDays: p.estimated_days,
-        isFree: p.is_free,
+        locationId: p.location_id, name: p.name, address: p.address,
+        landmark: p.landmark, phone: p.phone, instructions: p.instructions,
+        estimatedDays: p.estimated_days, isFree: p.is_free,
       })),
     };
   },
@@ -96,12 +77,7 @@ export const checkoutApi = {
 /* ─── Orders ─────────────────────────────────────────────────────────────── */
 
 interface CreateOrderPayload {
-  items: Array<{
-    product_id: string;
-    size: string;
-    color_name: string;
-    quantity: number;
-  }>;
+  items: Array<{ product_id: string; size: string; color_name: string; quantity: number }>;
   delivery_type: FulfillmentType;
   shipping_address?: ShippingAddress;
   shipping_vendor?: string;
@@ -115,127 +91,84 @@ interface CreateOrderPayload {
 interface CreateOrderApiResponse {
   success: boolean;
   data: {
-    id: string;
-    order_number: string;
-    status: string;
-    payment_status: string;
+    id: string; order_number: string; status: string; payment_status: string;
     delivery_type: FulfillmentType;
     invoice: {
-      number: string;
-      order_number: string;
-      order_id: string;
-      created_at: string;
-      expires_at: string;
-      expires_in_seconds: number;
+      number: string; order_number: string; order_id: string;
+      created_at: string; expires_at: string; expires_in_seconds: number;
       status: string;
       store: { name: string; logo_url?: string };
       amount: {
-        subtotal: string;
-        shipping: string;
-        tax: string;
-        discount: string;
-        total: string;
-        currency: { code: string; symbol: string };
+        subtotal: string; shipping: string; tax: string; discount: string;
+        total: string; currency: { code: string; symbol: string };
       };
       items: Array<{
-        product_name: string;
-        size: string;
-        color: string;
-        quantity: number;
-        unit_price: string;
-        subtotal: string;
-        mockup_url?: string;
+        product_name: string; size: string; color: string; quantity: number;
+        unit_price: string; subtotal: string; mockup_url?: string;
       }>;
       payment: {
-        instructions: string;
-        warning?: string;
-        note?: string;
+        instructions: string; warning?: string; note?: string;
         methods: Array<{
-          provider_code: string;
-          provider_name: string;
-          provider_logo?: string;
-          account_name: string;
-          account_number: string;
-          account_type: string;
-          reference: {
-            label: string;
-            placeholder: string;
-            help_text: string;
-          };
-          requires_payer_account: boolean;
-          payer_account_label?: string;
+          provider_code: string; provider_name: string; provider_logo?: string;
+          account_name: string; account_number: string; account_type: string;
+          reference: { label: string; placeholder: string; help_text: string };
+          requires_payer_account: boolean; payer_account_label?: string;
         }>;
       };
     };
     pricing: {
-      subtotal: string;
-      shipping_cost: string;
-      discount: string;
-      total: string;
-      currency: { code: string; symbol: string };
+      subtotal: string; shipping_cost: string; discount: string;
+      total: string; currency: { code: string; symbol: string };
     };
     shipping: {
-      delivery_type: FulfillmentType;
-      vendor?: string;
-      service_level?: string;
-      address?: ShippingAddress;
-      pickup_location?: PickupLocation;
+      delivery_type: FulfillmentType; vendor?: string; service_level?: string;
+      address?: ShippingAddress; pickup_location?: PickupLocation;
     };
-    tracking_number?: string;
-    tracking_url?: string;
-    can_cancel: boolean;
-    timeline: {
-      created: string;
-      paid?: string;
-      shipped?: string;
-      delivered?: string;
-    };
+    tracking_number?: string; tracking_url?: string; can_cancel: boolean;
+    timeline: { created: string; paid?: string; shipped?: string; delivered?: string };
   };
 }
 
 function mapOrderResponse(raw: CreateOrderApiResponse["data"]): OrderResponse {
   return {
-    id: raw.id,
-    orderNumber: raw.order_number,
-    status: raw.status,
+    id:            raw.id,
+    orderNumber:   raw.order_number,
+    status:        raw.status,
     paymentStatus: raw.payment_status,
-    deliveryType: raw.delivery_type,
+    deliveryType:  raw.delivery_type,
     invoice: {
-      number: raw.invoice.number,
-      orderNumber: raw.invoice.order_number,
-      orderId: raw.invoice.order_id,
-      createdAt: raw.invoice.created_at,
-      expiresAt: raw.invoice.expires_at,
+      number:          raw.invoice.number,
+      orderNumber:     raw.invoice.order_number,
+      orderId:         raw.invoice.order_id,
+      createdAt:       raw.invoice.created_at,
+      expiresAt:       raw.invoice.expires_at,
       expiresInSeconds: raw.invoice.expires_in_seconds,
-      status: raw.invoice.status,
-      store: raw.invoice.store,
-      amount: raw.invoice.amount,
-      items: raw.invoice.items,
-      payment: raw.invoice.payment,
+      status:          raw.invoice.status,
+      store:           raw.invoice.store,
+      amount:          raw.invoice.amount,
+      items:           raw.invoice.items,
+      payment:         raw.invoice.payment,
     },
     pricing: {
-      subtotal: raw.pricing.subtotal,
+      subtotal:     raw.pricing.subtotal,
       shippingCost: raw.pricing.shipping_cost,
-      discount: raw.pricing.discount,
-      total: raw.pricing.total,
-      currency: raw.pricing.currency,
+      discount:     raw.pricing.discount,
+      total:        raw.pricing.total,
+      currency:     raw.pricing.currency,
     },
-    shipping: raw.shipping,
+    shipping:       raw.shipping,
     trackingNumber: raw.tracking_number,
-    trackingUrl: raw.tracking_url,
-    canCancel: raw.can_cancel,
-    timeline: raw.timeline,
+    trackingUrl:    raw.tracking_url,
+    canCancel:      raw.can_cancel,
+    timeline:       raw.timeline,
   };
 }
 
 export const orderApi = {
-  /** POST /api/v1/orders/ */
   create: async (payload: CreateOrderPayload): Promise<OrderResponse> => {
     const res = await api.post<CreateOrderApiResponse>("/orders/", { body: payload });
     return mapOrderResponse(res.data);
   },
-
-  /** POST /api/v1/orders/{id}/cancel/ */
   cancel: async (orderId: string, reason: string): Promise<void> => {
     await api.post(`/orders/${orderId}/cancel/`, { body: { reason } });
   },
@@ -250,18 +183,38 @@ interface SubmitReceiptPayload {
   payer_account?: string;
 }
 
+// ── Full response from POST /payment/submit-receipt/ ─────────────────────────
+// Backend verifies synchronously and returns the ACTUAL result straight away.
+// is_terminal = true  → show result immediately, skip polling
+// is_terminal = false → still processing, start polling
 interface SubmitReceiptApiResponse {
   success: boolean;
   data: {
     transaction_id: string;
     status: string;
     status_display: string;
+    is_verified: boolean;
+    is_terminal: boolean;       // ← KEY: skip polling when true
     message: string;
+    error_message: string | null;
     amount: string;
     currency: string;
     provider: string;
     submitted_at: string;
+    verified_at: string | null;
+    order_status: string;
+    order_payment_status: string;
   };
+}
+
+// Extended ReceiptSubmission carries all terminal-decision fields
+export interface ReceiptSubmissionFull extends ReceiptSubmission {
+  isVerified:  boolean;
+  isTerminal:  boolean;
+  errorMessage?: string;
+  verifiedAt?:  string;
+  orderStatus?: string;
+  orderPaymentStatus?: string;
 }
 
 interface VerifyApiResponse {
@@ -271,53 +224,72 @@ interface VerifyApiResponse {
     status: "submitted" | "verifying" | "verified" | "mismatch" | "failed";
     status_display: string;
     is_verified: boolean;
-    is_terminal?: boolean;
-    amount: string;
-    currency: string;
-    provider: string;
+    is_terminal: boolean;
+    amount: string; currency: string; provider: string;
     receipt_identifier: string;
     error_message?: string;
     submitted_at: string;
     verified_at?: string;
+    order_status?: string;
+    order_payment_status?: string;
   };
 }
 
 export const paymentApi = {
-  /** POST /api/v1/payment/submit-receipt/ */
-  submitReceipt: async (payload: SubmitReceiptPayload): Promise<ReceiptSubmission> => {
+  /**
+   * POST /api/v1/payment/submit-receipt/
+   *
+   * Backend verifies synchronously. The response includes is_terminal so
+   * the frontend can skip polling entirely when it's already resolved.
+   */
+  submitReceipt: async (payload: SubmitReceiptPayload): Promise<ReceiptSubmissionFull> => {
     const res = await api.post<SubmitReceiptApiResponse>("/payment/submit-receipt/", {
       body: payload,
     });
+    const d = res.data;
     return {
-      transactionId: res.data.transaction_id,
-      status: res.data.status,
-      statusDisplay: res.data.status_display,
-      message: res.data.message,
-      amount: res.data.amount,
-      currency: res.data.currency,
-      provider: res.data.provider,
-      submittedAt: res.data.submitted_at,
+      // Base ReceiptSubmission fields
+      transactionId: d.transaction_id,
+      status:        d.status,
+      statusDisplay: d.status_display,
+      message:       d.message,
+      amount:        d.amount,
+      currency:      d.currency,
+      provider:      d.provider,
+      submittedAt:   d.submitted_at,
+      // Extended fields for immediate terminal decision
+      isVerified:    d.is_verified,
+      isTerminal:    d.is_terminal,
+      errorMessage:  d.error_message ?? undefined,
+      verifiedAt:    d.verified_at   ?? undefined,
+      orderStatus:   d.order_status,
+      orderPaymentStatus: d.order_payment_status,
     };
   },
 
-  /** POST /api/v1/payment/verify/ */
+  /**
+   * POST /api/v1/payment/verify/
+   * Polling endpoint — only called when submit returned is_terminal = false.
+   * Stop polling as soon as response.isTerminal = true.
+   */
   verify: async (txRef: string): Promise<VerificationStatus> => {
     const res = await api.post<VerifyApiResponse>("/payment/verify/", {
       body: { tx_ref: txRef },
     });
+    const d = res.data;
     return {
-      transactionId: res.data.transaction_id,
-      status: res.data.status,
-      statusDisplay: res.data.status_display,
-      isVerified: res.data.is_verified,
-      isTerminal: res.data.is_terminal ?? false,
-      amount: res.data.amount,
-      currency: res.data.currency,
-      provider: res.data.provider,
-      receiptIdentifier: res.data.receipt_identifier,
-      errorMessage: res.data.error_message,
-      submittedAt: res.data.submitted_at,
-      verifiedAt: res.data.verified_at,
+      transactionId:     d.transaction_id,
+      status:            d.status,
+      statusDisplay:     d.status_display,
+      isVerified:        d.is_verified,
+      isTerminal:        d.is_terminal,
+      amount:            d.amount,
+      currency:          d.currency,
+      provider:          d.provider,
+      receiptIdentifier: d.receipt_identifier,
+      errorMessage:      d.error_message,
+      submittedAt:       d.submitted_at,
+      verifiedAt:        d.verified_at,
     };
   },
 };

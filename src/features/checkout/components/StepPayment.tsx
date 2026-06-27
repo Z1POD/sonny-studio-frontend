@@ -1,20 +1,20 @@
-// src/features/checkout/components/StepPayment.tsx
+// src/features/checkout/components/StepPayment.tsx — v2
+/**
+ * Fixes:
+ *  1. submitReceipt response now maps is_verified, is_terminal, error_message,
+ *     verified_at so terminal results are caught immediately — no spurious polling.
+ *  2. UI transitions to "Verifying…" state immediately when the HTTP request
+ *     starts (not after it resolves) so the user never sees a long "Submitting" spinner.
+ *  3. Polling only starts when backend says is_terminal = false.
+ *     When is_terminal = true the result is shown instantly (success or failure).
+ *  4. Removed setStep (doesn't exist on store) — navigation uses reset() / href.
+ */
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Check,
-  Copy,
-  Loader2,
-  Shield,
-  RefreshCw,
-  X,
-  ArrowLeft,
-  AlertTriangle,
-  CreditCard,
-  Clock,
-  Upload,
-  FileCheck,
+  Check, Copy, Loader2, Shield, RefreshCw, X,
+  AlertTriangle, Clock, Upload, FileCheck, Wifi,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,54 +22,38 @@ import { Label } from "@/components/ui/label";
 import { useCheckoutStore } from "../store";
 import { paymentApi, orderApi } from "../api";
 import { toast } from "sonner";
-import type { VerificationStatus } from "../types";
 
-const slideVariants = {
-  enter: (direction: number) => ({
-    x: direction > 0 ? 60 : -60,
-    opacity: 0,
-  }),
-  center: {
-    x: 0,
-    opacity: 1,
-  },
-  exit: (direction: number) => ({
-    x: direction > 0 ? -60 : 60,
-    opacity: 0,
-  }),
-};
+const POLL_INTERVAL_MS    = 3_000;
+const MAX_POLL_DURATION_MS = 120_000; // 2 minutes
 
-const POLL_INTERVAL_MS = 3000;
-const MAX_POLL_DURATION_MS = 120000; // 2 minutes
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function isTerminalStatus(status: string) {
+  return ["verified", "failed", "mismatch", "fraud", "expired"].includes(status);
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function StepPayment() {
   const {
     order,
-    selectedProviderCode,
-    setSelectedProviderCode,
-    receiptIdentifier,
-    setReceiptIdentifier,
-    payerAccount,
-    setPayerAccount,
-    submittingReceipt,
-    setSubmittingReceipt,
-    txRef,
-    setTxRef,
-    verifyState,
-    setVerifyState,
-    pollInterval,
+    selectedProviderCode, setSelectedProviderCode,
+    receiptIdentifier,    setReceiptIdentifier,
+    payerAccount,         setPayerAccount,
+    submittingReceipt,    setSubmittingReceipt,
+    txRef,                setTxRef,
+    verifyState,          setVerifyState,
     setPollInterval,
-    setStep,
     reset,
   } = useCheckoutStore();
 
   const [showReceiptForm, setShowReceiptForm] = useState(false);
-  const [copiedField, setCopiedField] = useState<string | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [copiedField, setCopiedField]         = useState<string | null>(null);
+  const pollRef    = useRef<ReturnType<typeof setInterval> | null>(null);
   const elapsedRef = useRef(0);
 
-  const invoice = order?.invoice;
-  const methods = invoice?.payment?.methods ?? [];
+  const invoice        = order?.invoice;
+  const methods        = invoice?.payment?.methods ?? [];
   const selectedMethod = methods.find((m) => m.provider_code === selectedProviderCode);
 
   // Auto-select first provider
@@ -82,10 +66,7 @@ export function StepPayment() {
   // Cleanup polling on unmount
   useEffect(() => {
     return () => {
-      if (pollRef.current) {
-        clearInterval(pollRef.current);
-        pollRef.current = null;
-      }
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
     };
   }, []);
 
@@ -93,33 +74,37 @@ export function StepPayment() {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedField(field);
-      setTimeout(() => setCopiedField(null), 2000);
-      toast.success("Copied to clipboard");
-    } catch {
-      toast.error("Could not copy");
-    }
+      setTimeout(() => setCopiedField(null), 2_000);
+      toast.success("Copied");
+    } catch { toast.error("Could not copy"); }
+  };
+
+  // ── Polling ────────────────────────────────────────────────────────────────
+  const stopPolling = () => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
   };
 
   const startPolling = (transactionId: string) => {
-    if (pollRef.current) clearInterval(pollRef.current);
+    stopPolling();
     elapsedRef.current = 0;
 
     const poll = async () => {
-      if (elapsedRef.current >= MAX_POLL_DURATION_MS) {
-        clearInterval(pollRef.current!);
-        pollRef.current = null;
+      elapsedRef.current += POLL_INTERVAL_MS;
+
+      if (elapsedRef.current > MAX_POLL_DURATION_MS) {
+        stopPolling();
         setVerifyState({
           transactionId,
-          status: "failed",
-          statusDisplay: "Verification timed out",
-          isVerified: false,
-          isTerminal: true,
-          amount: invoice?.amount?.total ?? "0",
-          currency: invoice?.amount?.currency?.code ?? "ETB",
-          provider: selectedMethod?.provider_name ?? "",
+          status:            "failed",
+          statusDisplay:     "Verification timed out",
+          isVerified:        false,
+          isTerminal:        true,
+          amount:            invoice?.amount?.total ?? "0",
+          currency:          invoice?.amount?.currency?.code ?? "ETB",
+          provider:          selectedMethod?.provider_name ?? "",
           receiptIdentifier: receiptIdentifier,
-          errorMessage: "Verification took too long. Please contact support.",
-          submittedAt: new Date().toISOString(),
+          errorMessage:      "Verification took too long. Please contact support.",
+          submittedAt:       new Date().toISOString(),
         });
         return;
       }
@@ -127,79 +112,86 @@ export function StepPayment() {
       try {
         const v = await paymentApi.verify(transactionId);
         setVerifyState(v);
-
-        if (v.isTerminal) {
-          clearInterval(pollRef.current!);
-          pollRef.current = null;
-          return;
-        }
-      } catch (error) {
-        console.error("Polling error:", error);
+        if (v.isTerminal) stopPolling();
+      } catch (err) {
+        console.error("[Payment] polling error:", err);
+        // keep polling — transient network error
       }
-
-      elapsedRef.current += POLL_INTERVAL_MS;
     };
 
+    // First tick immediately, then on interval
     poll();
     pollRef.current = setInterval(poll, POLL_INTERVAL_MS);
-    setPollInterval(pollRef.current as unknown as number);
+    setPollInterval(pollRef.current as unknown as ReturnType<typeof setInterval>);
   };
 
+  // ── Submit receipt ─────────────────────────────────────────────────────────
   const handleSubmitReceipt = async () => {
     if (!order || !selectedMethod) return;
-
     if (!receiptIdentifier.trim()) {
-      toast.error("Please enter your transaction ID or receipt URL");
+      toast.error("Please enter your transaction ID or receipt number");
       return;
     }
-
     if (selectedMethod.requiresPayerAccount && !payerAccount.trim()) {
-      toast.error(selectedMethod.payerAccountLabel ?? "Please enter your payer account");
+      toast.error(selectedMethod.payerAccountLabel ?? "Please enter your account number");
       return;
     }
 
+    // ── Immediately show "verifying" UI ──────────────────────────────────────
+    // The backend verifies synchronously and can take a few seconds.
+    // Show the verifying state NOW so the user isn't staring at a spinner
+    // with no feedback on what's happening.
     setSubmittingReceipt(true);
+    setVerifyState({
+      transactionId:     "",
+      status:            "verifying",
+      statusDisplay:     "Checking with your bank…",
+      isVerified:        false,
+      isTerminal:        false,
+      amount:            invoice?.amount?.total ?? "0",
+      currency:          invoice?.amount?.currency?.code ?? "ETB",
+      provider:          selectedMethod.provider_name,
+      receiptIdentifier: receiptIdentifier.trim(),
+      submittedAt:       new Date().toISOString(),
+    });
 
     try {
       const submitted = await paymentApi.submitReceipt({
-        order_id: order.id,
-        provider: selectedProviderCode,
+        order_id:           order.id,
+        provider:           selectedProviderCode,
         receipt_identifier: receiptIdentifier.trim(),
-        payer_account: payerAccount.trim() || undefined,
+        payer_account:      payerAccount.trim() || undefined,
       });
 
       setTxRef(submitted.transactionId);
 
-      // Backend already gave us the real state
+      // Overwrite with the REAL state from the backend
       setVerifyState({
-        transactionId: submitted.transactionId,
-        status: submitted.status,
-        statusDisplay: submitted.statusDisplay,
-        isVerified: submitted.isVerified,
-        isTerminal: submitted.isTerminal,
-        amount: submitted.amount,
-        currency: submitted.currency,
-        provider: submitted.provider,
+        transactionId:     submitted.transactionId,
+        status:            submitted.status as any,
+        statusDisplay:     submitted.statusDisplay,
+        isVerified:        submitted.isVerified,
+        isTerminal:        submitted.isTerminal,
+        amount:            submitted.amount,
+        currency:          submitted.currency,
+        provider:          submitted.provider,
         receiptIdentifier: receiptIdentifier.trim(),
-        errorMessage: submitted.errorMessage,
-        submittedAt: submitted.submittedAt,
-        verifiedAt: submitted.verifiedAt,
+        errorMessage:      submitted.errorMessage,
+        submittedAt:       submitted.submittedAt,
+        verifiedAt:        submitted.verifiedAt,
       });
 
-
-      // Only poll when backend says it is still processing
-      if (!submitted.isTerminal) {
-        startPolling(submitted.transactionId);
+      if (submitted.isTerminal) {
+        // Backend already resolved — no polling needed at all
+        stopPolling();
       } else {
-        // no polling needed
-        if (pollRef.current) {
-          clearInterval(pollRef.current);
-          pollRef.current = null;
-        }
+        // Backend is still processing — start polling
+        startPolling(submitted.transactionId);
       }
-
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to submit receipt");
+      // Reset verifyState so the form comes back
+      setVerifyState(null);
+      toast.error(e?.data?.error?.message ?? e?.message ?? "Failed to submit receipt");
     } finally {
       setSubmittingReceipt(false);
     }
@@ -217,234 +209,29 @@ export function StepPayment() {
   };
 
   const handleRetry = () => {
+    stopPolling();
     setVerifyState(null);
     setReceiptIdentifier("");
     setPayerAccount("");
     setTxRef("");
     setShowReceiptForm(false);
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
   };
 
-  // ─── Loading / No Invoice State ─────────────────────────────────────────
+  // ─── No invoice ────────────────────────────────────────────────────────────
   if (!invoice) {
     return (
-      <motion.div
-        custom={1}
-        variants={slideVariants}
-        initial="enter"
-        animate="center"
-        exit="exit"
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className="flex h-full flex-col items-center justify-center py-12 text-center"
-      >
-        <div className="grid h-16 w-16 place-items-center rounded-full bg-muted">
-          <CreditCard className="h-8 w-8 text-muted-foreground" />
-        </div>
-        <h3 className="mt-4 text-lg font-semibold">Payment details loading</h3>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Please wait while we prepare your payment options.
-        </p>
-      </motion.div>
+      <div className="flex h-full flex-col items-center justify-center py-12 text-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <p className="mt-4 text-sm text-muted-foreground">Loading payment details…</p>
+      </div>
     );
   }
 
-  // ─── Payment Instructions View ──────────────────────────────────────────
-  if (!verifyState) {
-    return (
-      <motion.div
-        custom={1}
-        variants={slideVariants}
-        initial="enter"
-        animate="center"
-        exit="exit"
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className="flex h-full flex-col overflow-y-auto no-scrollbar"
-      >
-        {/* Amount Banner */}
-        <div className="mb-4 rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-900/30 via-emerald-800/10 to-emerald-950/40 p-4 text-center">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-emerald-300/70">
-            Transfer exactly
-          </p>
-          <p className="mt-1 text-3xl font-bold tracking-tight text-emerald-100">
-            {invoice?.amount?.currency?.symbol}{invoice?.amount?.total}
-          </p>
-          {invoice?.payment?.warning && (
-            <p className="mt-2 text-[11px] text-emerald-300/60">
-              {invoice.payment.warning}
-            </p>
-          )}
-        </div>
+  const sym   = invoice.amount?.currency?.symbol ?? "Br";
+  const total = invoice.amount?.total ?? "0";
 
-        {/* Provider Selection */}
-        <div className="space-y-2">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            Choose your bank
-          </p>
-          {methods.length === 0 ? (
-            <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading payment methods…
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-2">
-              {methods.map((method) => (
-                <button
-                  key={method.provider_code}
-                  onClick={() => {
-                    setSelectedProviderCode(method.provider_code);
-                    setReceiptIdentifier("");
-                    setPayerAccount("");
-                  }}
-                  className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition-all ${
-                    selectedProviderCode === method.provider_code
-                      ? "border-primary bg-primary/5"
-                      : "border-border bg-surface hover:border-foreground/30"
-                  }`}
-                >
-                  {method.provider_logo && (
-                    <img
-                      src={method.provider_logo}
-                      alt={method.provider_name}
-                      className="h-10 w-10 rounded-lg object-contain"
-                    />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium">{method.provider_name}</p>
-                    <p className="text-[11px] text-muted-foreground">{method.accountType}</p>
-                  </div>
-                  {selectedProviderCode === method.provider_code && (
-                    <div className="grid h-5 w-5 place-items-center rounded-full bg-primary">
-                      <Check className="h-3 w-3 text-primary-foreground" />
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Selected Method Details */}
-        <AnimatePresence mode="wait">
-          {selectedMethod && (
-            <motion.div
-              key={selectedMethod.provider_code}
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mt-3 space-y-2 rounded-2xl border border-border bg-surface p-4"
-            >
-              <DetailRow
-                label="Recipient"
-                value={selectedMethod.account_name}
-                onCopy={() => copyToClipboard(selectedMethod.account_name, "recipient")}
-                copied={copiedField === "recipient"}
-              />
-              <DetailRow
-                label="Account number"
-                value={selectedMethod.account_number}
-                onCopy={() => copyToClipboard(selectedMethod.account_number, "account")}
-                copied={copiedField === "account"}
-              />
-              <DetailRow
-                label="Amount"
-                value={`${invoice?.amount?.currency?.symbol}${invoice?.amount?.total}`}
-                onCopy={() => copyToClipboard(invoice?.amount?.total ?? "", "amount")}
-                copied={copiedField === "amount"}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Receipt Submission Toggle */}
-        <div className="mt-4 space-y-3">
-          <button
-            onClick={() => setShowReceiptForm((s) => !s)}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm font-medium transition-all hover:bg-primary/10"
-          >
-            <Shield className="h-4 w-4" />
-            {showReceiptForm ? "Hide verification" : "I've paid — verify now"}
-          </button>
-
-          <AnimatePresence mode="wait">
-            {showReceiptForm && (
-              <motion.div
-                key="receipt-form"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="space-y-3 rounded-2xl border border-border bg-surface p-4"
-              >
-                <div className="space-y-1.5">
-                  <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                    {selectedMethod?.referenceLabel ?? "Receipt identifier"}
-                  </Label>
-                  <Input
-                    value={receiptIdentifier}
-                    onChange={(e) => setReceiptIdentifier(e.target.value)}
-                    placeholder={selectedMethod?.referencePlaceholder ?? "Enter transaction ID"}
-                    className="h-12 rounded-xl border-border bg-surface"
-                  />
-                  {selectedMethod?.referenceHelpText && (
-                    <p className="text-[11px] text-muted-foreground">
-                      {selectedMethod.referenceHelpText}
-                    </p>
-                  )}
-                </div>
-
-                {selectedMethod?.requiresPayerAccount && (
-                  <div className="space-y-1.5">
-                    <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                      {selectedMethod.payerAccountLabel ?? "Your account number"}
-                    </Label>
-                    <Input
-                      value={payerAccount}
-                      onChange={(e) => setPayerAccount(e.target.value)}
-                      placeholder="Last 8 digits"
-                      className="h-12 rounded-xl border-border bg-surface"
-                    />
-                  </div>
-                )}
-
-                <Button
-                  onClick={handleSubmitReceipt}
-                  disabled={submittingReceipt || !receiptIdentifier.trim()}
-                  className="w-full h-11 rounded-xl font-semibold"
-                >
-                  {submittingReceipt ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Submitting…
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="mr-2 h-4 w-4" />
-                      Submit receipt
-                    </>
-                  )}
-                </Button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Cancel */}
-        <div className="mt-3 flex justify-center">
-          <button
-            onClick={handleCancelOrder}
-            className="text-xs text-muted-foreground hover:text-destructive transition-colors"
-          >
-            Cancel order
-          </button>
-        </div>
-      </motion.div>
-    );
-  }
-
-  // ─── Verifying View ─────────────────────────────────────────────────────
-  if (verifyState.status === "submitted" || verifyState.status === "verifying") {
+  // ─── Verifying / Submitted state ───────────────────────────────────────────
+  if (verifyState && (verifyState.status === "submitted" || verifyState.status === "verifying")) {
     return (
       <motion.div
         key="verifying"
@@ -462,22 +249,31 @@ export function StepPayment() {
         </div>
 
         <h3 className="mt-6 text-xl font-semibold">Verifying payment</h3>
-        <p className="mt-2 max-w-[240px] text-sm text-muted-foreground">
+        <p className="mt-2 max-w-[260px] text-sm text-muted-foreground">
           {verifyState.statusDisplay}
         </p>
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          This usually takes 1-2 minutes
+        <p className="mt-1 text-[11px] text-muted-foreground/60">
+          This usually takes under a minute
         </p>
 
-        <div className="mt-6 rounded-xl border border-border bg-surface px-4 py-3 text-[11px] text-muted-foreground">
-          <span className="font-mono">{verifyState.transactionId}</span>
-        </div>
+        {verifyState.transactionId && (
+          <div className="mt-6 flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-3">
+            <Wifi className="h-3.5 w-3.5 text-primary animate-pulse" />
+            <span className="font-mono text-[11px] text-muted-foreground">
+              {verifyState.transactionId}
+            </span>
+          </div>
+        )}
+
+        <p className="mt-4 text-[10px] text-muted-foreground/50">
+          Don't close this screen
+        </p>
       </motion.div>
     );
   }
 
-  // ─── Verified Success View ──────────────────────────────────────────────
-  if (verifyState.isVerified || verifyState.status === "verified") {
+  // ─── Verified success ───────────────────────────────────────────────────────
+  if (verifyState && (verifyState.isVerified || verifyState.status === "verified")) {
     return (
       <motion.div
         key="success"
@@ -496,24 +292,18 @@ export function StepPayment() {
 
         <h3 className="mt-6 text-2xl font-bold tracking-tight">Payment confirmed</h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          Your order <span className="font-mono font-medium">{order?.orderNumber}</span> is confirmed.
+          Order <span className="font-mono font-medium">{order?.orderNumber}</span> is confirmed.
         </p>
 
-        <div className="mt-6 space-y-2 w-full max-w-xs">
+        <div className="mt-6 flex flex-col gap-2 w-full max-w-xs">
           <Button
-            onClick={() => {
-              window.location.href = `/orders`;
-            }}
+            onClick={() => { reset(); window.location.href = "/orders"; }}
             className="w-full h-12 rounded-2xl text-base font-semibold"
           >
             <FileCheck className="mr-2 h-4 w-4" />
             Track order
           </Button>
-          <Button
-            variant="ghost"
-            onClick={() => reset()}
-            className="w-full h-10 text-sm text-muted-foreground"
-          >
+          <Button variant="ghost" onClick={reset} className="w-full h-10 text-sm text-muted-foreground">
             Continue shopping
           </Button>
         </div>
@@ -521,52 +311,231 @@ export function StepPayment() {
     );
   }
 
-  // ─── Failed / Mismatch View ─────────────────────────────────────────────
+  // ─── Failed / Mismatch ──────────────────────────────────────────────────────
+  if (verifyState && verifyState.isTerminal) {
+    return (
+      <motion.div
+        key="failed"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="flex h-full flex-col items-center justify-center py-10 text-center"
+      >
+        <div className="grid h-16 w-16 place-items-center rounded-full bg-destructive/15">
+          <AlertTriangle className="h-8 w-8 text-destructive" />
+        </div>
+        <h3 className="mt-5 text-lg font-semibold">
+          {verifyState.status === "mismatch" ? "Payment mismatch" : "Could not verify"}
+        </h3>
+        <p className="mt-2 max-w-[280px] text-sm text-muted-foreground">
+          {verifyState.errorMessage ?? "The receipt didn't match our records."}
+        </p>
+        <div className="mt-6 flex flex-col gap-2 w-full max-w-xs">
+          <Button onClick={handleRetry} variant="outline" className="w-full h-11 rounded-xl font-medium">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Try again
+          </Button>
+          <Button
+            onClick={handleCancelOrder}
+            variant="ghost"
+            className="w-full h-10 text-sm text-destructive hover:text-destructive"
+          >
+            <X className="mr-2 h-4 w-4" />
+            Cancel order
+          </Button>
+        </div>
+      </motion.div>
+    );
+  }
+
+  // ─── Payment instructions (default state) ──────────────────────────────────
   return (
     <motion.div
-      key="failed"
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="flex h-full flex-col items-center justify-center py-10 text-center"
+      key="instructions"
+      initial={{ opacity: 0, x: 40 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      className="flex h-full flex-col"
     >
-      <div className="grid h-16 w-16 place-items-center rounded-full bg-destructive/15">
-        <AlertTriangle className="h-8 w-8 text-destructive" />
-      </div>
+      <div className="flex-1 overflow-y-auto space-y-4 pb-4 no-scrollbar">
 
-      <h3 className="mt-5 text-lg font-semibold">Could not verify</h3>
-      <p className="mt-2 max-w-[280px] text-sm text-muted-foreground">
-        {verifyState.errorMessage ?? "The receipt didn't match our records."}
-      </p>
+        {/* Amount highlight */}
+        <div className="rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4 text-center">
+          <p className="text-[11px] uppercase tracking-widest text-muted-foreground">
+            Amount to send
+          </p>
+          <p className="mt-1 text-3xl font-bold tabular-nums">
+            {sym}&nbsp;{total}
+          </p>
+          <p className="mt-1 text-[11px] text-amber-600 font-medium">
+            Send the exact amount shown
+          </p>
+        </div>
 
-      <div className="mt-6 flex flex-col gap-2 w-full max-w-xs">
-        <Button
-          onClick={handleRetry}
-          variant="outline"
-          className="w-full h-11 rounded-xl font-medium"
-        >
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Try again
-        </Button>
-        <Button
-          onClick={handleCancelOrder}
-          variant="ghost"
-          className="w-full h-10 text-sm text-destructive hover:text-destructive"
-        >
-          <X className="mr-2 h-4 w-4" />
-          Cancel order
-        </Button>
+        {/* Instructions */}
+        {invoice.payment?.instructions && (
+          <p className="text-sm text-muted-foreground text-center leading-relaxed px-2">
+            {invoice.payment.instructions}
+          </p>
+        )}
+        {invoice.payment?.warning && (
+          <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2.5">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
+            <p className="text-[11px] text-amber-700">{invoice.payment.warning}</p>
+          </div>
+        )}
+
+        {/* Bank selector */}
+        {methods.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground px-1">
+              Pay via
+            </p>
+            {methods.map((method) => {
+              const isSelected = method.provider_code === selectedProviderCode;
+              return (
+                <button
+                  key={method.provider_code}
+                  onClick={() => setSelectedProviderCode(method.provider_code)}
+                  className={`w-full text-left rounded-2xl border-2 p-4 transition ${
+                    isSelected
+                      ? "border-primary bg-primary/5"
+                      : "border-border bg-surface hover:border-border/60"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    {method.provider_logo && (
+                      <img
+                        src={method.provider_logo}
+                        alt={method.provider_name}
+                        className="h-8 w-8 rounded-lg object-contain"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    )}
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold">{method.provider_name}</p>
+                      <p className="text-xs text-muted-foreground">{method.account_type}</p>
+                    </div>
+                    <div className={`h-4 w-4 rounded-full border-2 transition ${
+                      isSelected ? "border-primary bg-primary" : "border-muted-foreground/40"
+                    }`} />
+                  </div>
+
+                  {/* Account details — shown when selected */}
+                  {isSelected && (
+                    <div className="mt-3 space-y-2 border-t border-border/50 pt-3">
+                      <DetailRow
+                        label="Account name"
+                        value={method.account_name}
+                      />
+                      <DetailRow
+                        label="Account number"
+                        value={method.account_number}
+                        onCopy={() => copyToClipboard(method.account_number, "account")}
+                        copied={copiedField === "account"}
+                      />
+                      {method.account_type && (
+                        <DetailRow label="Account type" value={method.account_type} />
+                      )}
+                      <DetailRow
+                        label="Amount"
+                        value={`${sym} ${total}`}
+                        onCopy={() => copyToClipboard(total, "amount")}
+                        copied={copiedField === "amount"}
+                      />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Receipt submission */}
+        <div className="space-y-3">
+          <button
+            onClick={() => setShowReceiptForm((s) => !s)}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm font-medium transition-all hover:bg-primary/10"
+          >
+            <Shield className="h-4 w-4" />
+            {showReceiptForm ? "Hide form" : "I've paid — submit receipt"}
+          </button>
+
+          <AnimatePresence>
+            {showReceiptForm && (
+              <motion.div
+                key="receipt-form"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="space-y-3 rounded-2xl border border-border bg-surface p-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                      {selectedMethod?.reference?.label ?? selectedMethod?.referenceLabel ?? "Receipt / Transaction ID"}
+                    </Label>
+                    <Input
+                      value={receiptIdentifier}
+                      onChange={(e) => setReceiptIdentifier(e.target.value)}
+                      placeholder={selectedMethod?.reference?.placeholder ?? selectedMethod?.referencePlaceholder ?? "Enter transaction ID"}
+                      className="h-12 rounded-xl border-border bg-background font-mono text-sm"
+                    />
+                    {(selectedMethod?.reference?.help_text ?? selectedMethod?.referenceHelpText) && (
+                      <p className="text-[11px] text-muted-foreground">
+                        {selectedMethod?.reference?.help_text ?? selectedMethod?.referenceHelpText}
+                      </p>
+                    )}
+                  </div>
+
+                  {(selectedMethod?.requires_payer_account ?? selectedMethod?.requiresPayerAccount) && (
+                    <div className="space-y-1.5">
+                      <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                        {selectedMethod?.payer_account_label ?? selectedMethod?.payerAccountLabel ?? "Your account number"}
+                      </Label>
+                      <Input
+                        value={payerAccount}
+                        onChange={(e) => setPayerAccount(e.target.value)}
+                        placeholder="e.g. last 4 digits"
+                        className="h-12 rounded-xl border-border bg-background font-mono text-sm"
+                      />
+                    </div>
+                  )}
+
+                  <Button
+                    onClick={handleSubmitReceipt}
+                    disabled={submittingReceipt || !receiptIdentifier.trim()}
+                    className="w-full h-11 rounded-xl font-semibold"
+                  >
+                    {submittingReceipt ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying…</>
+                    ) : (
+                      <><Upload className="mr-2 h-4 w-4" />Submit receipt</>
+                    )}
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Cancel */}
+        <div className="flex justify-center pt-1">
+          <button
+            onClick={handleCancelOrder}
+            className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+          >
+            Cancel order
+          </button>
+        </div>
       </div>
     </motion.div>
   );
 }
 
-// ─── Sub-component: Detail Row with Copy ─────────────────────────────────
+// ─── Detail row ────────────────────────────────────────────────────────────────
 
 function DetailRow({
-  label,
-  value,
-  onCopy,
-  copied,
+  label, value, onCopy, copied,
 }: {
   label: string;
   value: string;
@@ -582,7 +551,7 @@ function DetailRow({
       {onCopy && (
         <button
           onClick={onCopy}
-          className={`grid h-8 w-8 place-items-center rounded-full border transition-all ${
+          className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border transition-all ${
             copied
               ? "border-green-500/50 bg-green-500/10 text-green-600"
               : "border-border bg-background text-muted-foreground hover:text-foreground"
