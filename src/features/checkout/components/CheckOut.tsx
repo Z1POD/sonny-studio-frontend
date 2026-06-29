@@ -11,7 +11,6 @@
 import { useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, X } from "lucide-react";
-import { toast } from "sonner";
 import { useCheckoutStore } from "../store";
 import { StepVariantQuantity } from "./StepVariantQuantity";
 import { StepShipping } from "./StepShipping";

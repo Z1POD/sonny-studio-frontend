@@ -7,8 +7,8 @@
 // Save / checkout → hooks/useStudioCheckout.ts
 
 import { useEffect, useRef, useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { Loader2, Shirt } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Loader2, Shirt, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useStudioStore, getDefaultArtwork } from "../store";
 import { StudioCanvas, type StudioCanvasHandle } from "./StudioCanvas";
@@ -61,6 +61,7 @@ export function StudioWorkspace() {
   // ── Guards ────────────────────────────────────────────────────────────────
   const hasSource    = !!apparelId || !!savedProductId;
   const isLoadingAny = isLoading || !mounted;
+  const navigate = useNavigate();
 
   if (!hasSource) {
     return (
@@ -105,7 +106,14 @@ export function StudioWorkspace() {
           artworkLibraryOpen={artworkLibraryOpen}
         />
 
-        <div className="pointer-events-none hidden md:flex absolute top-1 left-16 z-10 rounded-full border border-border/60 bg-surface/70 px-3 py-1 text-xs text-muted-foreground backdrop-blur-md">
+        <div className="pointer-events-auto flex md:hidden absolute top-1 left-4 z-40 rounded-full border border-border/60 bg-surface/70 p-1 text-xs text-muted-foreground backdrop-blur-md">
+          
+              <ChevronLeft 
+                className="mr-2 h-4 w-4" 
+                onClick={() => navigate({ to: "/designs" })}
+              />
+        </div>
+        <div className="pointer-events-none hidden md:flex absolute bottom-1 left-4 z-10 rounded-full border border-border/60 bg-surface/70 px-3 py-1 text-xs text-muted-foreground backdrop-blur-md">
           Drag to rotate · scroll to zoom · drop artwork to upload
         </div>
       </div>

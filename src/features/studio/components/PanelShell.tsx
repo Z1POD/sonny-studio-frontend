@@ -11,6 +11,8 @@ interface PanelShellProps {
   title: string;
   subtitle?: string;
   children: React.ReactNode;
+
+  dismissible?: boolean; // default: true
 }
 
 /**
@@ -18,7 +20,14 @@ interface PanelShellProps {
  * Desktop: slides in from the right edge, anchored top-right.
  * Mobile: slides up from the bottom as a floating sheet (not full-height).
  */
-export function PanelShell({ open, onClose, title, subtitle, children }: PanelShellProps) {
+export function PanelShell({
+    open,
+    onClose,
+    title,
+    subtitle,
+    children,
+    dismissible = true,
+  }: PanelShellProps) {
   const isMobile = useIsMobile();
 
   if (isMobile) {
@@ -32,7 +41,7 @@ export function PanelShell({ open, onClose, title, subtitle, children }: PanelSh
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="pointer-events-auto fixed inset-0 z-30 bg-black/40"
-              onClick={onClose}
+              onClick={dismissible ? onClose : undefined}
             />
             <motion.div
               key="sheet"
@@ -40,10 +49,16 @@ export function PanelShell({ open, onClose, title, subtitle, children }: PanelSh
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 280 }}
-              drag="y"
+              drag={dismissible ? "y" : false}
               dragConstraints={{ top: 0, bottom: 0 }}
-              onDragEnd={(_, info) => { if (info.offset.y > 80) onClose(); }}
-              className="pointer-events-auto fixed inset-x-0 bottom-20 z-40 mx-3 max-h-[60vh] overflow-hidden rounded-2xl border border-border/60 shadow-elevated glass-light backdrop-blur-xl"
+              onDragEnd={
+                dismissible
+                  ? (_, info) => {
+                      if (info.offset.y > 80) onClose();
+                    }
+                  : undefined
+              }
+              className="pointer-events-auto fixed inset-x-0 bottom-20 z-40 mx-3 max-h-[60vh] overflow-hidden rounded-2xl border border-border/60 shadow-elevated glass-light"
             >
               <div className="flex justify-center pt-2.5 pb-1">
                 <div className="h-1 w-10 rounded-full bg-border" />
@@ -57,7 +72,7 @@ export function PanelShell({ open, onClose, title, subtitle, children }: PanelSh
                   <X className="h-3.5 w-3.5" />
                 </Button>
               </div>
-              <div className="max-h-[calc(60vh-4.5rem)] overflow-y-auto px-4 py-4">
+              <div className="max-h-[calc(60vh-4.5rem)] overflow-y-auto px-4 py-4 backdrop-blur-xl no-scrollbar">
                 {children}
               </div>
             </motion.div>
@@ -87,7 +102,7 @@ export function PanelShell({ open, onClose, title, subtitle, children }: PanelSh
                 <X className="h-3.5 w-3.5" />
               </Button>
             </div>
-            <div className="max-h-[calc(100dvh-12rem)] overflow-y-auto px-5 py-4">
+            <div className="max-h-[calc(100dvh-12rem)] overflow-y-auto px-5 py-4 no-scrollbar">
               {children}
             </div>
           </div>
