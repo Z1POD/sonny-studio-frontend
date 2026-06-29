@@ -1,3 +1,5 @@
+// src/features/studio/store.ts
+
 import { create } from "zustand";
 
 export type EnvironmentPreset =
@@ -20,8 +22,6 @@ export interface PricingTier {
   additionalColorPrice: string;
 }
 
-
-// Replace the PrintArea interface entirely
 
 export interface PrintMethod {
   code: string;
@@ -318,7 +318,6 @@ export function toZoneTransform(artwork: ArtworkState): ZoneTransform {
 
 
 /**
- * Additions to the studio store — drop these into store.ts alongside existing code.
  * Exported helpers consumed by SaveProductDialog and StudioWorkspace.
  */
 
@@ -337,17 +336,7 @@ export const PRINT_TIER_LABELS: Record<PrintSizeTier, string> = {
   large: "Large",
 };
 
-/**
- * Classifies a print area's dimensions into a size tier.
- * Used by both the UI and the backend for print pricing.
- *
- *  logo  ≤ 25 cm²  (≈ 5×5 cm)
- *  a6    ≤ 74 cm²  (≈ 10×7.4 cm)
- *  a5    ≤ 149 cm² (≈ 14.8×10.5 cm)
- *  a4    ≤ 312 cm² (≈ 21×14.8 cm)
- *  a3    ≤ 624 cm² (≈ 29.7×21 cm)
- *  large > 624 cm²
- */
+
 export function classifyPrintSize(
   widthCm: number,
   heightCm: number,
@@ -360,10 +349,6 @@ export function classifyPrintSize(
   if (area <= 624) return "a3";
   return "large";
 }
-
-// ─── Enhanced SceneSnapshot builder ────────────────────────────────────────
-
-// ─── Complete render config for marketplace reproduction ──────────────────
 
 export interface CompleteRenderConfig {
   version: 3;
@@ -408,11 +393,7 @@ export interface CompleteRenderConfig {
   };
   shots: Array<{ id: string; label: string; azimuth: number; polar: number; enabled: boolean }>;
   default_view?: string;
-  /**
-   * Only print areas with applied artwork — each entry carries both the
-   * placement geometry AND the decal/design data needed to reproduce it,
-   * so the backend doesn't need to join against a separate array.
-   */
+ 
   print_areas: Array<{
     print_area_id: string;
     area_key: string;
@@ -560,14 +541,9 @@ export interface EnhancedSceneSnapshot {
   selectedColor: string | null;
   selectedVariantId: string | null;
   autoRotate: boolean;
-  /**
-   * Artworks keyed by print area id.
-   * decalUrl should be replaced with server URLs before sending to backend.
-   */
+  
   artworks: Record<string, ArtworkState>;
-  /**
-   * Per-print-area sizing info for backend pricing.
-   */
+
   artworkPrintInfos: Array<{
     id: string;
     printAreaId: string;

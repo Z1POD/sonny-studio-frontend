@@ -1,5 +1,6 @@
+// src/features/studio/components/StudioCanvas.tsx
+
 /**
- * StudioCanvas.tsx — v4
  *
  * Improvements:
  *  - CaptureBridge renders background color before capture (fixes transparent bg)
@@ -273,8 +274,6 @@ export const StudioCanvas = forwardRef<StudioCanvasHandle>(
     const cam = product.cameraConfig;
     const orbit = cam.orbit;
     const shadows = render.contactShadows;
-    console.log(cam, '--');
-    console.log(cam.captureDistanceScale);
 
     return (
       <Canvas

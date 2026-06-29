@@ -1,3 +1,5 @@
+// src/features/studio/queries.ts
+
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import { studioApi, artworkApi } from "./api";
 

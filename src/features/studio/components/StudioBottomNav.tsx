@@ -96,7 +96,7 @@ export function StudioBottomNav({
         transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
         className="pointer-events-auto fixed inset-x-0 bottom-4 z-20 flex justify-center px-3"
       >
-        <div className="flex w-full max-w-sm flex-col rounded-2xl border border-border/60 bg-surface/90 shadow-2xl backdrop-blur-xl p-1.5 shadow-elevated">
+        <div className="flex w-full max-w-sm flex-col rounded-2xl border border-border/60 shadow-2xl backdrop-blur-xl p-1.5 shadow-elevated">
           {/* Dynamic Price Section — shows "Save & Continue" when artwork applied */}
           <AnimatePresence>
             {showPriceBar && (
@@ -170,7 +170,7 @@ export function StudioBottomNav({
                   className={`flex h-11 w-11 flex-col items-center justify-center rounded-full text-[9px] font-medium transition ${
                     activePanel === item.id
                       ? "bg-primary/15"
-                      : "text-muted-foreground hover:bg-surface-elevated hover:text-foreground"
+                      : "text-foreground hover:bg-surface-elevated hover:text-foreground"
                   }`}
                 >
                   {item.icon}
@@ -199,7 +199,7 @@ export function StudioBottomNav({
                     ? "bg-primary/70 text-primary-foreground"
                     : hasArtwork
                       ? "text-primary hover:bg-primary/10"
-                      : "text-muted-foreground hover:bg-surface-elevated hover:text-foreground"
+                      : "text-foreground hover:bg-surface-elevated hover:text-foreground"
                 }`}
               >
                 <ImagePlus className="h-4 w-4" />

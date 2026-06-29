@@ -717,7 +717,6 @@ export function SaveProductDialog({
       // because the JSX closure captures the const before it is assigned — the ref
       // is always readable by the time the user taps Done.
       closeSheet(sheetId);
-      console.log(closeSheet(sheetId));
       const successSheetId = openSheet({
         title: null,
         content: (
