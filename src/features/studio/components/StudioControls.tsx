@@ -1,13 +1,12 @@
 // src/features/studio/components/StudioControls.tsx
 /**
- * StudioControls.tsx — v3
+ * StudioControls.tsx — v4
  * Passes onContinue through to StudioBottomNav for fused price bar.
  * Passes artwork library toggle state.
+ * onSave / isSaving props removed from nav (both save paths go through onContinue).
  */
 
 import { useState } from "react";
-import { RotateCcw } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useStudioStore } from "../store";
 import { PanelShell } from "./PanelShell";
 import { ProductInfoPanel } from "./ProductInfoPanel";
@@ -25,21 +24,23 @@ interface Props {
 }
 
 const PANEL_META: Record<NonNullable<StudioPanelId>, { title: string }> = {
-  info: { title: "Product info" },
-  color: { title: "Colors" },
-  printArea: { title: "Print areas" },
-  decal: { title: "Artwork" },
+  info:      { title: "Product info" },
+  color:     { title: "Colors"       },
+  printArea: { title: "Print areas"  },
+  decal:     { title: "Artwork"      },
 };
 
-export function StudioControls({ onSave, isSaving, onContinue, onToggleArtworkLibrary, artworkLibraryOpen }: Props) {
+export function StudioControls({
+  onSave,
+  isSaving,
+  onContinue,
+  onToggleArtworkLibrary,
+  artworkLibraryOpen,
+}: Props) {
   const [activePanel, setActivePanel] = useState<StudioPanelId>(null);
-  const reset = useStudioStore((s) => s.reset);
 
   return (
     <>
-      {/* Reset — fixed top corner */}
-      
-
       <PanelShell
         open={activePanel === "info"}
         onClose={() => setActivePanel(null)}
@@ -68,6 +69,7 @@ export function StudioControls({ onSave, isSaving, onContinue, onToggleArtworkLi
         open={activePanel === "decal"}
         onClose={() => setActivePanel(null)}
         title={PANEL_META.decal.title}
+        dismissible={false}
       >
         <DecalPanel />
       </PanelShell>
@@ -75,9 +77,8 @@ export function StudioControls({ onSave, isSaving, onContinue, onToggleArtworkLi
       <StudioBottomNav
         activePanel={activePanel}
         onTogglePanel={setActivePanel}
-        onSave={onSave}
-        isSaving={isSaving}
         onContinue={onContinue}
+        isCapturing={isSaving}
         onToggleArtworkLibrary={onToggleArtworkLibrary}
         artworkLibraryOpen={artworkLibraryOpen}
       />
