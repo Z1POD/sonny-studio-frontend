@@ -107,6 +107,8 @@
   --sidebar-accent-foreground: oklch(0.97 0.005 270);
   --sidebar-border: oklch(1 0 0 / 0.09);
   --sidebar-ring: oklch(0.68 0.18 254 / 0.55);
+
+  --toast-offset: 48px;
 }
 
 @layer base {
@@ -152,17 +154,19 @@
 }
 
 
-/* Hide scrollbar but keep scrolling */
-/* Hide scrollbar for horizontal scroll rows */
-.scrollbar-hide {
+.no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-.scrollbar-hide::-webkit-scrollbar {
+.no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 
 /* Active scale for touch */
 .tap-highlight-transparent {
   -webkit-tap-highlight-color: transparent;
+}
+
+[data-sonner-toaster][data-position="top-center"] {
+  top: var(--toast-offset, 24px) !important;
 }
