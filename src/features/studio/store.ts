@@ -176,6 +176,9 @@ export interface StudioState {
   selectedColor: string | null;
   selectedVariantId: string | null;
   artworks: Record<string, ArtworkState>;
+  /** Ordered list of print-area ids, bottom→top. Drives both the LayerManager UI
+   *  and the actual z-compositing of decals on the 3D model (see ProductModel). */
+  layerOrder: string[];
   autoRotate: boolean;
   selectedMethods: Record<string, string>; 
   selectedTiers: Record<string, string>;    
@@ -186,6 +189,7 @@ export interface StudioState {
   setBackground: (background: string) => void;
   setSelectedVariant: (variantId: string) => void;
   setArtwork: (areaId: string, artwork: ArtworkState) => void;
+  setLayerOrder: (order: string[]) => void;
   setAutoRotate: (value: boolean) => void;
   setSelectedMethod: (areaId: string, methodCode: string) => void;
   setSelectedTier: (areaId: string, tierSize: string) => void;
@@ -210,6 +214,7 @@ const initialState: Omit<
   selectedColor: null,
   selectedVariantId: null,
   artworks: {},
+  layerOrder: [],
   autoRotate: false,
   selectedMethods: {},
     selectedTiers: {},
@@ -234,6 +239,7 @@ export const useStudioStore = create<StudioState>((set) => ({
         selectedPrintAreaId: product.printAreas[0]?.id || null,
         selectedVariantId: product.variants[0]?.id || null,
         artworks: {},
+        layerOrder: [],
         selectedMethods: defaultMethods,
         selectedTiers: defaultTiers,
       };
@@ -252,9 +258,22 @@ export const useStudioStore = create<StudioState>((set) => ({
   }),
   setSelectedVariant: (variantId) => set({ selectedVariantId: variantId }),
   setArtwork: (areaId, artwork) =>
-    set((state) => ({
-      artworks: { ...state.artworks, [areaId]: artwork },
-    })),
+    set((state) => {
+      const hasArt = !!artwork.decalUrl;
+      let layerOrder = state.layerOrder;
+      if (hasArt && !layerOrder.includes(areaId)) {
+        // New layer — goes on top of the stack.
+        layerOrder = [...layerOrder, areaId];
+      } else if (!hasArt && layerOrder.includes(areaId)) {
+        // Artwork cleared/deleted — drop it from the stack.
+        layerOrder = layerOrder.filter((id) => id !== areaId);
+      }
+      return {
+        artworks: { ...state.artworks, [areaId]: artwork },
+        layerOrder,
+      };
+    }),
+  setLayerOrder: (order) => set({ layerOrder: order }),
   setAutoRotate: (autoRotate) => set({ autoRotate }),
   reset: () => set(initialState),
 

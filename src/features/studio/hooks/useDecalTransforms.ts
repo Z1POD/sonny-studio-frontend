@@ -192,10 +192,15 @@ export function computeDecalTransform(
   const halfZoneH = zoneHeightM / 2;
   const halfArtW  = finalScaleX / 2;
   const halfArtH  = finalScaleY / 2;
-  const offsetX   = Math.max(-halfZoneW + halfArtW, Math.min(halfZoneW - halfArtW,  artwork.decalOffsetX));
-  // Negate Y: store uses screen-space convention (Y↓ positive) but Three.js
-  // world space has Y↑ positive — without this, dragging up moves the decal down.
-  const offsetY   = Math.max(-halfZoneH + halfArtH, Math.min(halfZoneH - halfArtH, -artwork.decalOffsetY));
+  // Negate X: same screen-space (panel/drag) vs world-space mismatch as the Y-axis
+  // below. The full-wrap path (computeWrapTextureTransform) doesn't need this
+  // because its UV space happens to already be wound in the same direction as
+  // the drag axis — single decals placed directly in mesh-local world space do not.
+  const offsetX   = Math.max(-halfZoneW + halfArtW, Math.min(halfZoneW - halfArtW, -artwork.decalOffsetX));
+  // No negation here: the panel's drag handler already negates decalOffsetY to
+  // account for the screen-space (Y↓) vs Three.js world-space (Y↑) mismatch, so
+  // applying it again here would cancel it back out. Use the stored value as-is.
+  const offsetY   = Math.max(-halfZoneH + halfArtH, Math.min(halfZoneH - halfArtH, artwork.decalOffsetY));
 
   // ── 7. World position
   const offsetLocal = new THREE.Vector3(offsetX, offsetY, 0);
@@ -248,9 +253,11 @@ export function computeWrapFaceTransform(
   // User can nudge the pattern position within the face
   const maxOffX = faceW * 0.4;
   const maxOffY = faceH * 0.4;
-  const offsetX = Math.max(-maxOffX, Math.min(maxOffX,  artwork.decalOffsetX));
-  // Negate Y: same screen-space vs world-space convention mismatch as computeDecalTransform.
-  const offsetY = Math.max(-maxOffY, Math.min(maxOffY, -artwork.decalOffsetY));
+  // Negate X: same convention fix as computeDecalTransform above.
+  const offsetX = Math.max(-maxOffX, Math.min(maxOffX, -artwork.decalOffsetX));
+  // No negation here: same reasoning as computeDecalTransform above — the panel
+  // already negates decalOffsetY, so re-negating here would cancel it back out.
+  const offsetY = Math.max(-maxOffY, Math.min(maxOffY, artwork.decalOffsetY));
 
   const offsetLocal = new THREE.Vector3(offsetX, offsetY, 0);
   const offsetWorld = offsetLocal.clone().applyQuaternion(baseQuat);
@@ -297,9 +304,10 @@ export function decomposeDecalTransform(
   while (userRotation < -Math.PI) userRotation += Math.PI * 2;
 
   return {
-    offsetX:   parseFloat( localPos.x.toFixed(4)),
-    // Negate back: world Y↑ → screen Y↓ convention used by the store/UI.
-    offsetY:   parseFloat(-localPos.y.toFixed(4)),
+    // Negate back: world local X → screen/store X convention, mirrors the X fix above.
+    offsetX:   parseFloat(-localPos.x.toFixed(4)),
+    // No negation: forward transform now uses decalOffsetY as-is (see computeDecalTransform).
+    offsetY:   parseFloat( localPos.y.toFixed(4)),
     scale:     parseFloat(Math.abs(scl.y).toFixed(4)),
     // Negate back: Three.js CCW → canvas CW convention used by the store/UI.
     rotation:  parseFloat(-userRotation.toFixed(4)),

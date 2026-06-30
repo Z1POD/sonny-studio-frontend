@@ -304,6 +304,7 @@ export const StudioCanvas = forwardRef<StudioCanvasHandle>(
               modelUrl={product.modelUrl}
               printAreas={product.printAreas}
               artworks={store.artworks}
+              layerOrder={store.layerOrder}
               selectedColor={store.selectedColor}
               colorableMeshes={product.colorableMeshes}
               materialConfig={product.materialConfig}

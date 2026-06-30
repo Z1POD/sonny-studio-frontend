@@ -65,8 +65,8 @@ function DecalGizmo({
 
   const onPointerMove = useCallback((e: React.PointerEvent) => {
     if (!dragStart.current) return;
-    const dx = (e.clientX - dragStart.current.x) / pxPerUnitX;
-    const dy = (e.clientY - dragStart.current.y) / pxPerUnitY;
+    const dx = -(e.clientX - dragStart.current.x) / pxPerUnitX;
+    const dy = -(e.clientY - dragStart.current.y) / pxPerUnitY;
     onChange({
       offsetX: clamp(dragStart.current.ox + dx, minX, maxX),
       offsetY: clamp(dragStart.current.oy + dy, minY, maxY),
@@ -93,8 +93,8 @@ function DecalGizmo({
   const onTouchMove = (e: React.TouchEvent) => {
     e.preventDefault();
     if (e.touches.length === 1 && touchStart.current) {
-      const dx = (e.touches[0].clientX - touchStart.current.x) / pxPerUnitX;
-      const dy = (e.touches[0].clientY - touchStart.current.y) / pxPerUnitY;
+      const dx = -(e.touches[0].clientX - touchStart.current.x) / pxPerUnitX;
+      const dy = -(e.touches[0].clientY - touchStart.current.y) / pxPerUnitY;
       onChange({
         offsetX: clamp(touchStart.current.ox + dx, minX, maxX),
         offsetY: clamp(touchStart.current.oy + dy, minY, maxY),
@@ -115,8 +115,8 @@ function DecalGizmo({
   };
 
   // Preview positioning: map world units to % within canvas
-  const px = ((offsetX - minX) / worldRangeX) * 100;
-  const py = ((offsetY - minY) / worldRangeY) * 100;
+  const px = ((maxX - offsetX) / worldRangeX) * 100;
+  const py = ((maxY - offsetY) / worldRangeY) * 100;
   const previewSize = (scale / maxScale) * 80 + 10; // 10–90% of canvas width
 
   return (

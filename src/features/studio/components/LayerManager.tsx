@@ -10,7 +10,6 @@
  * - Tap a layer to jump to that print area
  */
 
-import { useState } from "react";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 import { Layers, X, GripVertical, Trash2, ArrowUp, ArrowDown, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -55,14 +54,11 @@ export function LayerManager({ open, onClose }: LayerManagerProps) {
     onClose();
   };
 
-  // Reorder: swap with adjacent layer by updating sortOrder via setArtwork workaround
-  // Since sortOrder lives on the product (read-only here), we track order in local state
-  const [order, setOrder] = useState<string[]>([]);
-
-  // Sync order with activeLayers on open
+  // Reorder lives in the store (store.layerOrder) so it actually drives the
+  // 3D model's z-compositing, not just this drawer's local display.
   const effectiveOrder =
-    order.length > 0 && order.every((id) => activeLayers.find((l) => l.id === id))
-      ? order
+    store.layerOrder.length > 0 && store.layerOrder.every((id) => activeLayers.find((l) => l.id === id))
+      ? store.layerOrder
       : activeLayers.map((l) => l.id);
 
   const orderedLayers = effectiveOrder
@@ -71,10 +67,10 @@ export function LayerManager({ open, onClose }: LayerManagerProps) {
 
   const moveLayer = (index: number, direction: "up" | "down") => {
     const next = [...effectiveOrder];
-    const swapIdx = direction === "up" ? index - 1 : index + 1;
+    const swapIdx = direction === "up" ? index + 1 : index - 1;
     if (swapIdx < 0 || swapIdx >= next.length) return;
     [next[index], next[swapIdx]] = [next[swapIdx], next[index]];
-    setOrder(next);
+    store.setLayerOrder(next);
   };
 
   return (

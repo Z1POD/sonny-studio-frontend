@@ -715,7 +715,7 @@ export function StepPayment() {
                   <Shield className="h-4 w-4 text-primary" />
                   Verify your payment
                 </DialogTitle>
-                <DialogDescription>
+                <DialogDescription className="text-muted-foreground/60 tx-sm">
                   Enter your receipt details below so we can confirm your payment.
                 </DialogDescription>
               </DialogHeader>
@@ -736,7 +736,7 @@ export function StepPayment() {
                       setReceiptError(validateReceiptField(receiptIdentifier, fieldType));
                     }}
                     placeholder={refPlaceholder || "Enter transaction ID or receipt number"}
-                    className={`h-12 rounded-xl font-mono text-sm ${
+                    className={`h-12 rounded-xl font-mono text-sm mt-2 ${
                       receiptError ? "border-destructive focus-visible:ring-destructive" : "border-border"
                     } bg-background`}
                     autoComplete="off"

@@ -14,7 +14,7 @@ import {
 // Shared decal material─
 // Extracted to avoid repeating the same JSX props on every Decal instance.
 
-function DecalMaterial({ texture }: { texture: THREE.Texture }) {
+function DecalMaterial({ texture, polygonOffsetFactor = -4 }: { texture: THREE.Texture; polygonOffsetFactor?: number }) {
   return (
     <meshStandardMaterial
       map={texture}
@@ -23,8 +23,8 @@ function DecalMaterial({ texture }: { texture: THREE.Texture }) {
       depthTest
       depthWrite={false}
       polygonOffset
-      polygonOffsetFactor={-4}
-      polygonOffsetUnits={-4}
+      polygonOffsetFactor={polygonOffsetFactor}
+      polygonOffsetUnits={polygonOffsetFactor}
     />
   );
 }
@@ -36,9 +36,12 @@ interface DecalLayerProps {
   artwork: ArtworkState;
   zone: PrintArea;
   meshNode: THREE.Mesh;
+  /** Position within this mesh's layer stack, 0 = bottom. Drives renderOrder
+   *  and polygon offset so layers composite in the order set in LayerManager. */
+  stackIndex?: number;
 }
 
-function DecalLayer({ artwork, zone, meshNode }: DecalLayerProps) {
+function DecalLayer({ artwork, zone, meshNode, stackIndex = 0 }: DecalLayerProps) {
   const texture = useTexture(artwork.decalUrl || "");
 
   useMemo(() => {
@@ -53,7 +56,7 @@ function DecalLayer({ artwork, zone, meshNode }: DecalLayerProps) {
 
   if (zone.placement === "wrap") return null;
 
-  return <SingleDecalLayer artwork={artwork} zone={zone} meshNode={meshNode} texture={texture} />;
+  return <SingleDecalLayer artwork={artwork} zone={zone} meshNode={meshNode} texture={texture} stackIndex={stackIndex} />;
 }
 
 
@@ -65,6 +68,7 @@ function SingleDecalLayer({
   zone,
   meshNode,
   texture,
+  stackIndex = 0,
 }: DecalLayerProps & { texture: THREE.Texture }) {
   const transform = useDecalTransform(zone, artwork, meshNode);
   if (!transform) return null;
@@ -74,8 +78,10 @@ function SingleDecalLayer({
       position={transform.position}
       rotation={transform.rotation}
       scale={transform.scale}
+      // Higher stackIndex = added later = rendered later = visually on top.
+      renderOrder={stackIndex + 1}
     >
-      <DecalMaterial texture={texture} />
+      <DecalMaterial texture={texture} polygonOffsetFactor={-4 - stackIndex} />
     </Decal>
   );
 }
@@ -236,6 +242,10 @@ interface ProductModelProps {
   modelUrl: string;
   printAreas: PrintArea[];
   artworks: Record<string, ArtworkState>;
+  /** Ordered list of print-area ids, bottom→top, from the studio store's layerOrder.
+   *  Drives both renderOrder and a staggered polygon offset so layers reliably
+   *  composite in the order the user set in LayerManager. */
+  layerOrder?: string[];
   selectedColor?: string | null;
   colorableMeshes?: string[];
   materialConfig?: {
@@ -250,6 +260,7 @@ export function ProductModel({
   modelUrl,
   printAreas,
   artworks,
+  layerOrder = [],
   selectedColor,
   colorableMeshes = [],
   materialConfig,
@@ -273,9 +284,15 @@ export function ProductModel({
       {meshNodes.map((node) => {
         // eslint-disable-next-line react-hooks/rules-of-hooks
         const material = useBuiltMaterial({ node, selectedColor, colorableMeshes, materialConfig });
-        const zonesForMesh = printAreas.filter(
-          (z) => z.placement !== "wrap" && zoneTargetsMesh(z, node.name),
-        );
+        const zonesForMesh = printAreas
+          .filter((z) => z.placement !== "wrap" && zoneTargetsMesh(z, node.name))
+          .sort((a, b) => {
+            const ai = layerOrder.indexOf(a.id);
+            const bi = layerOrder.indexOf(b.id);
+            // Ids not present in layerOrder (no artwork yet, or order not loaded)
+            // sort to the bottom rather than breaking the comparator.
+            return (ai === -1 ? -Infinity : ai) - (bi === -1 ? -Infinity : bi);
+          });
 
         return (
           <group key={node.uuid}>
@@ -285,7 +302,7 @@ export function ProductModel({
               geometry={node.geometry}
               material={material}
             >
-              {zonesForMesh.map((zone) => {
+              {zonesForMesh.map((zone, stackIndex) => {
                 const art = artworks[zone.id];
                 if (!art?.decalUrl) return null;
                 return (
@@ -294,6 +311,7 @@ export function ProductModel({
                     artwork={art}
                     zone={zone}
                     meshNode={node}
+                    stackIndex={stackIndex}
                   />
                 );
               })}
