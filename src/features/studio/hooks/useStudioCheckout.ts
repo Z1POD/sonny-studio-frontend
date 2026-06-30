@@ -117,6 +117,8 @@ export function useStudioCheckout({ canvasRef, savedProductId }: UseStudioChecko
           enable_pan:      cam.orbit.enablePan,
           enable_zoom:     cam.orbit.enableZoom,
         },
+        capture_distance_scale:      cam.captureDistanceScale,
+        capture_look_at_offset:      cam.captureLookAtOffset,
       },
       lighting:        (render as any).lighting,
       contact_shadows: render.contactShadows,

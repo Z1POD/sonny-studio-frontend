@@ -13,7 +13,7 @@ import {
   mapEditorConfigToApparelProduct,
   mapSavedProductToApparelProduct,
   hydrateStudioFromSavedDesign,
-} from "../studioMappers";
+} from "@/features/studio/studioMappers";
 
 export interface StudioInitState {
   /** The apparel ID from router state (new design flow) */
@@ -39,19 +39,19 @@ export function useStudioInit(): StudioInitState {
   const setProduct    = useStudioStore((s) => s.setProduct);
   const setAutoRotate = useStudioStore((s) => s.setAutoRotate);
 
-  // ── Fetch editor config (new design from catalog) ─────────────────────────
+  // Fetch editor config (new design from catalog)
   const { data: editorData, isLoading: editorLoading } = useQuery({
     ...studioDetailQuery(apparelId ?? ""),
     enabled: !!apparelId && !savedProductId,
   });
 
-  // ── Fetch saved product detail (edit / 3-D view) ──────────────────────────
+  // Fetch saved product detail (edit / 3-D view)
   const { data: savedDetail, isLoading: savedLoading } = useQuery({
     ...storeProductDetailQuery(savedProductId ?? ""),
     enabled: !!savedProductId,
   });
 
-  // ── Hydrate: new design ───────────────────────────────────────────────────
+  // Hydrate: new design
   useEffect(() => {
     if (!editorData || savedProductId) return;
     const ap = mapEditorConfigToApparelProduct(editorData);
@@ -59,7 +59,7 @@ export function useStudioInit(): StudioInitState {
     if (is3DMode) setAutoRotate(true);
   }, [editorData, savedProductId, setProduct, is3DMode, setAutoRotate]);
 
-  // ── Hydrate: saved design ─────────────────────────────────────────────────
+  // Hydrate: saved design
   useEffect(() => {
     if (!savedDetail) return;
     const detail = (savedDetail as any).data ?? savedDetail;

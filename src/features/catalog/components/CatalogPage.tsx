@@ -77,8 +77,8 @@ export function CatalogPage() {
             Apparel catalog
           </h1>
           <p className="mt-1 max-w-md text-sm text-muted-foreground">
-            Pick a blank to drop into the studio. Prices start from supplier
-            base — your margin is set per product.
+            Pick a premium blank apparel and personalize it with your own unique designs. 
+            Make something meaningful for yourself or someone special, and get it delivered with ease.
           </p>
         </div>
         <div className="relative w-full sm:w-72">
