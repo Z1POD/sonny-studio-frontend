@@ -11,12 +11,6 @@
 import type { PrintArea, ApparelProduct } from "./store";
 import { useStudioStore } from "./store";
 
-// Map editor-config API → ApparelProduct
-// Source: /api/v1/apparels/{id}/editor-config/
-// Top-level fields: data.apparel, data.variants, data.print_areas
-// 3D config:        data["3d_configuration"] → { model, material, render_config }
-// render_config:    background, environment, model_position, contact_shadows,
-//                   lighting, camera { position, fov, capture_distance_scale, orbit }
 
 export function mapEditorConfigToApparelProduct(rawData: any): ApparelProduct {
   const d      = rawData.data ?? rawData;           // unwrap { success, data }
@@ -146,10 +140,6 @@ export function mapEditorConfigToApparelProduct(rawData: any): ApparelProduct {
   };
 }
 
-// Build ApparelProduct from a saved product's render_config 
-// Source: /api/v1/store/products/{id}/ → data.render_config
-// Reconstructs the ApparelProduct so we can re-open it in the studio without
-// a second apparel fetch.  Methods/tiers are omitted (not needed for the edit flow).
 
 export function mapSavedProductToApparelProduct(detail: any): ApparelProduct {
   const rc     = detail.render_config;
@@ -157,35 +147,63 @@ export function mapSavedProductToApparelProduct(detail: any): ApparelProduct {
   const orbit  = cam.orbit;
   const shadows = rc.contact_shadows ?? {};
 
-  const printAreas: PrintArea[] = (rc.print_areas ?? []).map((pa: any) => ({
-    id:               pa.print_area_id,
-    areaKey:          pa.area_key,
-    name:             pa.name,
-    placement:        pa.placement,
-    meshName:         pa.mesh_name ?? "",
-    widthCm:          pa.width_cm,
-    heightCm:         pa.height_cm,
-    allowScaling:     true,
-    allowRotation:    false,
-    maxLayers:        2,
-    allowedFileTypes: ["png", "jpg", "svg"],
-    methods:          [],
-    uvBounds: pa.uv_config?.uv_bounds
-      ? {
-          minU: pa.uv_config.uv_bounds.min_u,
-          minV: pa.uv_config.uv_bounds.min_v,
-          maxU: pa.uv_config.uv_bounds.max_u,
-          maxV: pa.uv_config.uv_bounds.max_v,
-        }
-      : undefined,
-    worldBounds: pa.uv_config?.world_bounds
-      ? {
-          center:      pa.uv_config.world_bounds.center,
-          halfExtents: pa.uv_config.world_bounds.half_extents,
-          rotation:    pa.uv_config.world_bounds.rotation,
-        }
-      : undefined,
-  }));
+  const legacySnapshotByAreaId = new Map<string, any>(
+    (detail.snapshot?.print_areas ?? []).map((entry: any) => [entry.print_area?.id, entry]),
+  );
+
+  const printAreas: PrintArea[] = (rc.print_areas ?? []).map((pa: any) => {
+    const legacy        = legacySnapshotByAreaId.get(pa.print_area_id);
+    const legacyMethod  = legacy?.print_method;
+    const legacyPricing = legacy?.price_breakdown;
+
+    const methodCode = pa.print_method_code ?? legacyMethod?.code;
+    const methodName = pa.print_method_name ?? legacyMethod?.name ?? methodCode;
+    const sizeTier    = pa.size_tier         ?? legacyPricing?.size_tier;
+    const price       = pa.price             ?? legacyPricing?.total_price ?? legacyPricing?.base_price;
+    const extraColor  = pa.extra_color_price ?? legacyPricing?.additional_color_price;
+
+    return {
+      id:               pa.print_area_id,
+      areaKey:          pa.area_key,
+      name:             pa.name,
+      placement:        pa.placement,
+      meshName:         pa.mesh_name ?? "",
+      widthCm:          pa.width_cm,
+      heightCm:         pa.height_cm,
+      allowScaling:     true,
+      allowRotation:    false,
+      maxLayers:        2,
+      allowedFileTypes: ["png", "jpg", "svg"],
+      methods: methodCode
+        ? [{
+            code: methodCode,
+            name: methodName,
+            tiers: [{
+              size:              sizeTier ?? "",
+              max_w:             pa.width_cm,
+              max_h:             pa.height_cm,
+              price:             price ?? "0.00",
+              extra_color_price: extraColor ?? "0.00",
+            }],
+          }]
+        : [],
+      uvBounds: pa.uv_config?.uv_bounds
+        ? {
+            minU: pa.uv_config.uv_bounds.min_u,
+            minV: pa.uv_config.uv_bounds.min_v,
+            maxU: pa.uv_config.uv_bounds.max_u,
+            maxV: pa.uv_config.uv_bounds.max_v,
+          }
+        : undefined,
+      worldBounds: pa.uv_config?.world_bounds
+        ? {
+            center:      pa.uv_config.world_bounds.center,
+            halfExtents: pa.uv_config.world_bounds.half_extents,
+            rotation:    pa.uv_config.world_bounds.rotation,
+          }
+        : undefined,
+    };
+  });
 
   const variants = (detail.enabled_variant ?? []).map((v: any) => ({
     id:              v.id,
@@ -249,11 +267,6 @@ export function mapSavedProductToApparelProduct(detail: any): ApparelProduct {
   };
 }
 
-// Hydrate studio store from a saved snapshot
-// Artworks live in:
-//   snapshot.render_config.artworkPrintInfos[]
-//   { printAreaId, decalUrl, decalAspect, decalScale, decalRotation,
-//     decalOffsetX, decalOffsetY }
 
 export function hydrateStudioFromSavedDesign(detail: any): void {
   const store    = useStudioStore.getState();

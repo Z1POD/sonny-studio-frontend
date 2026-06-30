@@ -29,7 +29,6 @@ import {
 import * as THREE from "three";
 import { useStudioStore } from "../store";
 import { ProductModel } from "./ProductModel";
-// import { DecalGizmo } from "./DecalGizmo";
 import type { ShotConfig } from "./SaveProductDialog";
 
 // ─── CaptureAPI ────────────────────────────────────────────────────────────

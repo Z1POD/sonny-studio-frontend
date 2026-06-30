@@ -30,44 +30,71 @@ export const WRAP_FACES: WrapFace[] = [
 
 export const FULL_PRINT_PLACEMENTS = WRAP_FACES.map((f) => f.placement) as readonly string[];
 
-// ─── UV-based wrap transform ─────────────────────────────────────────────────
-//
-// True 360° "all-over" print is modelled as a UV-mapped material.map, not as
-// stacked Decal projectors — Decal only paints the triangles directly under
-// its own projector frustum on the single mesh it's nested in, so it can
-// never cover panels (back, sleeves) that live on a different mesh node or
-// face away from the projector. A repeating, UV-mapped texture rides the
-// model's actual UV seams instead, so it covers every triangle of every mesh
-// the wrap zone targets, regardless of how the garment is split into nodes.
-//
-// The artwork's existing decalScale / decalRotation / decalOffsetX/Y sliders
-// are reinterpreted here as repeat / rotation / offset in UV space so the
-// same UI continues to drive both placement modes.
+
+export type PrintMode = "SINGLE" | "FRONT_BACK_SPLIT" | "TWO_SIDE_DISTINCT" | "FULL_WRAP";
+
+export interface PrintModeResult {
+  mode: PrintMode;
+  /** Present only when mode is FRONT_BACK_SPLIT or TWO_SIDE_DISTINCT */
+  frontZone?: PrintArea;
+  backZone?: PrintArea;
+}
+
+function artworkIdentity(art: ArtworkState | undefined): string | null {
+  if (!art?.decalUrl) return null;
+  const maybeId = (art as { id?: string }).id;
+  return maybeId ?? art.decalUrl;
+}
+
+function findZoneByPlacement(printAreas: PrintArea[], placement: string): PrintArea | undefined {
+  return printAreas.find((z) => z.placement === placement);
+}
+
+export function derivePrintMode(
+  printAreas: PrintArea[],
+  artworks: Record<string, ArtworkState>,
+): PrintModeResult {
+  const wrapZone = printAreas.find(
+    (z) => z.placement === "wrap" && !!artworks[z.id]?.decalUrl,
+  );
+  if (wrapZone) return { mode: "FULL_WRAP" };
+
+  const frontZone = findZoneByPlacement(printAreas, "front");
+  const backZone  = findZoneByPlacement(printAreas, "back");
+
+  const frontArt = frontZone ? artworks[frontZone.id] : undefined;
+  const backArt  = backZone  ? artworks[backZone.id]  : undefined;
+
+  const frontHasArt = !!frontArt?.decalUrl;
+  const backHasArt  = !!backArt?.decalUrl;
+
+  if (frontZone && backZone && frontHasArt && backHasArt) {
+    const sameArtwork = artworkIdentity(frontArt) === artworkIdentity(backArt);
+    return {
+      mode: sameArtwork ? "FRONT_BACK_SPLIT" : "TWO_SIDE_DISTINCT",
+      frontZone,
+      backZone,
+    };
+  }
+
+  return { mode: "SINGLE" };
+}
+
 
 export interface WrapTextureTransform {
-  /** texture.repeat */
   repeat: [number, number];
-  /** texture.offset */
   offset: [number, number];
-  /** texture.rotation (radians, around texture.center) */
   rotation: number;
-  /** texture.center — kept at [0.5, 0.5] so rotation/scale pivot at the tile centre */
   center: [number, number];
 }
 
 const MIN_REPEAT = 0.05; // guards against artwork.decalScale === 0 producing Infinity repeat
 
 export function computeWrapTextureTransform(artwork: ArtworkState): WrapTextureTransform {
-  // decalScale is authored in the "Decal" world (metres-ish, small numbers).
-  // For tiling we treat it as "tiles per unit UV": smaller scale => more
-  // repeats => a denser/smaller-looking pattern, which matches the intuitive
-  // behaviour users already have from the single-face decal controls.
+
   const tilesY = Math.max(MIN_REPEAT, 1 / Math.max(artwork.decalScale, 1e-4));
   const tilesX = tilesY / Math.max(artwork.decalAspect, 1e-4);
 
-  // decalOffsetX/Y are in the same small metre-ish units as decalScale;
-  // normalise them into UV space (0..1) using the same scale factor so
-  // panning still feels proportional to the pattern's apparent size.
   const offsetU = (artwork.decalOffsetX * tilesX) % 1;
   const offsetV = (artwork.decalOffsetY * tilesY) % 1;
 
@@ -114,13 +141,13 @@ export function computeDecalTransform(
 ): DecalTransform | null {
   const placement = placementOverride ?? zone.placement;
 
-  // ── 1. Base surface orientation ───────────────────────────────────────────
+  // ── 1. Base surface orientation 
   const baseRotation = (!placementOverride && zone.worldBounds?.rotation)
     ? new THREE.Euler(...zone.worldBounds.rotation)
     : placementToRotation(placement);
   const baseQuat = new THREE.Quaternion().setFromEuler(baseRotation);
 
-  // ── 2. Zone centre ────────────────────────────────────────────────────────
+  // ── 2. Zone centre
   let centre: THREE.Vector3;
   if (!placementOverride && zone.worldBounds?.center) {
     centre = new THREE.Vector3(...zone.worldBounds.center);
@@ -132,7 +159,7 @@ export function computeDecalTransform(
     centre = getHardcodedCentre(placement);
   }
 
-  // ── 3. Projector depth ────────────────────────────────────────────────────
+  // ── 3. Projector depth 
   let halfThickness: number;
   if (!placementOverride && zone.worldBounds?.halfExtents?.[2] != null) {
     halfThickness = zone.worldBounds.halfExtents[2];
@@ -145,11 +172,11 @@ export function computeDecalTransform(
     halfThickness = 0.02;
   }
 
-  // ── 4. Print area physical size (cm → metres) ─────────────────────────────
+  // ── 4. Print area physical size (cm → metres)
   const zoneWidthM  = zone.widthCm  * CM;
   const zoneHeightM = zone.heightCm * CM;
 
-  // ── 5. User scale (aspect-preserving) ────────────────────────────────────
+  // ── 5. User scale (aspect-preserving)
   const limits = zone.transformLimits ?? {
     minScale: 0.02,
     maxScale: Math.min(zoneWidthM, zoneHeightM) * 0.95,
@@ -160,7 +187,7 @@ export function computeDecalTransform(
   const finalScaleX = Math.min(scaleX, maxWidth);
   const finalScaleY = finalScaleX / artwork.decalAspect;
 
-  // ── 6. Offset clamped to zone ─────────────────────────────────────────────
+  // ── 6. Offset clamped to zone ──
   const halfZoneW = zoneWidthM  / 2;
   const halfZoneH = zoneHeightM / 2;
   const halfArtW  = finalScaleX / 2;
@@ -168,20 +195,20 @@ export function computeDecalTransform(
   const offsetX   = Math.max(-halfZoneW + halfArtW, Math.min(halfZoneW - halfArtW, artwork.decalOffsetX));
   const offsetY   = Math.max(-halfZoneH + halfArtH, Math.min(halfZoneH - halfArtH, artwork.decalOffsetY));
 
-  // ── 7. World position ─────────────────────────────────────────────────────
+  // ── 7. World position
   const offsetLocal = new THREE.Vector3(offsetX, offsetY, 0);
   const offsetWorld = offsetLocal.clone().applyQuaternion(baseQuat);
   const position    = centre.clone().add(offsetWorld);
 
-  // ── 8. Projector depth ────────────────────────────────────────────────────
+  // ── 8. Projector depth 
   const depthZ = halfThickness * 2 + SURFACE_EPSILON * 2;
 
-  // ── 9. Final rotation (surface normal + user spin) ────────────────────────
+  // ── 9. Final rotation (surface normal + user spin)
   const userSpin  = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, artwork.decalRotation));
   const finalQuat = baseQuat.clone().multiply(userSpin);
   const rotation  = new THREE.Euler().setFromQuaternion(finalQuat);
 
-  // ── 10. Scale vector ──────────────────────────────────────────────────────
+  // ── 10. Scale vector
   const scale = new THREE.Vector3(finalScaleX, finalScaleY, depthZ);
 
   return { position, scale, rotation };
@@ -194,14 +221,14 @@ export function computeWrapFaceTransform(
 ): DecalTransform | null {
   const { placement, bleedFactor } = face;
 
-  // ── Orientation ───────────────────────────────────────────────────────────
+  // ── Orientation 
   const baseRotation = placementToRotation(placement);
   const baseQuat     = new THREE.Quaternion().setFromEuler(baseRotation);
 
-  // ── Centre of this face on the mesh ──────────────────────────────────────
+  // ── Centre of this face on the mesh──
   const centre = computeCentreFromMesh(placement, meshNode);
 
-  // ── Full mesh bounds → face dimensions ───────────────────────────────────
+  // ── Full mesh bounds → face dimension
   const box  = new THREE.Box3().setFromObject(meshNode);
   const size = new THREE.Vector3();
   box.getSize(size);
@@ -330,11 +357,6 @@ function computeCentreFromMesh(placement: string, meshNode: THREE.Mesh): THREE.V
   }
 }
 
-/**
- * Fallback centres used when no meshNode is available and the backend has not
- * provided world_bounds.  Values are tuned for shirt_baked.glb which occupies
- * roughly Y ∈ [0, 1], X ∈ [-0.3, 0.3], Z ∈ [-0.15, 0.15] in model space.
- */
 function getHardcodedCentre(placement: string): THREE.Vector3 {
   switch (placement) {
     case "back":         return new THREE.Vector3( 0,    0.55, -0.13);
@@ -345,6 +367,12 @@ function getHardcodedCentre(placement: string): THREE.Vector3 {
   }
 }
 
+function isLikelyCylindrical(meshSize: THREE.Vector3): boolean {
+  const cross = [meshSize.x, meshSize.z].sort((a, b) => a - b);
+  const [minCross, maxCross] = cross;
+  if (maxCross <= 0) return false;
+  return minCross / maxCross > 0.6;
+}
 
 function getFaceDimensions(
   placement: string,
@@ -358,11 +386,15 @@ function getFaceDimensions(
         faceH:         meshSize.y * 0.6,  // sleeves are shorter than the torso
         halfThickness: meshSize.x / 2,
       };
-    default: // front, back
+    default: { // front, back
+      const cylindrical = isLikelyCylindrical(meshSize);
+      const diameter = (meshSize.x + meshSize.z) / 2;
+      const faceW = cylindrical ? (Math.PI * diameter) / 2 : meshSize.x;
       return {
-        faceW:         meshSize.x,
+        faceW,
         faceH:         meshSize.y,
         halfThickness: meshSize.z / 2,
       };
+    }
   }
 }

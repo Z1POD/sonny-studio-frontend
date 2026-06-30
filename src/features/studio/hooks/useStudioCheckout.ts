@@ -16,7 +16,6 @@ import { useAuthStore } from "@/features/auth/store";
 import { storeProductApi } from "@/features/store/api";
 import type { StudioCanvasHandle } from "../components/StudioCanvas";
 import type { ShotConfig } from "../components/SaveProductDialog";
-import type { ApparelProduct, ArtworkState } from "../store";
 
 const CM = 0.01;
 
@@ -40,7 +39,7 @@ export function useStudioCheckout({ canvasRef, savedProductId }: UseStudioChecko
   const selectedTiers   = useStudioStore((s) => s.selectedTiers);
   const openCheckout    = useCheckoutStore((s) => s.open);
 
-  // ── Print cost ───────────────────────────────────────────────────────────────
+  // Print cost─
   const calculatePrintCost = useCallback((): number => {
     if (!product) return 0;
     let cost = 0;
@@ -55,7 +54,7 @@ export function useStudioCheckout({ canvasRef, savedProductId }: UseStudioChecko
     return cost;
   }, [product, artworks, selectedMethods, selectedTiers]);
 
-  // ── Print-areas payload ──────────────────────────────────────────────────────
+  // Print-areas payload
   const buildPrintAreasPayload = useCallback(() => {
     if (!product) return [];
     return product.printAreas
@@ -63,6 +62,12 @@ export function useStudioCheckout({ canvasRef, savedProductId }: UseStudioChecko
       .map((area) => {
         const art        = artworks[area.id];
         const methodCode = selectedMethods[area.id] ?? area.methods[0]?.code ?? "";
+        if (!methodCode) {
+          throw new Error(
+            `No print method resolved for print area "${area.name}". ` +
+            `This usually means the product was loaded without method/tier data.`,
+          );
+        }
         return {
           print_area:    area.areaKey,
           print_area_id: area.id,
@@ -87,7 +92,7 @@ export function useStudioCheckout({ canvasRef, savedProductId }: UseStudioChecko
       });
   }, [product, artworks, selectedMethods, selectedTiers]);
 
-  // ── render_config snapshot ───────────────────────────────────────────────────
+  // render_config snapshot─
   const buildRenderConfig = useCallback(() => {
     if (!product) return {};
     const cam    = product.cameraConfig;
@@ -120,16 +125,29 @@ export function useStudioCheckout({ canvasRef, savedProductId }: UseStudioChecko
         { id: "back",  label: "Back",      azimuth: Math.PI,     polar: Math.PI / 2,   enabled: true },
         { id: "angle", label: "3/4 Angle", azimuth: Math.PI / 6, polar: Math.PI / 2.4, enabled: true },
       ],
-      print_areas: activeAreas.map((area) => ({
-        print_area_id: area.id,
-        area_key:      area.areaKey,
-        name:          area.name,
-        placement:     area.placement,
-        mesh_name:     area.meshName,
-        width_cm:      area.widthCm,
-        height_cm:     area.heightCm,
-        uv_config:     {},
-      })),
+      print_areas: activeAreas.map((area) => {
+        const methodCode = selectedMethods[area.id] ?? area.methods[0]?.code ?? "";
+        const tierSize   = selectedTiers[area.id]   ?? area.methods[0]?.tiers[0]?.size ?? "";
+        const method     = area.methods.find((m) => m.code === methodCode) ?? area.methods[0];
+        const tier       = method?.tiers.find((t) => t.size === tierSize)  ?? method?.tiers[0];
+        return {
+          print_area_id: area.id,
+          area_key:      area.areaKey,
+          name:          area.name,
+          placement:     area.placement,
+          mesh_name:     area.meshName,
+          width_cm:      area.widthCm,
+          height_cm:     area.heightCm,
+          uv_config:     {},
+          // Persisted so the edit/resume flow can rebuild `methods` without
+          // a second apparel fetch — see mapSavedProductToApparelProduct.
+          print_method_code: method?.code ?? "",
+          print_method_name: method?.name ?? "",
+          size_tier:         tierSize,
+          price:             tier?.price ?? "0.00",
+          extra_color_price: tier?.extra_color_price ?? "0.00",
+        };
+      }),
       // Artwork transforms — restored by hydrateStudioFromSavedDesign on re-open
       artworkPrintInfos: activeAreas.map((area) => {
         const art = artworks[area.id];
@@ -149,9 +167,9 @@ export function useStudioCheckout({ canvasRef, savedProductId }: UseStudioChecko
         };
       }),
     };
-  }, [product, artworks]);
+  }, [product, artworks, selectedMethods, selectedTiers]);
 
-  // ── Main handler ─────────────────────────────────────────────────────────────
+  // Main handler
   const handleContinueToCheckout = useCallback(async () => {
     if (!canvasRef.current || !product) {
       toast.error("Canvas not ready");
@@ -189,6 +207,8 @@ export function useStudioCheckout({ canvasRef, savedProductId }: UseStudioChecko
           title:            product.name,
           enabled_variants: enabledVariantIds,
           print_areas:      printAreasPayload,
+          snapshot:         { render_config: renderConfig },
+          render_config:    renderConfig,
         } as any);
       } else {
         savedProduct = await storeProductApi.create({

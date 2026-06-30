@@ -3,8 +3,8 @@ import { getStoredToken } from "@/shared/api/client";
 
 export const Route = createFileRoute("/")({
   beforeLoad: () => {
-    // Send to store if signed in, login otherwise.
-    if (getStoredToken()) throw redirect({ to: "/store" });
+    // Send to designs if signed in, login otherwise.
+    if (getStoredToken()) throw redirect({ to: "/designs" });
     throw redirect({ to: "/login" });
   },
 });

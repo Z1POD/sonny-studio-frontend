@@ -132,7 +132,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <Outlet />
       <OverlayRoot />
-      <Toaster position="bottom-center" theme="system" offset="32px" />
+      <Toaster position="bottom-center" theme="system" offset="52px" />
     </QueryClientProvider>
   );
 }
