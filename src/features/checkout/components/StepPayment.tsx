@@ -15,11 +15,19 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Check, Copy, Loader2, Shield, RefreshCw, X,
   AlertTriangle, Clock, Upload, FileCheck, Wifi,
-  CheckCircle2,
+  CheckCircle2, ChevronDown, ReceiptText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useCheckoutStore } from "../store";
 import { paymentApi, orderApi } from "../api";
 import { toast } from "sonner";
@@ -109,6 +117,7 @@ export function StepPayment() {
   const [copiedField, setCopiedField]         = useState<string | null>(null);
   const [receiptError, setReceiptError]       = useState<string | null>(null);
   const [payerError, setPayerError]           = useState<string | null>(null);
+  const [showInvoiceDetails, setShowInvoiceDetails] = useState(false);
 
   const pollRef    = useRef<ReturnType<typeof setInterval> | null>(null);
   const elapsedRef = useRef(0);
@@ -472,26 +481,143 @@ export function StepPayment() {
       <div className="flex-1 overflow-y-auto space-y-4 pb-6 no-scrollbar">
 
         {/* Amount Banner */}
-        <div className="mb-4 rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-900/30 via-emerald-800/10 to-emerald-950/40 p-4 text-center">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-emerald-300/70">
-            Amount to send
-          </p>
-          <p className="mt-1 text-3xl font-bold tracking-tight text-emerald-100">
-            {invoice?.amount?.currency?.symbol} {invoice?.amount?.total}
-          </p>
-          {invoice?.payment?.warning && (
-            <p className="mt-2 text-[11px] text-emerald-300/60">
-              {invoice.payment.warning}
+        <div className="mb-4 overflow-hidden rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-900/30 via-emerald-800/10 to-emerald-950/40">
+          <div className="p-4 text-center">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-emerald-300/70">
+              Amount to send
             </p>
-          )}
-        </div>
+            <p className="mt-1 text-3xl font-bold tracking-tight text-emerald-100">
+              {invoice?.amount?.currency?.symbol} {invoice?.amount?.total}
+            </p>
+            {invoice?.payment?.warning && (
+              <p className="mt-2 text-[11px] text-emerald-300/60">
+                {invoice.payment.warning}
+              </p>
+            )}
+          </div>
 
-        {/* Instructions */}
-        {/* {(invoice.payment as any)?.instructions && (
-          <p className="text-sm text-muted-foreground text-center leading-relaxed px-1">
-            {(invoice.payment as any).instructions}
-          </p>
-        )} */}
+          {/* Invoice details toggle */}
+          <button
+            onClick={() => setShowInvoiceDetails((s) => !s)}
+            className="flex w-full items-center justify-center gap-1.5 border-t border-emerald-400/10 py-2.5 text-[11px] font-medium text-emerald-300/80 transition-colors hover:bg-emerald-400/5"
+          >
+            <ReceiptText className="h-3.5 w-3.5" />
+            {showInvoiceDetails ? "Hide invoice details" : "View invoice details"}
+            <ChevronDown
+              className={`h-3.5 w-3.5 transition-transform ${showInvoiceDetails ? "rotate-180" : ""}`}
+            />
+          </button>
+
+          <AnimatePresence initial={false}>
+            {showInvoiceDetails && (
+              <motion.div
+                key="invoice-details"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden border-t border-emerald-400/10"
+              >
+                <div className="space-y-3 p-4">
+                  {/* Invoice meta */}
+                  <div className="flex items-center justify-between text-[11px] text-emerald-300/60">
+                    <span>Invoice {invoice?.number}</span>
+                    {invoice?.createdAt && (
+                      <span>{new Date(invoice.createdAt).toLocaleDateString()}</span>
+                    )}
+                  </div>
+
+                  {/* Item breakdown */}
+                  {invoice?.items && invoice.items.length > 0 && (
+                    <div className="space-y-1.5 border-t border-emerald-400/10 pt-3">
+                      {invoice.items.map((item: any, idx: number) => (
+                        <div key={idx} className="flex items-center justify-between text-sm">
+                          <div className="min-w-0 pr-2">
+                            <p className="truncate font-medium text-emerald-100">
+                              {item.product_name ?? item.productName}
+                            </p>
+                            <p className="text-[11px] text-emerald-300/60">
+                              {(item.color ?? "")} · {item.size} × {item.quantity}
+                            </p>
+                          </div>
+                          <span className="shrink-0 tabular-nums text-emerald-100">
+                            {invoice?.amount?.currency?.symbol} {item.subtotal}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Amount breakdown */}
+                  <div className="space-y-1.5 border-t border-emerald-400/10 pt-3 text-sm">
+                    <div className="flex justify-between text-emerald-300/70">
+                      <span>Subtotal</span>
+                      <span className="tabular-nums text-emerald-100">
+                        {invoice?.amount?.currency?.symbol} {invoice?.amount?.subtotal}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-emerald-300/70">
+                      <span>Shipping</span>
+                      <span className="tabular-nums text-emerald-100">
+                        {Number(invoice?.amount?.shipping) === 0
+                          ? "Free"
+                          : `${invoice?.amount?.currency?.symbol} ${invoice?.amount?.shipping}`}
+                      </span>
+                    </div>
+                    {Number(invoice?.amount?.tax) > 0 && (
+                      <div className="flex justify-between text-emerald-300/70">
+                        <span>Tax</span>
+                        <span className="tabular-nums text-emerald-100">
+                          {invoice?.amount?.currency?.symbol} {invoice?.amount?.tax}
+                        </span>
+                      </div>
+                    )}
+                    {Number(invoice?.amount?.discount) > 0 && (
+                      <div className="flex justify-between text-emerald-300/70">
+                        <span>Discount</span>
+                        <span className="tabular-nums text-green-400">
+                          − {invoice?.amount?.currency?.symbol} {invoice?.amount?.discount}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between border-t border-emerald-400/10 pt-1.5 text-sm font-semibold">
+                      <span className="text-emerald-100">Total</span>
+                      <span className="tabular-nums text-emerald-100">
+                        {invoice?.amount?.currency?.symbol} {invoice?.amount?.total}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Payment instructions */}
+                  {(invoice?.payment as any)?.instructions && (
+                    <div className="border-t border-emerald-400/10 pt-3">
+                      <p className="text-[11px] uppercase tracking-[0.14em] text-emerald-300/60">
+                        Instructions
+                      </p>
+                      <p className="mt-1 text-sm leading-relaxed text-emerald-200/80">
+                        {(invoice.payment as any).instructions}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Optional note */}
+                  {(invoice?.payment as any)?.note && (
+                    <p className="text-[11px] text-emerald-300/60">
+                      {(invoice.payment as any).note}
+                    </p>
+                  )}
+
+                  {/* Expiry */}
+                  {invoice?.expiresAt && (
+                    <p className="text-[11px] text-emerald-300/50">
+                      Invoice expires at {new Date(invoice.expiresAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
         {/* Bank selector */}
         {methods.length > 0 && (
@@ -562,103 +688,132 @@ export function StepPayment() {
         {/* Receipt submission */}
         <div className="space-y-3">
           <button
-            onClick={() => setShowReceiptForm((s) => !s)}
+            onClick={() => setShowReceiptForm(true)}
             className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm font-medium transition-all hover:bg-primary/10"
           >
             <Shield className="h-4 w-4" />
-            {showReceiptForm ? "Hide form" : "I've paid — verify now"}
+            I've paid — verify now
           </button>
 
-          <AnimatePresence>
-            {showReceiptForm && (
-              <motion.div
-                key="receipt-form"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="space-y-4 rounded-2xl border border-border bg-surface p-4">
+          <Dialog
+            open={showReceiptForm}
+            onOpenChange={(open) => {
+              // distract-free: only allow closing via explicit Cancel button
+              if (!open) return;
+              setShowReceiptForm(open);
+            }}
+          >
+            <DialogContent
+              className="rounded-2xl sm:max-w-md"
+              onPointerDownOutside={(e) => e.preventDefault()}
+              onInteractOutside={(e) => e.preventDefault()}
+              onEscapeKeyDown={(e) => e.preventDefault()}
+              showCloseButton={false}
+            >
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-primary" />
+                  Verify your payment
+                </DialogTitle>
+                <DialogDescription>
+                  Enter your receipt details below so we can confirm your payment.
+                </DialogDescription>
+              </DialogHeader>
 
-                  {/* Receipt / TX ID field */}
+              <div className="space-y-4 py-1">
+                {/* Receipt / TX ID field */}
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                    {refLabel}
+                  </Label>
+                  <Input
+                    value={receiptIdentifier}
+                    onChange={(e) => {
+                      setReceiptIdentifier(e.target.value);
+                      if (receiptError) setReceiptError(null);
+                    }}
+                    onBlur={() => {
+                      setReceiptError(validateReceiptField(receiptIdentifier, fieldType));
+                    }}
+                    placeholder={refPlaceholder || "Enter transaction ID or receipt number"}
+                    className={`h-12 rounded-xl font-mono text-sm ${
+                      receiptError ? "border-destructive focus-visible:ring-destructive" : "border-border"
+                    } bg-background`}
+                    autoComplete="off"
+                    spellCheck={false}
+                    autoFocus
+                  />
+                  {receiptError ? (
+                    <p className="flex items-center gap-1 text-[11px] text-destructive">
+                      <AlertTriangle className="h-3 w-3 shrink-0" />
+                      {receiptError}
+                    </p>
+                  ) : refHelpText ? (
+                    <p className="text-[11px] text-muted-foreground">{refHelpText}</p>
+                  ) : null}
+                </div>
+
+                {/* Payer account field */}
+                {requiresAccountNumber && (
                   <div className="space-y-1.5">
                     <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                      {refLabel}
+                      {(selectedMethod as any)?.payer_account_label
+                        ?? (selectedMethod as any)?.payerAccountLabel
+                        ?? "Your account number (last 8 digits)"}
                     </Label>
                     <Input
-                      value={receiptIdentifier}
+                      value={payerAccount}
                       onChange={(e) => {
-                        setReceiptIdentifier(e.target.value);
-                        if (receiptError) setReceiptError(null);
+                        // Only allow digits
+                        const digits = e.target.value.replace(/\D/g, "").slice(0, 12);
+                        setPayerAccount(digits);
+                        if (payerError) setPayerError(null);
                       }}
-                      onBlur={() => {
-                        setReceiptError(validateReceiptField(receiptIdentifier, fieldType));
-                      }}
-                      placeholder={refPlaceholder || "Enter transaction ID or receipt number"}
-                      className={`h-12 rounded-xl font-mono text-sm ${
-                        receiptError ? "border-destructive focus-visible:ring-destructive" : "border-border"
+                      onBlur={() => setPayerError(validatePayerAccount(payerAccount))}
+                      placeholder="e.g. 12345678"
+                      inputMode="numeric"
+                      maxLength={12}
+                      className={`h-12 rounded-xl font-mono text-sm tracking-widest ${
+                        payerError ? "border-destructive focus-visible:ring-destructive" : "border-border"
                       } bg-background`}
-                      autoComplete="off"
-                      spellCheck={false}
                     />
-                    {receiptError ? (
+                    {payerError && (
                       <p className="flex items-center gap-1 text-[11px] text-destructive">
                         <AlertTriangle className="h-3 w-3 shrink-0" />
-                        {receiptError}
+                        {payerError}
                       </p>
-                    ) : refHelpText ? (
-                      <p className="text-[11px] text-muted-foreground">{refHelpText}</p>
-                    ) : null}
-                  </div>
-
-                  {/* Payer account field */}
-                  {requiresAccountNumber && (
-                    <div className="space-y-1.5">
-                      <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                        {(selectedMethod as any)?.payer_account_label
-                          ?? (selectedMethod as any)?.payerAccountLabel
-                          ?? "Your account number (last 8 digits)"}
-                      </Label>
-                      <Input
-                        value={payerAccount}
-                        onChange={(e) => {
-                          // Only allow digits
-                          const digits = e.target.value.replace(/\D/g, "").slice(0, 12);
-                          setPayerAccount(digits);
-                          if (payerError) setPayerError(null);
-                        }}
-                        onBlur={() => setPayerError(validatePayerAccount(payerAccount))}
-                        placeholder="e.g. 12345678"
-                        inputMode="numeric"
-                        maxLength={12}
-                        className={`h-12 rounded-xl font-mono text-sm tracking-widest ${
-                          payerError ? "border-destructive focus-visible:ring-destructive" : "border-border"
-                        } bg-background`}
-                      />
-                      {payerError && (
-                        <p className="flex items-center gap-1 text-[11px] text-destructive">
-                          <AlertTriangle className="h-3 w-3 shrink-0" />
-                          {payerError}
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  <Button
-                    onClick={handleSubmitReceipt}
-                    disabled={submittingReceipt || !receiptIdentifier.trim()}
-                    className="w-full h-11 rounded-xl font-semibold"
-                  >
-                    {submittingReceipt ? (
-                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying…</>
-                    ) : (
-                      <><Upload className="mr-2 h-4 w-4" />Submit receipt</>
                     )}
-                  </Button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter className="flex-row gap-2 sm:gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowReceiptForm(false);
+                    setReceiptError(null);
+                    setPayerError(null);
+                  }}
+                  className="flex-1 h-11 rounded-xl font-medium"
+                  disabled={submittingReceipt}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSubmitReceipt}
+                  disabled={submittingReceipt || !receiptIdentifier.trim()}
+                  className="flex-1 h-11 rounded-xl font-semibold"
+                >
+                  {submittingReceipt ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying…</>
+                  ) : (
+                    <><Upload className="mr-2 h-4 w-4" />Submit receipt</>
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Cancel */}
