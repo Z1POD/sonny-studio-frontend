@@ -229,7 +229,7 @@ export function LayerManager({ open, onClose }: LayerManagerProps) {
                         {/* Delete */}
                         <button
                           onClick={() => handleDelete(layer.id)}
-                          className="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-muted-foreground opacity-0 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                          className="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-muted-foreground opacit-90 md:opacity-0 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
                           title="Remove layer"
                         >
                           <Trash2 className="h-3.5 w-3.5" />

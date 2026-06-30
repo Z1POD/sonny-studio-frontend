@@ -11,7 +11,7 @@ import {
 } from "../hooks/useDecalTransforms";
 
 
-// ─── Shared decal material ────────────────────────────────────────────────────
+// Shared decal material─
 // Extracted to avoid repeating the same JSX props on every Decal instance.
 
 function DecalMaterial({ texture }: { texture: THREE.Texture }) {
@@ -30,7 +30,7 @@ function DecalMaterial({ texture }: { texture: THREE.Texture }) {
 }
 
 
-// ─── DecalLayer ───────────────────────────────────────────────────────────────
+// DecalLayer──
 
 interface DecalLayerProps {
   artwork: ArtworkState;
@@ -51,21 +51,13 @@ function DecalLayer({ artwork, zone, meshNode }: DecalLayerProps) {
 
   if (!texture) return null;
 
-  // "wrap" (all-over print) is rendered as a UV-mapped material.map on every
-  // mesh the garment is made of — see useWrapTexture / useBuiltMaterial below.
-  // It is intentionally NOT rendered here as a child Decal: Decal only paints
-  // triangles directly under its own projector on the single mesh it's
-  // nested inside, so it can never reach panels (back, sleeves) that live on
-  // a different mesh node — which is exactly why "wrap" used to render
-  // front-only. "full" (single-surface print) keeps using Decal, since that
-  // correctly targets one designated face.
   if (zone.placement === "wrap") return null;
 
   return <SingleDecalLayer artwork={artwork} zone={zone} meshNode={meshNode} texture={texture} />;
 }
 
 
-// ─── SingleDecalLayer ────────────────────────────────────────────────────────
+// SingleDecalLayer──
 // One decal placed on the zone's designated surface.
 
 function SingleDecalLayer({
@@ -89,21 +81,7 @@ function SingleDecalLayer({
 }
 
 
-// NOTE: all-over "wrap" placement is no longer implemented as stacked Decal
-// projectors. See WrapOverlayMesh below: the artwork is applied as a real,
-// repeating UV map on a second mesh that shares the garment's geometry and
-// sits on top of (not instead of) the garment's own opaque material — the
-// only approach that both (a) reliably covers every panel of a multi-mesh
-// garment, since Decal cannot reach geometry outside the single mesh it's
-// nested in, and (b) doesn't erase the garment wherever the artwork's PNG is
-// transparent. Baking the artwork directly into the base material's `map`
-// (an earlier version of this fix) made `transparent: true` blend against
-// whatever's *behind* the mesh for every alpha pixel, instead of showing the
-// garment's own surface there — which looked like the artwork "cutting out"
-// the model.
-
-
-// ─── Material builder ─────────────────────────────────────────────────────────
+// Material builder
 
 interface UseMaterialProps {
   node: THREE.Mesh;
@@ -135,9 +113,6 @@ function useBuiltMaterial({
     const hasNormal  = !!materialConfig?.normalMapUrl;
     const hasColor   = isColorable && !!selectedColor;
 
-    // Mirror the original MaterialApplier behaviour exactly:
-    // if none of the overrides are active, leave the GLB's baked material
-    // untouched so the shirt keeps its original look.
     if (!hasColor && !hasTexture && !hasNormal) {
       return node.material as THREE.Material;
     }
@@ -154,10 +129,6 @@ function useBuiltMaterial({
     });
   }, [node, selectedColor, colorableMeshes, materialConfig, diffuse, normal]);
 
-  // Dispose the previously-generated material whenever this memo recomputes
-  // a new one (color change, etc). Materials sourced straight from the GLB
-  // (the "leave it untouched" branch above) must never be disposed here —
-  // they're owned by the loaded GLTF cache, not by us.
   const isOwned = material !== node.material;
   useEffect(() => {
     return () => {
@@ -168,25 +139,6 @@ function useBuiltMaterial({
   return material;
 }
 
-
-// ─── Wrap (all-over print) texture ─────────────────────────────────────────────
-//
-// One shared texture for the whole garment — loaded once per artwork URL and
-// reused across every mesh node, rather than the previous per-face Decal
-// approach (which required a separate Decal per mesh and still couldn't
-// reach geometry outside whichever single mesh got matched).
-//
-// IMPORTANT: this intentionally does NOT use drei's useTexture(). useTexture
-// calls useLoader under the hood, which fires immediately regardless of
-// whether the URL is empty — useLoader("") still reaches into
-// TextureLoader.load(""), which resolves against the current document URL
-// and throws ("Could not load : undefined"). DecalLayer gets away with the
-// same-looking pattern only because its parent never mounts it until
-// art.decalUrl is already truthy; this hook runs unconditionally on every
-// ProductModel render (there may be no wrap zone, or no artwork on it yet),
-// so it needs to gate loading itself rather than relying on a caller to do
-// it. A plain THREE.TextureLoader, only invoked when a URL exists, sidesteps
-// the suspense/loader pipeline entirely for the "no wrap artwork" case.
 
 const wrapTextureLoader = new THREE.TextureLoader();
 
@@ -211,13 +163,6 @@ function useWrapArtworkTexture(artwork: ArtworkState | undefined): THREE.Texture
           return;
         }
         tex.colorSpace = THREE.SRGBColorSpace;
-        // glTF/GLB UVs are authored with a top-left origin (per the glTF
-        // spec), but THREE.TextureLoader defaults flipY to true, which is
-        // meant for textures sampled against the legacy bottom-left-origin
-        // convention. Decal doesn't hit this because it builds its own UVs
-        // at runtime for the projected patch; WrapOverlayMesh instead
-        // samples the model's actual baked UVs, so flipY must be disabled
-        // or the artwork renders upside-down relative to the garment.
         tex.flipY = false;
         loaded = tex;
         setTexture(tex);
@@ -230,9 +175,6 @@ function useWrapArtworkTexture(artwork: ArtworkState | undefined): THREE.Texture
 
     return () => {
       cancelled = true;
-      // Dispose whatever finished loading for this effect run; if the URL
-      // changes again before load completes, the in-flight texture above
-      // gets disposed via the `cancelled` check instead.
       loaded?.dispose();
     };
   }, [url]);
@@ -261,26 +203,6 @@ function zoneTargetsMesh(zone: PrintArea, meshName: string): boolean {
 }
 
 
-// ─── WrapOverlayMesh ────────────────────────────────────────────────────────────
-//
-// Renders the all-over artwork as a SECOND mesh sharing the garment's own
-// geometry, layered on top of the (still fully opaque, unmodified) base
-// mesh — the same layering principle as DecalMaterial, just spread across
-// the whole UV space instead of projected through a Decal.
-//
-// Why a second mesh instead of putting the texture on the base material:
-// `transparent: true` makes a material blend against whatever is already in
-// the colour buffer *behind that mesh* (background / nothing), not against
-// "the rest of this same surface". So wherever the artwork PNG is
-// transparent (the gaps between tiger stripes, soft edges, etc.), baking it
-// into the base material's `map` made the garment itself disappear there
-// instead of showing the garment's own colour/fabric. Keeping the base mesh
-// untouched and adding this overlay on top — with depthWrite disabled and a
-// tiny polygon offset, exactly like Decal does — means alpha pixels simply
-// let the base mesh underneath show through, while opaque pixels paint the
-// artwork. alphaTest (rather than only `transparent`) also avoids
-// depth/blend-order artifacts on overlapping/self-intersecting geometry.
-
 function WrapOverlayMesh({
   geometry,
   texture,
@@ -308,7 +230,7 @@ function WrapOverlayMesh({
 }
 
 
-// ─── ProductModel ─────────────────────────────────────────────────────────────
+// ProductModel
 
 interface ProductModelProps {
   modelUrl: string;
@@ -339,10 +261,6 @@ export function ProductModel({
     [nodes],
   );
 
-  // "wrap" placement is whole-garment by definition — at most one wrap zone
-  // is meaningfully active at a time, and its texture applies to every mesh
-  // regardless of zoneTargetsMesh (which only makes sense for single-surface
-  // "full" zones tied to one named mesh/panel).
   const wrapZone = useMemo(
     () => printAreas.find((z) => z.placement === "wrap" && !!artworks[z.id]?.decalUrl),
     [printAreas, artworks],

@@ -192,8 +192,10 @@ export function computeDecalTransform(
   const halfZoneH = zoneHeightM / 2;
   const halfArtW  = finalScaleX / 2;
   const halfArtH  = finalScaleY / 2;
-  const offsetX   = Math.max(-halfZoneW + halfArtW, Math.min(halfZoneW - halfArtW, artwork.decalOffsetX));
-  const offsetY   = Math.max(-halfZoneH + halfArtH, Math.min(halfZoneH - halfArtH, artwork.decalOffsetY));
+  const offsetX   = Math.max(-halfZoneW + halfArtW, Math.min(halfZoneW - halfArtW,  artwork.decalOffsetX));
+  // Negate Y: store uses screen-space convention (Y↓ positive) but Three.js
+  // world space has Y↑ positive — without this, dragging up moves the decal down.
+  const offsetY   = Math.max(-halfZoneH + halfArtH, Math.min(halfZoneH - halfArtH, -artwork.decalOffsetY));
 
   // ── 7. World position
   const offsetLocal = new THREE.Vector3(offsetX, offsetY, 0);
@@ -204,7 +206,8 @@ export function computeDecalTransform(
   const depthZ = halfThickness * 2 + SURFACE_EPSILON * 2;
 
   // ── 9. Final rotation (surface normal + user spin)
-  const userSpin  = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, artwork.decalRotation));
+  // Negate rotation: canvas uses clockwise-positive, Three.js uses counter-clockwise-positive.
+  const userSpin  = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -artwork.decalRotation));
   const finalQuat = baseQuat.clone().multiply(userSpin);
   const rotation  = new THREE.Euler().setFromQuaternion(finalQuat);
 
@@ -245,8 +248,9 @@ export function computeWrapFaceTransform(
   // User can nudge the pattern position within the face
   const maxOffX = faceW * 0.4;
   const maxOffY = faceH * 0.4;
-  const offsetX = Math.max(-maxOffX, Math.min(maxOffX, artwork.decalOffsetX));
-  const offsetY = Math.max(-maxOffY, Math.min(maxOffY, artwork.decalOffsetY));
+  const offsetX = Math.max(-maxOffX, Math.min(maxOffX,  artwork.decalOffsetX));
+  // Negate Y: same screen-space vs world-space convention mismatch as computeDecalTransform.
+  const offsetY = Math.max(-maxOffY, Math.min(maxOffY, -artwork.decalOffsetY));
 
   const offsetLocal = new THREE.Vector3(offsetX, offsetY, 0);
   const offsetWorld = offsetLocal.clone().applyQuaternion(baseQuat);
@@ -254,8 +258,8 @@ export function computeWrapFaceTransform(
 
   const depthZ = halfThickness * 2 + SURFACE_EPSILON * 2;
 
-  // User rotation spins the texture on this face
-  const userSpin  = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, artwork.decalRotation));
+  // Negate rotation: clockwise-positive (canvas) → counter-clockwise-positive (Three.js).
+  const userSpin  = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -artwork.decalRotation));
   const finalQuat = baseQuat.clone().multiply(userSpin);
   const rotation  = new THREE.Euler().setFromQuaternion(finalQuat);
 
@@ -293,10 +297,12 @@ export function decomposeDecalTransform(
   while (userRotation < -Math.PI) userRotation += Math.PI * 2;
 
   return {
-    offsetX:  parseFloat(localPos.x.toFixed(4)),
-    offsetY:  parseFloat(localPos.y.toFixed(4)),
-    scale:    parseFloat(Math.abs(scl.y).toFixed(4)),
-    rotation: parseFloat(userRotation.toFixed(4)),
+    offsetX:   parseFloat( localPos.x.toFixed(4)),
+    // Negate back: world Y↑ → screen Y↓ convention used by the store/UI.
+    offsetY:   parseFloat(-localPos.y.toFixed(4)),
+    scale:     parseFloat(Math.abs(scl.y).toFixed(4)),
+    // Negate back: Three.js CCW → canvas CW convention used by the store/UI.
+    rotation:  parseFloat(-userRotation.toFixed(4)),
   };
 }
 

@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { useStudioStore, getDefaultArtwork } from "../store";
 
-// ── Gizmo canvas ───────────────────────────────────────────────────────────
+//  Gizmo canvas
 
 interface GizmoProps {
   offsetX: number;
@@ -186,7 +186,7 @@ function DecalGizmo({
   );
 }
 
-// ── Rotation dial ──────────────────────────────────────────────────────────
+//  Rotation dial 
 
 function RotationDial({ rotation, onChange }: { rotation: number; onChange: (r: number) => void }) {
   const deg = Math.round((rotation * 180) / Math.PI);
@@ -240,7 +240,7 @@ function RotationDial({ rotation, onChange }: { rotation: number; onChange: (r: 
   );
 }
 
-// ── Scale controls ─────────────────────────────────────────────────────────
+//  Scale controls
 
 function ScaleControls({
   scale, minScale, maxScale,
@@ -281,7 +281,7 @@ function ScaleControls({
   );
 }
 
-// ── DecalPanel ─────────────────────────────────────────────────────────────
+//  DecalPanel
 
 export function DecalPanel() {
   const store = useStudioStore();
@@ -376,7 +376,7 @@ export function DecalPanel() {
 
       {safeArtwork.decalUrl ? (
         <>
-          {/* ── Gizmo ── */}
+          {/*  Gizmo  */}
           <DecalGizmo
             offsetX={safeArtwork.decalOffsetX}
             offsetY={safeArtwork.decalOffsetY}
@@ -400,7 +400,7 @@ export function DecalPanel() {
             }
           />
 
-          {/* ── Scale strip ── */}
+          {/*  Scale strip  */}
           {selectedPrintArea.allowScaling && (
             <ScaleControls
               scale={safeArtwork.decalScale}
@@ -410,7 +410,7 @@ export function DecalPanel() {
             />
           )}
 
-          {/* ── Rotation dial ── */}
+          {/*  Rotation dial  */}
           {selectedPrintArea.allowRotation && (
             <RotationDial
               rotation={safeArtwork.decalRotation}
@@ -418,7 +418,7 @@ export function DecalPanel() {
             />
           )}
 
-          {/* ── Fine-tune toggle ── */}
+          {/*  Fine-tune toggle  */}
           <button
             onClick={() => setShowFineTune((v) => !v)}
             className="flex items-center gap-1.5 self-start text-[11px] text-muted-foreground transition hover:text-foreground"
