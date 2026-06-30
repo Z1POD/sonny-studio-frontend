@@ -304,7 +304,7 @@ export function DesignDetailSheet({ design, onClose, onMutated }: DesignDetailSh
               </div>
 
               {/* Body */}
-              <div className="flex-1 overflow-y-auto pb-8 max-w-[600px] mx-auto no-scrollbar">
+              <div className="flex-1 overflow-y-auto pb-8 max-w-[100%] md:max-w-[600px] mx-auto no-scrollbar">
                 {isLoading || !detail ? (
                   <div className="flex items-center justify-center py-20">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
