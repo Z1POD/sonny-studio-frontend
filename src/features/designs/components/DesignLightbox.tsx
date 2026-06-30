@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
 interface DesignLightboxProps {
   images: { url: string; label?: string }[];
@@ -75,11 +76,27 @@ export function DesignLightbox({ images, initialIndex = 0, onClose }: DesignLigh
           className="flex max-h-[85dvh] max-w-[90vw] items-center justify-center"
           onClick={(e) => e.stopPropagation()}
         >
-          <img
-            src={images[idx].url}
-            alt={images[idx].label ?? `Mockup ${idx + 1}`}
-            className="max-h-[85dvh] max-w-[90vw] rounded-2xl object-contain shadow-2xl"
-          />
+          <TransformWrapper
+              initialScale={1}
+              minScale={1}
+              maxScale={4}
+              centerOnInit
+              doubleClick={{ mode: "zoomIn" }}
+              pinch={{ step: 5 }}
+              wheel={{ disabled: true }}
+            >
+              <TransformComponent
+                wrapperClass="!max-h-[85dvh] !max-w-[90vw]"
+                contentClass="flex items-center justify-center"
+              >
+                <img
+                  src={images[idx].url}
+                  alt={images[idx].label ?? `Mockup ${idx + 1}`}
+                  className="max-h-[85dvh] max-w-[90vw] rounded-2xl object-contain shadow-2xl select-none"
+                  draggable={false}
+                />
+              </TransformComponent>
+            </TransformWrapper>
         </motion.div>
       </AnimatePresence>
 

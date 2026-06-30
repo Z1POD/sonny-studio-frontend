@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Check, Copy, Loader2, Shield, RefreshCw, X,
@@ -32,12 +33,12 @@ import { useCheckoutStore } from "../store";
 import { paymentApi, orderApi } from "../api";
 import { toast } from "sonner";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// Constants
 
 const POLL_INTERVAL_MS    = 3_000;
 const MAX_POLL_DURATION_MS = 120_000; // 2 min
 
-// ─── Validation ───────────────────────────────────────────────────────────────
+// Validation
 
 type ReceiptFieldType =
   | "alphanumeric"
@@ -98,7 +99,7 @@ function validatePayerAccount(value: string): string | null {
   return null;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// Component
 
 export function StepPayment() {
   const {
@@ -118,6 +119,9 @@ export function StepPayment() {
   const [receiptError, setReceiptError]       = useState<string | null>(null);
   const [payerError, setPayerError]           = useState<string | null>(null);
   const [showInvoiceDetails, setShowInvoiceDetails] = useState(false);
+  const [isCanceling, setIsCanceling] = useState(false);
+  const navigate = useNavigate();
+  
 
   const pollRef    = useRef<ReturnType<typeof setInterval> | null>(null);
   const elapsedRef = useRef(0);
@@ -128,6 +132,7 @@ export function StepPayment() {
   const selectedMethod = methods.find(
     (m: any) => (m.provider_code ?? m.providerCode) === selectedProviderCode,
   );
+
 
   // Auto-select first provider
   useEffect(() => {
@@ -150,7 +155,7 @@ export function StepPayment() {
     } catch { toast.error("Could not copy"); }
   };
 
-  // ── Polling ────────────────────────────────────────────────────────────────
+  // Polling
   const stopPolling = useCallback(() => {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
     elapsedRef.current = 0;
@@ -236,7 +241,7 @@ export function StepPayment() {
     fieldType = "alphanumeric";
   }
 
-  // ── Submit receipt ─────────────────────────────────────────────────────────
+  // Submit receipt
   const handleSubmitReceipt = async () => {
     if (!order || !selectedMethod) return;
 
@@ -309,13 +314,18 @@ export function StepPayment() {
   };
 
   const handleCancelOrder = async () => {
-    if (!order) return;
+    if (!order || isCanceling) return;
+    
+    setIsCanceling(true);
     try {
       await orderApi.cancel(order.id, "User cancelled from payment step");
       toast.success("Order cancelled");
-      reset();
+      // Navigate to /designs instead of reset()
+      navigate({ to: "/designs" });
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to cancel order");
+    } finally {
+      setIsCanceling(false);
     }
   };
 
@@ -330,7 +340,7 @@ export function StepPayment() {
     setShowReceiptForm(false);
   };
 
-  // ─── Guards ────────────────────────────────────────────────────────────────
+  // Guards
   if (!invoice) {
     return (
       <div className="flex h-full flex-col items-center justify-center py-12 text-center">
@@ -343,7 +353,7 @@ export function StepPayment() {
   const sym   = (invoice.amount as any)?.currency?.symbol ?? "Br";
   const total = (invoice.amount as any)?.total ?? "0";
 
-  // ─── Verifying ─────────────────────────────────────────────────────────────
+  // Verifying
   if (verifyState && !verifyState.isTerminal &&
       (verifyState.status === "submitted" || verifyState.status === "verifying")) {
     return (
@@ -386,7 +396,7 @@ export function StepPayment() {
     );
   }
 
-  // ─── Success ────────────────────────────────────────────────────────────────
+  // Success
   if (verifyState && (verifyState.isVerified || verifyState.status === "verified")) {
     return (
       <motion.div
@@ -429,7 +439,7 @@ export function StepPayment() {
     );
   }
 
-  // ─── Failed / Mismatch ──────────────────────────────────────────────────────
+  // Failed / Mismatch
   if (verifyState && verifyState.isTerminal) {
     const isMismatch = verifyState.status === "mismatch";
     return (
@@ -457,16 +467,21 @@ export function StepPayment() {
             onClick={handleCancelOrder}
             variant="ghost"
             className="w-full h-10 text-sm text-destructive hover:text-destructive"
+            disabled={isCanceling}
           >
-            <X className="mr-2 h-4 w-4" />
-            Cancel order
+            {isCanceling ? (
+             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <X className="mr-2 h-4 w-4" />
+            )}
+            {isCanceling ? "Canceling..." : "Cancel order"}
           </Button>
         </div>
       </motion.div>
     );
   }
 
-  // ─── Default: payment instructions ─────────────────────────────────────────
+  // Default: payment instructions
   const refLabel    = (selectedMethod as any)?.reference?.label
     ?? (selectedMethod as any)?.referenceLabel ?? "Transaction ID / Receipt";
 
@@ -820,9 +835,14 @@ export function StepPayment() {
         <div className="flex justify-center pt-1">
           <button
             onClick={handleCancelOrder}
-            className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+            disabled={isCanceling}
+            className={`text-xs transition-colors ${
+              isCanceling 
+                ? "text-muted-foreground/50 cursor-not-allowed" 
+                : "text-muted-foreground hover:text-destructive"
+            }`}
           >
-            Cancel order
+            {isCanceling ? "Canceling order..." : "Cancel order"}
           </button>
         </div>
       </div>
@@ -830,7 +850,7 @@ export function StepPayment() {
   );
 }
 
-// ─── DetailRow ─────────────────────────────────────────────────────────────────
+// DetailRow
 
 function DetailRow({
   label, value, onCopy, copied,

@@ -41,8 +41,8 @@ export interface CaptureAPI {
 // ─── Capture resolution ────────────────────────────────────────────────────
 // All exported images are always this size, regardless of the live canvas.
 
-const CAPTURE_WIDTH = 1920;
-const CAPTURE_HEIGHT = 1080; // 16:9
+const CAPTURE_WIDTH = 2560;
+const CAPTURE_HEIGHT = 1440; // 16:9
 
 // ─── CaptureBridge ─────────────────────────────────────────────────────────
 
@@ -190,7 +190,7 @@ function Lights({ lighting }: { lighting?: LightConfig }) {
           position={[3, 5, 3]}
           intensity={1.2}
           castShadow
-          shadow-mapSize={[2048, 2048]}
+          shadow-mapSize={[4096, 4096]}
           shadow-bias={-0.0001}
         />
         <directionalLight
@@ -209,7 +209,7 @@ function Lights({ lighting }: { lighting?: LightConfig }) {
           position={lighting.key.position}
           intensity={lighting.key.intensity}
           castShadow
-          shadow-mapSize={[2048, 2048]}
+          shadow-mapSize={[4096, 4096]}
           shadow-bias={-0.0001}
         />
       )}
@@ -279,7 +279,7 @@ export const StudioCanvas = forwardRef<StudioCanvasHandle>(
         shadows
         dpr={[1, 2]}
         camera={{ position: cam.position, fov: cam.fov }}
-        gl={{ preserveDrawingBuffer: true, antialias: true }}
+        gl={{ preserveDrawingBuffer: true, antialias: true, powerPreference: "high-performance" }}
         style={{ background: render.background }}
         onCreated={({ gl }) => {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
