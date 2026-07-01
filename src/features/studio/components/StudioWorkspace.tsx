@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { CheckOut } from "@/features/checkout/components/CheckOut";
 import { useStudioInit } from "../hooks/useStudioInit";
 import { useStudioCheckout } from "../hooks/useStudioCheckout";
+import { useTelegram } from "@/shared/hooks/use-telegram";
 
 const CM = 0.01;
 
@@ -28,6 +29,16 @@ export function StudioWorkspace() {
   const [artworkLibraryOpen, setArtworkLibraryOpen] = useState(false);
 
   useEffect(() => setMounted(true), []);
+  const { enableClosingConfirmation, disableClosingConfirmation } = useTelegram();
+
+  useEffect(() => {
+    enableClosingConfirmation();
+
+    return () => {
+      disableClosingConfirmation();
+    };
+  }, [enableClosingConfirmation, disableClosingConfirmation]);
+
 
   //  Init (fetch + hydrate) 
   const { apparelId, savedProductId, isLoading } = useStudioInit();
