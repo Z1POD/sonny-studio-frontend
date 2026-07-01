@@ -865,9 +865,12 @@ function DetailRow({
         <p className="mt-0.5 truncate text-sm font-semibold tabular-nums">{value}</p>
       </div>
       {onCopy && (
-        <button
+        <div
+          role="button"
+          tabIndex={0}
           onClick={onCopy}
-          className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border transition-all ${
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onCopy(); } }}
+          className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border transition-all cursor-pointer ${
             copied
               ? "border-green-500/30 bg-green-500/10 text-green-600"
               : "border-border bg-background text-muted-foreground hover:text-foreground"
@@ -877,7 +880,7 @@ function DetailRow({
           {copied
             ? <CheckCircle2 className="h-3.5 w-3.5" />
             : <Copy className="h-3.5 w-3.5" />}
-        </button>
+        </div>
       )}
     </div>
   );
