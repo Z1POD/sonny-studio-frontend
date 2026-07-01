@@ -134,7 +134,7 @@ export function CatalogPage() {
           </p>
         </div>
       ) : (
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="mt-6 grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {items.map((b) => {
             const isShowingDetails = hoveredItemId === b.id;
 
