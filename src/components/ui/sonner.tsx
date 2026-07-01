@@ -9,7 +9,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       className="toaster group"
       style={{
-        bottom: "3rem",
+        top: "4rem",
       }}
       toastOptions={{
         classNames: {

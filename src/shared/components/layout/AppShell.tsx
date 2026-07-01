@@ -3,13 +3,10 @@ import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowDown,
   BarChart3,
-  ChevronUp,
+  CircleDotDashed,
   LayoutGrid,
   LogOut,
-  Menu,
-  MenuSquare,
   Palette,
   Store as StoreIcon,
   Wallet as WalletIcon,
@@ -33,7 +30,7 @@ const NAV = [
 
 ] as const;
 
-// ─── Avatar dropdown ──────────────────────────────────────────────────────────
+// Avatar dropdown 
 
 function UserMenu() {
   const user = useAuthStore((s) => s.user);
@@ -100,7 +97,7 @@ function UserMenu() {
   );
 }
 
-// ─── Studio nav FAB ───────────────────────────────────────────────────────────
+// Studio nav FAB
 
 function StudioNavFab() {
   const location = useLocation();
@@ -111,6 +108,33 @@ function StudioNavFab() {
 
   return (
     <>
+      {/* FAB — top-left, mobile only */}
+      <div className="fixed left-1/2 top-8 z-20 md:hidden -translate-x-1/2">
+        <motion.button
+          onClick={() => setOpen((v) => !v)}
+          aria-label="Toggle navigation"
+          whileTap={{ scale: 0.92 }}
+          className={cn(
+            "flex h-9 w-9 items-center justify-center rounded-full border shadow-lg backdrop-blur-md transition-colors duration-200 backdrop-blur-xl",
+            open
+              ? "border-border/90 bg-surface/30 text-foreground"
+              : "border-border/80 bg-surface/10 text-muted-foreground",
+          )}
+        >
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.span
+              key={open ? "close" : "open"}
+              initial={{ opacity: 0, rotate: -45, scale: 0.7 }}
+              animate={{ opacity: 1, rotate: 0, scale: 1 }}
+              exit={{ opacity: 0, rotate: 45, scale: 0.7 }}
+              transition={{ duration: 0.15 }}
+              className="flex items-center justify-center"
+            >
+              {open ? <X className="h-4 w-4" /> : <CircleDotDashed className="h-4 w-4" />}
+            </motion.span>
+          </AnimatePresence>
+        </motion.button>
+      </div>
 
       {/* Slide-up nav tray */}
       <AnimatePresence>
@@ -134,10 +158,10 @@ function StudioNavFab() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 16 }}
               transition={{ type: "spring", damping: 28, stiffness: 340 }}
-              className="fixed bottom-28 inset-x-0 z-40 md:hidden safe-top"
+              className="fixed top-18 inset-x-0 z-40 md:hidden safe-top"
             >
               <div className="mx-4 mb-4 overflow-hidden rounded-2xl border border-border/60 bg-surface/90 shadow-2xl backdrop-blur-xl">
-                <div className="grid grid-cols-5">
+                <div className="grid grid-cols-4">
                   {NAV.map(({ to, label, icon: Icon }) => {
                     const active = location.pathname.startsWith(to);
                     return (
@@ -170,7 +194,7 @@ function StudioNavFab() {
   );
 }
 
-// ─── AppShell ─────────────────────────────────────────────────────────────────
+// AppShell
 
 export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();

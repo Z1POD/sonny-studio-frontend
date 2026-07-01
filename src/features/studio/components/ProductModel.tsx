@@ -11,7 +11,7 @@ import {
 } from "../hooks/useDecalTransforms";
 
 
-// Shared decal material─
+// Shared decal material
 // Extracted to avoid repeating the same JSX props on every Decal instance.
 
 function DecalMaterial({ texture, polygonOffsetFactor = -4 }: { texture: THREE.Texture; polygonOffsetFactor?: number }) {
@@ -30,7 +30,7 @@ function DecalMaterial({ texture, polygonOffsetFactor = -4 }: { texture: THREE.T
 }
 
 
-// DecalLayer──
+// DecalLayer
 
 interface DecalLayerProps {
   artwork: ArtworkState;
@@ -60,7 +60,7 @@ function DecalLayer({ artwork, zone, meshNode, stackIndex = 0 }: DecalLayerProps
 }
 
 
-// SingleDecalLayer──
+// SingleDecalLayer
 // One decal placed on the zone's designated surface.
 
 function SingleDecalLayer({
@@ -201,8 +201,6 @@ function useWrapArtworkTexture(artwork: ArtworkState | undefined): THREE.Texture
 }
 
 
-
-
 function zoneTargetsMesh(zone: PrintArea, meshName: string): boolean {
   if (!zone.meshName) return true;
   return meshName.toLowerCase().includes(zone.meshName.toLowerCase());
@@ -242,9 +240,6 @@ interface ProductModelProps {
   modelUrl: string;
   printAreas: PrintArea[];
   artworks: Record<string, ArtworkState>;
-  /** Ordered list of print-area ids, bottom→top, from the studio store's layerOrder.
-   *  Drives both renderOrder and a staggered polygon offset so layers reliably
-   *  composite in the order the user set in LayerManager. */
   layerOrder?: string[];
   selectedColor?: string | null;
   colorableMeshes?: string[];
@@ -289,8 +284,6 @@ export function ProductModel({
           .sort((a, b) => {
             const ai = layerOrder.indexOf(a.id);
             const bi = layerOrder.indexOf(b.id);
-            // Ids not present in layerOrder (no artwork yet, or order not loaded)
-            // sort to the bottom rather than breaking the comparator.
             return (ai === -1 ? -Infinity : ai) - (bi === -1 ? -Infinity : bi);
           });
 

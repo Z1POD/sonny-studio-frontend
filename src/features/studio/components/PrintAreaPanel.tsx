@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useStudioStore, type PrintArea, type PrintMethod } from "../store";
 import { AnimatePresence, motion } from "framer-motion";
 
-// ── Placement icon / label ─────────────────────────────────────────────────
+// Placement icon / label 
 
 const PLACEMENT_LABELS: Record<string, string> = {
   front: "Front",
@@ -17,17 +17,8 @@ const PLACEMENT_LABELS: Record<string, string> = {
   full: "Full Print",
 };
 
-const PLACEMENT_EMOJI: Record<string, string> = {
-  front: "👕",
-  back: "🔄",
-  left_sleeve: "◀",
-  right_sleeve: "▶",
-  hood: "🧢",
-  full: "✨",
-};
 
-// ── Size pill ──────────────────────────────────────────────────────────────
-
+// Size pill 
 function SizePill({ size, active, onClick }: { size: string; active: boolean; onClick: () => void }) {
   return (
     <button
@@ -43,8 +34,7 @@ function SizePill({ size, active, onClick }: { size: string; active: boolean; on
   );
 }
 
-// ── Method card ────────────────────────────────────────────────────────────
-
+// Method card 
 function MethodCard({
   method,
   active,
@@ -136,8 +126,7 @@ function MethodCard({
   );
 }
 
-// ── PrintAreaButton ────────────────────────────────────────────────────────
-
+// PrintAreaButton 
 function PrintAreaButton({
   area,
   active,
@@ -150,7 +139,6 @@ function PrintAreaButton({
   onClick: () => void;
 }) {
   const label = PLACEMENT_LABELS[area.placement] ?? area.name;
-  const emoji = PLACEMENT_EMOJI[area.placement] ?? "📄";
 
   return (
     <button
@@ -168,15 +156,6 @@ function PrintAreaButton({
         </span>
       )}
 
-      {/* Apparel silhouette */}
-      {/* <div
-        className={`flex h-12 w-12 items-center justify-center rounded-xl border text-xl transition ${
-          active ? "border-primary/40 bg-primary/10" : "border-border/40 bg-surface/60"
-        }`}
-      >
-        {emoji}
-      </div> */}
-
       <div className="text-center">
         <p className={`text-[11px] font-semibold leading-tight ${active ? "text-foreground" : "text-muted-foreground"}`}>
           {label}
@@ -193,7 +172,7 @@ function PrintAreaButton({
   );
 }
 
-// ── PrintAreaPanel ─────────────────────────────────────────────────────────
+// PrintAreaPanel 
 
 export function PrintAreaPanel() {
   const store = useStudioStore();

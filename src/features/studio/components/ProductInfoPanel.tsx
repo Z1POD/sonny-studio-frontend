@@ -2,15 +2,12 @@
 
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Sparkles, ChevronLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useNavigate } from "@tanstack/react-router";
+import { Sparkles } from "lucide-react";
 import { useStudioStore } from "../store";
 
 export function ProductInfoPanel() {
   const store = useStudioStore();
   const product = store.product;
-  const navigate = useNavigate();
   if (!product) return null;
 
   return (
@@ -32,20 +29,6 @@ export function ProductInfoPanel() {
           <span className="text-sm">Auto-rotate</span>
         </div>
         <Switch checked={store.autoRotate} onCheckedChange={store.setAutoRotate} />
-      </section>
-      <section className="space-y-2">
-        <Label className="text-xs text-muted-foreground">
-          Navigation
-        </Label>
-
-        <Button
-          variant="outline"
-          className="w-full justify-start"
-          onClick={() => navigate({ to: "/designs" })}
-        >
-          <ChevronLeft className="mr-2 h-4 w-4" />
-          Back to Designs
-        </Button>
       </section>
     </div>
   );

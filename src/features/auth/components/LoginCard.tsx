@@ -137,7 +137,7 @@ export function LoginCard() {
             <div>
               <h2 className="text-2xl font-semibold tracking-tight">Sign in</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Enter your username — we'll send a one-time code.
+                Enter your username — we'll send a one-time code (OTP).
               </p>
             </div>
 

@@ -93,7 +93,7 @@ export function StudioBottomNav({
         className="pointer-events-auto fixed inset-x-0 bottom-4 z-20 flex justify-center px-3"
       >
         <div className="flex w-full max-w-sm flex-col rounded-2xl border border-border/60 shadow-2xl backdrop-blur-xl p-1.5 shadow-elevated">
-          {/* ── Price / Continue bar ── */}
+          {/* Price / Continue bar */}
           <AnimatePresence>
             {showContinueToCheckoutBar && (
               <motion.div
@@ -131,7 +131,7 @@ export function StudioBottomNav({
             )}
           </AnimatePresence>
 
-          {/* ── Main Nav Bar ── */}
+          {/* Main Nav Bar */}
           <div className="flex items-center rounded-2xl border border-border/50 bg-background/80 px-2 py-1.5 backdrop-blur-xl shadow-lg gap-0.5">
 
             {/* Panel nav items */}
@@ -174,8 +174,7 @@ export function StudioBottomNav({
   );
 }
 
-// ── NavButton ──────────────────────────────────────────────────────────────
-
+// NavButton 
 interface NavButtonProps {
   icon: React.ReactNode;
   label: string;
