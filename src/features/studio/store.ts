@@ -170,6 +170,9 @@ export function getDefaultArtwork(
   return { ...DEFAULT_ARTWORK, ...overrides };
 }
 
+/** Interaction mode for the on-model decal transform gizmo (see ProductModel). */
+export type TransformMode = "translate" | "rotate" | "scale";
+
 export interface StudioState {
   product: ApparelProduct | null;
   selectedPrintAreaId: string | null;
@@ -182,6 +185,8 @@ export interface StudioState {
   autoRotate: boolean;
   selectedMethods: Record<string, string>; 
   selectedTiers: Record<string, string>;    
+  /** Active handle type for the on-model gizmo attached to the selected print area. */
+  transformMode: TransformMode;
 
   setProduct: (product: ApparelProduct) => void;
   setSelectedPrintArea: (id: string) => void;
@@ -193,6 +198,7 @@ export interface StudioState {
   setAutoRotate: (value: boolean) => void;
   setSelectedMethod: (areaId: string, methodCode: string) => void;
   setSelectedTier: (areaId: string, tierSize: string) => void;
+  setTransformMode: (mode: TransformMode) => void;
   reset: () => void;
 }
 
@@ -218,6 +224,7 @@ const initialState: Omit<
   autoRotate: false,
   selectedMethods: {},
     selectedTiers: {},
+  transformMode: "translate",
 };
 
 export const useStudioStore = create<StudioState>((set) => ({
@@ -287,6 +294,7 @@ export const useStudioStore = create<StudioState>((set) => ({
     set((state) => ({
       selectedTiers: { ...state.selectedTiers, [areaId]: tierSize },
     })),
+  setTransformMode: (transformMode) => set({ transformMode }),
 }));
 
 export interface SceneSnapshot {
@@ -335,6 +343,10 @@ export function toZoneTransform(artwork: ArtworkState): ZoneTransform {
   };
 }
 
+
+/**
+ * Exported helpers consumed by SaveProductDialog and StudioWorkspace.
+ */
 
 
 

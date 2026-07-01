@@ -1,187 +1,68 @@
 // src/features/studio/components/DecalPanel.tsx
 /**
- * DecalPanel.tsx — v2
+ * DecalPanel.tsx — v3
  *
- * Gizmo-style artwork manipulation:
- * - 2-finger/wheel: scale
- * - Single drag: translate X/Y
- * - Rotation dial: arc gesture or tap buttons
- * - Compact sliders hidden behind "Fine-tune" toggle for precise control
+ * Artwork manipulation now happens directly on the model via an on-model
+ * TransformControls gizmo (see ProductModel.tsx) — tap a decal in the 3D
+ * view to select it, then drag its handles. This panel:
+ * - Switches the gizmo's handle type (move / rotate / scale)
+ * - Exposes the same values as precise sliders behind "Fine-tune" (both
+ *   read/write the same store fields as the gizmo, so they always agree)
  * - Retains upload / remove actions
  */
 
-import { useRef, useMemo, useCallback, useState, useEffect } from "react";
-import { Image as ImageIcon, Trash2, RotateCw, ZoomIn, ZoomOut, SlidersHorizontal } from "lucide-react";
+import { useRef, useMemo, useState } from "react";
+import { Image as ImageIcon, Trash2, Move, RotateCw, Maximize2, ZoomIn, ZoomOut, SlidersHorizontal } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { useStudioStore, getDefaultArtwork } from "../store";
+import { useStudioStore, getDefaultArtwork, type TransformMode } from "../store";
 
-//  Gizmo canvas
+//  On-model gizmo mode switch
+// Controls which TransformControls handle (translate/rotate/scale) is shown
+// on the model for the currently-selected decal.
 
-interface GizmoProps {
-  offsetX: number;
-  offsetY: number;
-  scale: number;
-  rotation: number;
-  aspect: number;
-  decalUrl: string;
-  minScale: number;
-  maxScale: number;
-  minX: number;
-  maxX: number;
-  minY: number;
-  maxY: number;
-  onChange: (patch: { offsetX?: number; offsetY?: number; scale?: number; rotation?: number }) => void;
-}
-
-function DecalGizmo({
-  offsetX, offsetY, scale, rotation, aspect, decalUrl,
-  minScale, maxScale, minX, maxX, minY, maxY,
+function GizmoModeSwitch({
+  mode,
   onChange,
-}: GizmoProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const dragStart = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
-  const pinchStart = useRef<{ dist: number; scale: number } | null>(null);
-
-  // Canvas → world scale: map px movements to world units
-  const CANVAS_W = 280;
-  const CANVAS_H = 200;
-  const worldRangeX = maxX - minX;
-  const worldRangeY = maxY - minY;
-  const pxPerUnitX = CANVAS_W / worldRangeX;
-  const pxPerUnitY = CANVAS_H / worldRangeY;
-
-  const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
-
-  // Mouse / touch drag → translate
-  const onPointerDown = useCallback((e: React.PointerEvent) => {
-    if (e.pointerType === "touch") return; // handled by touch events
-    dragStart.current = { x: e.clientX, y: e.clientY, ox: offsetX, oy: offsetY };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  }, [offsetX, offsetY]);
-
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
-    if (!dragStart.current) return;
-    const dx = -(e.clientX - dragStart.current.x) / pxPerUnitX;
-    const dy = -(e.clientY - dragStart.current.y) / pxPerUnitY;
-    onChange({
-      offsetX: clamp(dragStart.current.ox + dx, minX, maxX),
-      offsetY: clamp(dragStart.current.oy + dy, minY, maxY),
-    });
-  }, [pxPerUnitX, pxPerUnitY, minX, maxX, minY, maxY, onChange]);
-
-  const onPointerUp = useCallback(() => { dragStart.current = null; }, []);
-
-  // Touch: single drag + pinch scale
-  const getTouchDist = (t: React.TouchList) =>
-    Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-
-  const touchStart = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 1) {
-      touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, ox: offsetX, oy: offsetY };
-    } else if (e.touches.length === 2) {
-      pinchStart.current = { dist: getTouchDist(e.touches), scale };
-      touchStart.current = null;
-    }
-  };
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    e.preventDefault();
-    if (e.touches.length === 1 && touchStart.current) {
-      const dx = -(e.touches[0].clientX - touchStart.current.x) / pxPerUnitX;
-      const dy = -(e.touches[0].clientY - touchStart.current.y) / pxPerUnitY;
-      onChange({
-        offsetX: clamp(touchStart.current.ox + dx, minX, maxX),
-        offsetY: clamp(touchStart.current.oy + dy, minY, maxY),
-      });
-    } else if (e.touches.length === 2 && pinchStart.current) {
-      const ratio = getTouchDist(e.touches) / pinchStart.current.dist;
-      onChange({ scale: clamp(pinchStart.current.scale * ratio, minScale, maxScale) });
-    }
-  };
-
-  const onTouchEnd = () => { touchStart.current = null; pinchStart.current = null; };
-
-  // Scroll → scale
-  const onWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    const delta = -e.deltaY * 0.001;
-    onChange({ scale: clamp(scale + delta * (maxScale - minScale), minScale, maxScale) });
-  };
-
-  // Preview positioning: map world units to % within canvas
-  const px = ((maxX - offsetX) / worldRangeX) * 100;
-  const py = ((maxY - offsetY) / worldRangeY) * 100;
-  const previewSize = (scale / maxScale) * 80 + 10; // 10–90% of canvas width
+  allowRotation,
+  allowScaling,
+}: {
+  mode: TransformMode;
+  onChange: (mode: TransformMode) => void;
+  allowRotation: boolean;
+  allowScaling: boolean;
+}) {
+  const options: Array<{ value: TransformMode; label: string; icon: typeof Move; enabled: boolean }> = [
+    { value: "translate", label: "Move",   icon: Move,      enabled: true },
+    { value: "rotate",    label: "Rotate", icon: RotateCw,  enabled: allowRotation },
+    { value: "scale",     label: "Scale",  icon: Maximize2, enabled: allowScaling },
+  ];
 
   return (
-    <div
-      ref={containerRef}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerLeave={onPointerUp}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-      onWheel={onWheel}
-      className="relative select-none overflow-hidden rounded-2xl border border-border/50 bg-surface/60 touch-none cursor-grab active:cursor-grabbing"
-      style={{ height: CANVAS_H, width: "100%" }}
-      aria-label="Drag to reposition artwork, pinch to resize"
-    >
-      {/* Grid guide */}
-      <svg className="pointer-events-none absolute inset-0 h-full w-full opacity-10" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="currentColor" strokeWidth="0.5"/>
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#grid)" />
-      </svg>
-
-      {/* Crosshair */}
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-20">
-        <div className="h-px w-full bg-foreground" />
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center gap-1 rounded-xl border border-border/40 bg-surface/60 p-1">
+        {options.filter((o) => o.enabled).map(({ value, label, icon: Icon }) => (
+          <button
+            key={value}
+            onClick={() => onChange(value)}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-medium transition ${
+              mode === value
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-surface-elevated hover:text-foreground"
+            }`}
+            aria-pressed={mode === value}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            {label}
+          </button>
+        ))}
       </div>
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-20">
-        <div className="h-full w-px bg-foreground" />
-      </div>
-
-      {/* Decal preview */}
-      <motion.div
-        style={{
-          position: "absolute",
-          left: `${px}%`,
-          top: `${py}%`,
-          transform: `translate(-50%, -50%) rotate(${(rotation * 180) / Math.PI}deg)`,
-          width: `${previewSize}%`,
-          aspectRatio: aspect,
-        }}
-        animate={{ left: `${px}%`, top: `${py}%` }}
-        transition={{ type: "spring", stiffness: 500, damping: 40 }}
-        className="pointer-events-none"
-      >
-        <img
-          src={decalUrl}
-          alt="Artwork preview"
-          className="h-full w-full object-contain drop-shadow-lg"
-          draggable={false}
-        />
-        {/* Bounding box */}
-        <div className="absolute inset-0 rounded border border-primary/40 border-dashed" />
-      </motion.div>
-
-      {/* Hint */}
-      <div className="pointer-events-none absolute bottom-2 left-0 right-0 flex justify-center">
-        <span className="rounded-full bg-background/60 px-2 py-0.5 text-[10px] text-muted-foreground backdrop-blur-sm">
-          Drag · Pinch to resize
-        </span>
-      </div>
+      <p className="text-center text-[11px] text-muted-foreground/70">
+        Tap the artwork on the model, then drag its handles
+      </p>
     </div>
   );
 }
@@ -376,28 +257,12 @@ export function DecalPanel() {
 
       {safeArtwork.decalUrl ? (
         <>
-          {/*  Gizmo  */}
-          <DecalGizmo
-            offsetX={safeArtwork.decalOffsetX}
-            offsetY={safeArtwork.decalOffsetY}
-            scale={safeArtwork.decalScale}
-            rotation={safeArtwork.decalRotation}
-            aspect={safeArtwork.decalAspect}
-            decalUrl={safeArtwork.decalUrl}
-            minScale={bounds.minScale}
-            maxScale={bounds.maxScale}
-            minX={bounds.minX}
-            maxX={bounds.maxX}
-            minY={bounds.minY}
-            maxY={bounds.maxY}
-            onChange={(patch) =>
-              updateArtwork({
-                ...(patch.offsetX !== undefined && { decalOffsetX: patch.offsetX }),
-                ...(patch.offsetY !== undefined && { decalOffsetY: patch.offsetY }),
-                ...(patch.scale   !== undefined && { decalScale: patch.scale }),
-                ...(patch.rotation !== undefined && { decalRotation: patch.rotation }),
-              })
-            }
+          {/*  On-model gizmo mode switch  */}
+          <GizmoModeSwitch
+            mode={store.transformMode}
+            onChange={store.setTransformMode}
+            allowRotation={!!selectedPrintArea.allowRotation}
+            allowScaling={!!selectedPrintArea.allowScaling}
           />
 
           {/*  Scale strip  */}

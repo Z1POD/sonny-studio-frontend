@@ -121,6 +121,33 @@ export function applyWrapTextureTransform(
 }
 
 
+export interface ZoneTransformBounds {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  minScale: number;
+  maxScale: number;
+}
+
+/**
+ * Single source of truth for a zone's drag/scale limits, shared by the
+ * DecalPanel fine-tune sliders and the on-model TransformControls gizmo so
+ * the two input methods can never disagree about what's in-bounds.
+ */
+export function getZoneTransformBounds(zone: PrintArea): ZoneTransformBounds {
+  const halfWidth  = (zone.widthCm  * CM) / 2;
+  const halfHeight = (zone.heightCm * CM) / 2;
+  return {
+    minX: zone.transformLimits?.minX ?? -halfWidth,
+    maxX: zone.transformLimits?.maxX ??  halfWidth,
+    minY: zone.transformLimits?.minY ?? -halfHeight,
+    maxY: zone.transformLimits?.maxY ??  halfHeight,
+    minScale: zone.transformLimits?.minScale ?? 0.02,
+    maxScale: zone.transformLimits?.maxScale ?? Math.min(zone.widthCm, zone.heightCm) * CM * 0.95,
+  };
+}
+
 export function useDecalTransform(
   zone: PrintArea,
   artwork: ArtworkState | undefined,
