@@ -130,6 +130,15 @@ function useDecalDragTranslate(
   const planeRef = useRef(new THREE.Plane());
   const dragRef = useRef<{ grabOffset: THREE.Vector3; startHit: THREE.Vector3; moved: boolean } | null>(null);
 
+  // OrbitControls registers itself here via `makeDefault` in StudioCanvas.
+  // R3F's synthetic pointer events are a separate system from the native
+  // pointer listeners OrbitControls attaches directly to the canvas, so
+  // stopPropagation() above does nothing to stop it — without this, orbiting
+  // and dragging a decal could happen at the same time. We only flip it off
+  // once the gesture crosses the drag threshold (see onPointerMove), so a
+  // simple tap-to-select never touches orbiting at all.
+  const orbitControls = useThree((s) => s.controls) as { enabled: boolean } | null;
+
   const onPointerDown = (e: any) => {
     if (!transform) return;
     e.stopPropagation();
@@ -157,6 +166,7 @@ function useDecalDragTranslate(
     if (!dragRef.current.moved) {
       if (hit.distanceTo(dragRef.current.startHit) < DRAG_THRESHOLD) return;
       dragRef.current.moved = true;
+      if (orbitControls) orbitControls.enabled = false;
     }
 
     const newPosition = hit.clone().add(dragRef.current.grabOffset);
@@ -173,6 +183,7 @@ function useDecalDragTranslate(
   };
 
   const onPointerUp = (e: any) => {
+    if (dragRef.current?.moved && orbitControls) orbitControls.enabled = true;
     dragRef.current = null;
     (e.target as Element)?.releasePointerCapture?.(e.pointerId);
   };
@@ -206,6 +217,13 @@ function DecalTransformGizmo({
   const controlsRef = useRef<any>(null);
   const draggingRef = useRef(false);
 
+  // OrbitControls registers itself here via `makeDefault` in StudioCanvas —
+  // this lets us pause orbiting only while the user actively has a gizmo
+  // handle grabbed, without any extra prop plumbing between the two
+  // components. Orbiting stays available whenever the decal is merely
+  // selected-but-idle.
+  const orbitControls = useThree((s) => s.controls) as { enabled: boolean } | null;
+
   const bounds = useMemo(() => getZoneTransformBounds(zone), [zone]);
 
   // Keep the proxy synced to the latest store-derived transform — but never
@@ -223,6 +241,7 @@ function DecalTransformGizmo({
 
     const handleDraggingChanged = (e: any) => {
       draggingRef.current = e.value;
+      if (orbitControls) orbitControls.enabled = !e.value;
     };
 
     const handleObjectChange = () => {
@@ -248,7 +267,7 @@ function DecalTransformGizmo({
       controls.removeEventListener("dragging-changed", handleDraggingChanged);
       controls.removeEventListener("objectChange", handleObjectChange);
     };
-  }, [zone, bounds, onChange]);
+  }, [zone, bounds, onChange, orbitControls]);
 
   // scale: Y only (X is derived from Y × aspect elsewhere in the pipeline,
   // so a single handle keeps the gizmo unambiguous)
@@ -582,22 +601,6 @@ export function ProductModel({
   const transformMode       = useStudioStore((s) => s.transformMode);
   const setSelectedPrintArea = useStudioStore((s) => s.setSelectedPrintArea);
   const setArtwork           = useStudioStore((s) => s.setArtwork);
-
-  // OrbitControls registers itself here via `makeDefault` in StudioCanvas.
-  // While a decal is active (selected for gizmo manipulation — translate,
-  // rotate, or scale) camera orbiting is locked, so a pointer drag on the
-  // artwork or a gizmo handle can never be mistaken for an orbit gesture.
-  // Centralized here (rather than toggled per-drag inside the gizmo) so it
-  // covers direct-drag translate too, and doesn't get re-enabled the moment
-  // a single rotate/scale drag ends while the decal is still selected.
-  const orbitControls = useThree((s) => s.controls) as { enabled: boolean } | null;
-  useEffect(() => {
-    if (!orbitControls) return;
-    orbitControls.enabled = !selectedPrintAreaId;
-    return () => {
-      orbitControls.enabled = true;
-    };
-  }, [selectedPrintAreaId, orbitControls]);
 
   const meshNodes = useMemo(
     () => Object.values(nodes).filter((n): n is THREE.Mesh => n instanceof THREE.Mesh),

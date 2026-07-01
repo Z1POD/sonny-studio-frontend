@@ -84,7 +84,7 @@ export function CheckOut({ mockupUrls: mockupUrlsProp }: CheckOutProps) {
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex flex-col bg-background"
     >
-      {/* ─── Header ─────────────────────────────────────────────────── */}
+      {/* Header */}
       <header className="flex items-center gap-3 border-b border-border bg-surface/80 px-4 py-3 md:pt-3 pt-[100px] backdrop-blur-xl">
         {step == "variants" ? (
           <button
@@ -117,7 +117,7 @@ export function CheckOut({ mockupUrls: mockupUrlsProp }: CheckOutProps) {
         </div>
       </header>
 
-      {/* ─── Progress bar ────────────────────────────────────────────── */}
+      {/* Progress bar  */}
       <div className="flex items-center gap-1 px-4 py-2">
         {STEPS.map((s, i) => (
           <div key={s.id} className="flex flex-1 items-center">
@@ -130,7 +130,7 @@ export function CheckOut({ mockupUrls: mockupUrlsProp }: CheckOutProps) {
         ))}
       </div>
 
-      {/* ─── Step content ────────────────────────────────────────────── */}
+      {/* Step content  */}
       <div className="flex-1 overflow-hidden">
         <div className="mx-auto h-full max-w-[600px] px-2 sm:px-6">
           <AnimatePresence mode="wait" custom={direction}>
