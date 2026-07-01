@@ -15,7 +15,15 @@ import { useCheckoutStore } from "@/features/checkout/store";
 import { useAuthStore } from "@/features/auth/store";
 import { storeProductApi } from "@/features/store/api";
 import type { StudioCanvasHandle } from "../components/StudioCanvas";
-import type { ShotConfig } from "../components/SaveProductDialog";
+
+export interface ShotConfig {
+  id: string;
+  label: string;
+  azimuth: number;
+  polar: number;
+  enabled: boolean;
+  dataUrl?: string;
+}
 
 const CM = 0.01;
 

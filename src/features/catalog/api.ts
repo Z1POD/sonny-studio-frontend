@@ -3,15 +3,14 @@ import type { Paginated } from "@/shared/api/types";
 
 export type { CatalogBlank };
 
-// ─── Currency ───────────────────────────────────────────────────────────────
-
+// Currency 
 export interface Currency {
   code: string;
   symbol: string;
   name: string;
 }
 
-// ─── Pricing ────────────────────────────────────────────────────────────────
+// Pricing 
 
 export interface CatalogPricing {
   currency: Currency;
@@ -19,8 +18,7 @@ export interface CatalogPricing {
   recommended_markup_percent: string;
 }
 
-// ─── Brand ──────────────────────────────────────────────────────────────────
-
+// Brand 
 export interface Brand {
   id: string;
   name: string;
@@ -33,7 +31,7 @@ export interface Brand {
   status: string;
 }
 
-// ─── Category ─────────────────────────────────────────────────────────────────
+// Category
 
 export interface Category {
   id: string;
@@ -47,28 +45,27 @@ export interface Category {
   children_count: number;
 }
 
-// ─── Color ──────────────────────────────────────────────────────────────────
-
+// Color 
 export interface ColorInfo {
   name: string;
   hex: string;
 }
 
-// ─── Available colors ───────────────────────────────────────────────────────
+// Available colors 
 
 export interface AvailableColors {
   count: number;
   colors: ColorInfo[];
 }
 
-// ─── Available sizes ────────────────────────────────────────────────────────
+// Available sizes
 
 export interface AvailableSizes {
   count: number;
   sizes: string[];
 }
 
-// ─── Full CatalogBlank (aligned to real API) ────────────────────────────────
+// Full CatalogBlank (aligned to real API)
 
 export interface CatalogBlank {
   id: string;
@@ -89,7 +86,7 @@ export interface CatalogBlank {
   created_at: string;
 }
 
-// ─── API object ─────────────────────────────────────────────────────────────
+// API object 
 
 export const catalogApi = {
   list: (params: Record<string, string | number> = {}) =>

@@ -336,10 +336,6 @@ export function toZoneTransform(artwork: ArtworkState): ZoneTransform {
 }
 
 
-/**
- * Exported helpers consumed by SaveProductDialog and StudioWorkspace.
- */
-
 
 
 // ─── Print size classification ──────────────────────────────────────────────
