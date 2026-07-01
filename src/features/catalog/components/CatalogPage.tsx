@@ -2,7 +2,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from '@tanstack/react-router'
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ImageIcon, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,8 @@ export function CatalogPage() {
   const [q, setQ] = useState("");
   const navigate = useNavigate();
 
+  const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
+
   // Build category filter tabs from API + "All"
   const categories = useMemo(() => {
     const apiCategories = categoriesData?.data ?? [];
@@ -43,6 +45,7 @@ export function CatalogPage() {
       ...apiCategories.map((c) => ({ id: c.slug, label: c.name })),
     ];
   }, [categoriesData]);
+
 
   const items = useMemo(() => {
     const all = data?.results ?? [];
