@@ -111,33 +111,6 @@ function StudioNavFab() {
 
   return (
     <>
-      {/* FAB — top-left, mobile only */}
-      {/* <div className="fixed left-1/2 bottom-20 z-20 md:hidden -translate-x-1/2">
-        <motion.button
-          onClick={() => setOpen((v) => !v)}
-          aria-label="Toggle navigation"
-          whileTap={{ scale: 0.92 }}
-          className={cn(
-            "flex h-9 w-9 items-center justify-center rounded-full border shadow-lg backdrop-blur-md transition-colors duration-200 backdrop-blur-xl",
-            open
-              ? "border-border/60 bg-surface text-foreground"
-              : "border-border/40 bg-surface/90 text-muted-foreground",
-          )}
-        >
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.span
-              key={open ? "close" : "open"}
-              initial={{ opacity: 0, rotate: -45, scale: 0.7 }}
-              animate={{ opacity: 1, rotate: 0, scale: 1 }}
-              exit={{ opacity: 0, rotate: 45, scale: 0.7 }}
-              transition={{ duration: 0.15 }}
-              className="flex items-center justify-center"
-            >
-              {open ? <X className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-            </motion.span>
-          </AnimatePresence>
-        </motion.button>
-      </div> */}
 
       {/* Slide-up nav tray */}
       <AnimatePresence>

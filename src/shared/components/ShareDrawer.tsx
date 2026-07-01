@@ -1,5 +1,5 @@
 /**
- * src/shared/components/ShareDrawer.tsx — v3
+ * src/shared/components/ShareDrawer.tsx
  *
  * Changes:
  *  - ShareTarget now accepts price + currencySymbol + flags for Telegram Story

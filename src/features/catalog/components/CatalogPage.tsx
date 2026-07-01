@@ -1,7 +1,8 @@
 "use client";
+
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { ImageIcon, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,22 +11,16 @@ import { useLightbox } from "@/shared/hooks/use-overlays";
 import { catalogListQuery, catalogCategoriesQuery } from "../queries";
 import type { CatalogBlank, Category } from "../api";
 
-// Helper: format price with currency 
-
 function formatPrice(pricing: CatalogBlank["pricing"]): string {
   const symbol = pricing.currency.symbol;
   const base = parseFloat(pricing.base_price) || 0;
   return `${symbol}${base.toFixed(2)}`;
 }
 
-// Helper: get category slug for filtering 
-
 function getCategorySlug(category: Category | string): string {
   if (typeof category === "string") return category;
   return category.slug;
 }
-
-// CatalogPage
 
 export function CatalogPage() {
   const { data, isLoading } = useQuery(catalogListQuery());
@@ -35,9 +30,9 @@ export function CatalogPage() {
   const [q, setQ] = useState("");
   const navigate = useNavigate();
 
+  // Track active item for mobile tap states or desktop hovers safely
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
 
-  // Build category filter tabs from API + "All"
   const categories = useMemo(() => {
     const apiCategories = categoriesData?.data ?? [];
     return [
@@ -45,7 +40,6 @@ export function CatalogPage() {
       ...apiCategories.map((c) => ({ id: c.slug, label: c.name })),
     ];
   }, [categoriesData]);
-
 
   const items = useMemo(() => {
     const all = data?.results ?? [];
@@ -74,12 +68,12 @@ export function CatalogPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-2 pb-24 pt-6 sm:px-8">
+    <div className="mx-auto w-full max-w-6xl px-4 pb-24 pt-6 sm:px-8 select-none">
       <motion.header
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="flex flex-col gap-4 px-3 sm:flex-row sm:items-end sm:justify-between"
+        transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
+        className="flex flex-col gap-4 px-1 sm:flex-row sm:items-end sm:justify-between"
       >
         <div>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
@@ -91,27 +85,28 @@ export function CatalogPage() {
           </p>
         </div>
         <div className="relative w-full sm:w-72">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search blanks, suppliers…"
-            className="rounded-full bg-surface pl-9"
+            placeholder="Search blanks, brands…"
+            className="rounded-full h-11 bg-muted/50 border-transparent pl-10 focus-visible:ring-2 focus-visible:ring-foreground/20"
           />
         </div>
       </motion.header>
 
-      <div className="mt-6 flex flex-wrap gap-2">
+      {/* Categories - Apple Style pill selector */}
+      <div className="mt-6 flex gap-2 overflow-x-auto pb-3 pt-1 no-scrollbar mask-image-horizontal">
         {categories.map((c) => (
           <button
             key={c.id}
             type="button"
             onClick={() => setActiveCategory(c.id)}
             className={
-              "rounded-full border px-3.5 py-1.5 text-xs font-medium transition " +
+              "rounded-full h-9 px-4 text-sm font-medium transition-all duration-200 active:scale-95 shrink-0 " +
               (activeCategory === c.id
-                ? "border-foreground bg-foreground text-background"
-                : "border-border bg-surface text-muted-foreground hover:text-foreground")
+                ? "bg-foreground text-background shadow-sm"
+                : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground")
             }
           >
             {c.label}
@@ -120,22 +115,22 @@ export function CatalogPage() {
       </div>
 
       {isLoading ? (
-        <div className="mt-6 grid grid-cols-2 overflow-hidden rounded-2xl border-border gap-0 sm:grid-cols-3 lg:grid-cols-4 sm:gap-3">
+        <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <div
               key={i}
-              className="aspect-square animate-pulse rounded-2xl bg-surface"
+              className="aspect-[3/4] animate-pulse rounded-2xl bg-muted/40"
             />
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="mt-10 rounded-3xl border border-dashed border-border bg-surface/60 p-10 text-center">
-          <div className="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-overlay text-muted-foreground">
+        <div className="mt-12 rounded-3xl border border-dashed border-border bg-muted/20 p-12 text-center">
+          <div className="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
             <ImageIcon className="h-5 w-5" />
           </div>
-          <h3 className="text-base font-semibold">No matches</h3>
+          <h3 className="text-base font-semibold">No matches found</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Try a different category or clear the search.
+            Try a different category or change your keywords.
           </p>
         </div>
       ) : (
@@ -148,11 +143,25 @@ export function CatalogPage() {
                 key={b.id}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
+                transition={{ duration: 0.4 }}
                 onMouseEnter={() => setHoveredItemId(b.id)}
                 onMouseLeave={() => setHoveredItemId(null)}
-                onTouchStart={() => setHoveredItemId(isShowingDetails ? null : b.id)}
-                className="group relative aspect-[2/3] sm:aspect-[3/4] w-full overflow-hidden rounded-2xl bg-muted/30 border border-muted/40 shadow-sm transition-shadow duration-300 hover:shadow-md"
+                onClick={(e) => {
+                  if ((e.target as HTMLElement).closest("button")) {
+                    return;
+                  }
+
+                  setHoveredItemId(isShowingDetails ? null : b.id);
+                }}
+                className="
+                  group relative
+                  aspect-[2/3] sm:aspect-[3/4]
+                  w-full
+                  overflow-hidden
+                  rounded-2xl
+                  bg-muted/30
+                  border border-muted/40
+                "
               >
                 {/* Main Product Image */}
                 <div className="absolute inset-0 h-full w-full overflow-hidden">
@@ -176,7 +185,14 @@ export function CatalogPage() {
                       animate={{ opacity: 1, backdropFilter: "blur(16px)", y: "0%" }}
                       exit={{ opacity: 0, backdropFilter: "blur(0px)", y: "15%" }}
                       transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
-                      className="absolute inset-0 z-10 flex flex-col justify-between bg-black/25 p-3 sm:p-4 text-white"
+                      className="
+                        absolute inset-0 z-10
+                        flex flex-col justify-between
+                        bg-black/25
+                        p-3 sm:p-4
+                        text-white
+                        pointer-events-none
+                      "
                     >
                       {/* Top Action Track: Lightbox Quick Peek */}
                       <div className="flex justify-end">
@@ -184,9 +200,22 @@ export function CatalogPage() {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            lightbox.open([{ src: b.thumbnail_url, caption: b.name }], 0);
+                            lightbox.open(
+                              [{ src: b.thumbnail_url, caption: b.name }],
+                              0
+                            );
                           }}
-                          className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-md transition active:scale-90"
+                          className="
+                            pointer-events-auto
+                            flex h-8 w-8 sm:h-9 sm:w-9
+                            items-center justify-center
+                            rounded-full
+                            bg-white/20
+                            text-white
+                            backdrop-blur-md
+                            transition
+                            active:scale-90
+                          "
                         >
                           <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </button>
@@ -272,13 +301,28 @@ export function CatalogPage() {
                         <Button
                           disabled={isOpeningStudio}
                           size="default"
-                          className="w-full h-9 sm:h-11 text-xs sm:text-sm rounded-xl bg-white text-black font-semibold shadow-lg transition-all duration-200 hover:bg-white/90 active:scale-[0.98] mt-1"
+                          className="
+                            pointer-events-auto
+                            w-full
+                            h-9 sm:h-11
+                            text-xs sm:text-sm
+                            rounded-xl
+                            bg-white
+                            text-black
+                            font-semibold
+                            shadow-lg
+                            transition-all
+                            duration-200
+                            hover:bg-white/90
+                            active:scale-[0.98]
+                            mt-1
+                          "
                           onClick={(e) => {
                             e.stopPropagation();
                             handleCustomize(b.id);
                           }}
                         >
-                          <Plus className="mr-1 sm:mr-1.5 h-3.5 w-3.5 sm:h-4 sm:w-4 stroke-[2.5]" />
+                          <Plus className="mr-1 sm:mr-1.5 h-3.5 w-3.5 sm:h-4 w-4 stroke-[2.5]" />
                           {isOpeningStudio ? "Opening..." : "Customize"}
                         </Button>
                       </div>
