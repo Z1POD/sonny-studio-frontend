@@ -69,7 +69,7 @@ export function StudioControls({
         open={activePanel === "decal"}
         onClose={() => setActivePanel(null)}
         title={PANEL_META.decal.title}
-        dismissible={false}
+        dismissible={true}
       >
         <DecalPanel />
       </PanelShell>
