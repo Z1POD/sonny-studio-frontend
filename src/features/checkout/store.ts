@@ -27,7 +27,7 @@ import type {
 } from "./types";
 import type { ProductDetail } from "@/features/store/api";
 
-// ─── Open params ──────────────────────────────────────────────────────────────
+// Open params
 
 export interface CheckoutOpenParams {
   productId: string;
@@ -46,7 +46,7 @@ export interface CheckoutOpenParams {
   mockupUrls?: string[];
 }
 
-// ─── State interface ──────────────────────────────────────────────────────────
+// State interface
 
 export interface CheckoutState {
   isOpen: boolean;
@@ -137,7 +137,7 @@ export interface CheckoutState {
   _rebuildSelections: () => void;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// Helpers
 
 const STEPS: CheckoutStep[] = ["variants", "shipping", "review", "payment"];
 
@@ -189,12 +189,12 @@ const blank = {
   receiptSubmission: null as ReceiptSubmission | null,
 };
 
-// ─── Store ────────────────────────────────────────────────────────────────────
+// Store
 
 export const useCheckoutStore = create<CheckoutState>((set, get) => ({
   ...blank,
 
-  // ── open ───────────────────────────────────────────────────────────────────
+  // open
   open: ({
     productId, productName, thumbnailUrl, mockupUrl, mockupUrls = [],
     basePrice, printCost, currencySymbol, variants, artworks, printAreas,
@@ -236,14 +236,14 @@ export const useCheckoutStore = create<CheckoutState>((set, get) => ({
     });
   },
 
-  // ── loadDesign ─────────────────────────────────────────────────────────────
+  // loadDesign
   // Hydrates checkout from a saved ProductDetail for the reorder flow.
   // Artworks come from detail.render_config.artworkPrintInfos[].
   // Variant pre-selection comes from detail.enabled_variant[0].
   loadDesign: (detail, apparelProduct) => {
     const rc = (detail as any).render_config ?? {};
 
-    // ── Artworks from artworkPrintInfos ──────────────────────────────────────
+    // Artworks from artworkPrintInfos
     const artworkInfos: any[] = rc.artworkPrintInfos ?? [];
     const artworks: Record<string, ArtworkState> = {};
     for (const info of artworkInfos) {
@@ -258,7 +258,7 @@ export const useCheckoutStore = create<CheckoutState>((set, get) => ({
       };
     }
 
-    // ── Variants ─────────────────────────────────────────────────────────────
+    // Variants
     const variants: CheckoutVariant[] = (detail.enabled_variant ?? []).map((v: any) => ({
       id:              v.id,
       sku:             v.sku ?? "",
@@ -270,13 +270,13 @@ export const useCheckoutStore = create<CheckoutState>((set, get) => ({
       quantity:        1,
     }));
 
-    // ── Mockup URLs from sorted mockups ───────────────────────────────────────
+    // Mockup URLs from sorted mockups
     const mockupUrls = ((detail as any).mockups ?? [])
       .slice()
       .sort((a: any, b: any) => a.sort_order - b.sort_order)
       .map((m: any) => m.url);
 
-    // ── Pre-select first variant ──────────────────────────────────────────────
+    // Pre-select first variant
     const initialColors    = new Set<string>();
     const initialSizes     = new Set<string>();
     const initialSelections = new Map<string, VariantSelection>();
@@ -322,7 +322,7 @@ export const useCheckoutStore = create<CheckoutState>((set, get) => ({
     });
   },
 
-  // ── Navigation ──────────────────────────────────────────────────────────────
+  // Navigation
   reset: () => {
     const { pollInterval, cities } = get();
     if (pollInterval) clearInterval(pollInterval);
@@ -349,7 +349,7 @@ export const useCheckoutStore = create<CheckoutState>((set, get) => ({
     } catch { /* storage unavailable */ }
   },
 
-  // ── Variant selection ───────────────────────────────────────────────────────
+  // Variant selection
   toggleColor: (hex) => {
     set((s) => {
       const next = new Set(s.selectedColors);
@@ -429,7 +429,7 @@ export const useCheckoutStore = create<CheckoutState>((set, get) => ({
     }));
   },
 
-  // ── Shipping ────────────────────────────────────────────────────────────────
+  // Shipping
   setShippingAddress:  (addr) => set((s) => ({ shippingAddress: { ...s.shippingAddress, ...addr } })),
   setFulfillmentType:  (type) => set({ fulfillmentType: type }),
   setCities:           (cities) => set({ cities }),
@@ -442,13 +442,13 @@ export const useCheckoutStore = create<CheckoutState>((set, get) => ({
   setSelectedPickupId:   (id)   => set({ selectedPickupId: id }),
   setCouponCode:         (code) => set({ couponCode: code }),
 
-  // ── Order ───────────────────────────────────────────────────────────────────
+  // Order
   setOrder:          (order) => set({ order }),
   setCreatingOrder:  (v) => set({ creatingOrder: v }),
   setFieldErrors:    (errs) => set({ fieldErrors: errs }),
   clearFieldError:   (key) => set((s) => { const n = { ...s.fieldErrors }; delete n[key]; return { fieldErrors: n }; }),
 
-  // ── Payment ──────────────────────────────────────────────────────────────────
+  // Payment
   setSelectedProviderCode: (code) => set({ selectedProviderCode: code }),
   setReceiptIdentifier:    (v)    => set({ receiptIdentifier: v }),
   setPayerAccount:         (v)    => set({ payerAccount: v }),
