@@ -71,7 +71,7 @@ export function ReceiptDialog({
             <Shield className="h-4 w-4 text-primary" />
             Verify your payment
           </DialogTitle>
-          <DialogDescription className="text-muted-foreground/60 text-sm">
+          <DialogDescription className="text-muted-foreground/60 text-left text-sm">
             Enter your receipt details below so we can confirm your payment.
           </DialogDescription>
         </DialogHeader>
@@ -84,8 +84,9 @@ export function ReceiptDialog({
             <Input
               value={receiptIdentifier}
               onChange={(e) => setReceiptIdentifier(e.target.value)}
+              maxLength={199}
               placeholder={refPlaceholder || "Enter transaction ID or receipt number"}
-              className={`h-12 rounded-xl font-mono text-sm mt-2 ${
+              className={`h-12 rounded-xl font-mono text-muted-foreground/40 text-sm mt-2 ${
                 receiptError
                   ? "border-destructive focus-visible:ring-destructive"
                   : "border-border"
@@ -100,7 +101,7 @@ export function ReceiptDialog({
                 {receiptError}
               </p>
             ) : refHelpText ? (
-              <p className="text-[11px] text-muted-foreground">{refHelpText}</p>
+              <p className="text-[11px] text-muted-foreground/50">{refHelpText}</p>
             ) : null}
           </div>
 
@@ -118,7 +119,7 @@ export function ReceiptDialog({
                 placeholder="e.g. 12345678"
                 inputMode="numeric"
                 maxLength={12}
-                className={`h-12 rounded-xl font-mono text-sm tracking-widest ${
+                className={`h-12 rounded-xl font-mono text-muted-foreground/40 text-sm tracking-widest ${
                   payerError
                     ? "border-destructive focus-visible:ring-destructive"
                     : "border-border"

@@ -109,7 +109,7 @@ function StudioNavFab() {
   return (
     <>
       {/* FAB — top-left, mobile only */}
-      <div className="fixed left-1/2 top-8 z-20 md:hidden -translate-x-1/2">
+      <div className="fixed left-1/2 top-10 z-20 md:hidden -translate-x-1/2">
         <motion.button
           onClick={() => setOpen((v) => !v)}
           aria-label="Toggle navigation"

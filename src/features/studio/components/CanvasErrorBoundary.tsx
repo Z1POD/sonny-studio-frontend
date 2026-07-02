@@ -1,7 +1,9 @@
 // src/features/studio/components/CanvasErrorBoundary.tsx
 
-
 import React from "react";
+import {
+  Link,
+} from "@tanstack/react-router";
 
 interface Props {
   children: React.ReactNode;
@@ -27,9 +29,19 @@ export class CanvasErrorBoundary extends React.Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex h-full w-full items-center justify-center rounded-xl bg-muted text-sm text-muted-foreground">
-          Unable to load 3D preview.
+        <>
+        <div className="relatiive z-40 flex h-full w-full items-center justify-center rounded-xl bg-muted text-sm text-muted-foreground">
+            Unable to load 3D preview.
         </div>
+        <div className="mt-6">
+            <Link
+            to="/designs"
+            className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+            >
+            Go home
+            </Link>
+        </div>
+        </>
       );
     }
 
