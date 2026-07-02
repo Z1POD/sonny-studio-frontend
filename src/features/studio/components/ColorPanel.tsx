@@ -4,8 +4,8 @@ import { Label } from "@/components/ui/label";
 import { useStudioStore } from "../store";
 
 const BACKGROUND_PRESETS = [
-  { label: "Studio dark", value: "linear-gradient(135deg, #0b0b15, #1a1a2e)" },
-  { label: "Warm", value: "linear-gradient(135deg, #0b0b15, #b44e04)" },
+  { label: "Studio dark", value: "#1a1a2e" },
+  { label: "Warm", value: "linear-gradient(135deg, #0b0b15, #c45e3f)" },
   { label: "Mint", value: "linear-gradient(135deg, #0b0b15, #04b462)" },
   { label: "Plain white", value: "#ffffff" },
   { label: "Plain black", value: "#0b0b0f" },

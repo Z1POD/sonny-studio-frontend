@@ -25,13 +25,14 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   return (
-    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-background px-4 safe-top safe-bottom">
+    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-[oklch(0.08_0.02_280)] px-4 safe-top safe-bottom">
+      {/* Subtle ambient glow */}
       <div
         className="pointer-events-none absolute inset-0 -z-10"
         aria-hidden
         style={{
           background:
-            "radial-gradient(ellipse at 20% 30%, oklch(0.68 0.18 254 / 0.12), transparent 50%), radial-gradient(ellipse at 80% 70%, oklch(0.56 0.18 296 / 0.10), transparent 55%)",
+            "radial-gradient(ellipse 50% 40% at 30% 45%, oklch(0.45 0.18 280 / 0.2), transparent 60%), radial-gradient(ellipse 40% 35% at 70% 55%, oklch(0.4 0.16 320 / 0.15), transparent 55%)",
         }}
       />
       <LoginCard />

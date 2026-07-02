@@ -12,7 +12,7 @@
  */
 
 import { useRef, useMemo, useState } from "react";
-import { Image as ImageIcon, Trash2, Move, RotateCw, Maximize2, ZoomIn, ZoomOut, SlidersHorizontal } from "lucide-react";
+import { Image as ImageIcon, Trash2, Move, RotateCw, ZoomIn, ZoomOut, SlidersHorizontal } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -28,17 +28,14 @@ function GizmoModeSwitch({
   mode,
   onChange,
   allowRotation,
-  allowScaling,
 }: {
   mode: TransformMode;
   onChange: (mode: TransformMode) => void;
   allowRotation: boolean;
-  allowScaling: boolean;
 }) {
   const options: Array<{ value: TransformMode; label: string; icon: typeof Move; enabled: boolean }> = [
-    { value: "translate", label: "Move",   icon: Move,      enabled: true },
-    { value: "rotate",    label: "Rotate", icon: RotateCw,  enabled: allowRotation },
-    { value: "scale",     label: "Scale",  icon: Maximize2, enabled: allowScaling },
+    { value: "translate", label: "Move & Resize", icon: Move,     enabled: true },
+    { value: "rotate",    label: "Rotate",         icon: RotateCw, enabled: allowRotation },
   ];
 
   return (
@@ -61,7 +58,9 @@ function GizmoModeSwitch({
         ))}
       </div>
       <p className="text-center text-[11px] text-muted-foreground/70">
-        Tap the artwork on the model, then drag its handles
+        {mode === "rotate"
+          ? "Drag the on-model handle to rotate"
+          : "Drag the artwork to move it, or grab an edge or corner to resize — pinch with two fingers on touch"}
       </p>
     </div>
   );
@@ -262,7 +261,6 @@ export function DecalPanel() {
             mode={store.transformMode}
             onChange={store.setTransformMode}
             allowRotation={!!selectedPrintArea.allowRotation}
-            allowScaling={!!selectedPrintArea.allowScaling}
           />
 
           {/*  Scale strip  */}

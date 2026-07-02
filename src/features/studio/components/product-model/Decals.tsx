@@ -11,9 +11,9 @@ import {
   getZoneTransformBounds,
   type DecalTransform,
 } from "../../hooks/useDecalTransforms";
-import { useDecalDragTranslate } from "../../hooks/useDecalDragTranslate";
+import { useDecalGesture } from "../../hooks/useDecalGesture";
 
-// ─── DecalMaterial ─────────────────────────────────────────────────
+// DecalMaterial
 
 interface DecalMaterialProps {
   texture: THREE.Texture;
@@ -43,7 +43,7 @@ function DecalMaterial({
   );
 }
 
-// ─── DecalOutline ──────────────────────────────────────────────────
+// DecalOutline
 
 function DecalOutline({ transform }: { transform: DecalTransform }) {
   const lineRef = useRef<THREE.Line>(null!);
@@ -88,25 +88,18 @@ function DecalOutline({ transform }: { transform: DecalTransform }) {
   );
 }
 
-// ─── DecalTransformGizmo ───────────────────────────────────────────
+// DecalRotateGizmo
+// Move and resize now both happen via direct pointer interaction on the
+// decal itself (see useDecalGesture) — this gizmo is only for rotation,
+// which still needs its own dedicated handle.
 
-function clamp(v: number, lo: number, hi: number) {
-  return Math.max(lo, Math.min(hi, v));
-}
-
-interface DecalTransformGizmoProps {
+interface DecalRotateGizmoProps {
   zone: PrintArea;
   transform: DecalTransform;
-  mode: TransformMode;
   onChange: (patch: Partial<ArtworkState>) => void;
 }
 
-function DecalTransformGizmo({
-  zone,
-  transform,
-  mode,
-  onChange,
-}: DecalTransformGizmoProps) {
+function DecalRotateGizmo({ zone, transform, onChange }: DecalRotateGizmoProps) {
   const handleRef = useRef<THREE.Group>(null!);
   const controlsRef = useRef<any>(null);
   const draggingRef = useRef(false);
@@ -114,8 +107,6 @@ function DecalTransformGizmo({
   const orbitControls = useThree(
     (s) => s.controls
   ) as { enabled: boolean } | null;
-
-  const bounds = getZoneTransformBounds(zone);
 
   useEffect(() => {
     if (draggingRef.current || !handleRef.current) return;
@@ -142,12 +133,7 @@ function DecalTransformGizmo({
         handle.scale
       );
       const decomposed = decomposeDecalTransform(matrix, zone);
-      onChange({
-        decalOffsetX: clamp(decomposed.offsetX, bounds.minX, bounds.maxX),
-        decalOffsetY: clamp(decomposed.offsetY, bounds.minY, bounds.maxY),
-        decalScale: clamp(decomposed.scale, bounds.minScale, bounds.maxScale),
-        decalRotation: decomposed.rotation,
-      });
+      onChange({ decalRotation: decomposed.rotation });
     };
 
     controls.addEventListener("dragging-changed", handleDraggingChanged);
@@ -156,7 +142,7 @@ function DecalTransformGizmo({
       controls.removeEventListener("dragging-changed", handleDraggingChanged);
       controls.removeEventListener("objectChange", handleObjectChange);
     };
-  }, [zone, bounds, onChange, orbitControls]);
+  }, [zone, onChange, orbitControls]);
 
   return (
     <>
@@ -164,17 +150,17 @@ function DecalTransformGizmo({
       <TransformControls
         ref={controlsRef}
         object={handleRef}
-        mode={mode}
+        mode="rotate"
         showX={false}
-        showY={mode === "scale"}
-        showZ={mode === "rotate"}
+        showY={false}
+        showZ
         size={0.85}
       />
     </>
   );
 }
 
-// ─── SingleDecalLayer ──────────────────────────────────────────────
+// SingleDecalLayer
 
 interface SingleDecalLayerProps {
   artwork: ArtworkState;
@@ -201,24 +187,34 @@ function SingleDecalLayer({
 }: SingleDecalLayerProps) {
   const transform = useDecalTransform(zone, artwork, meshNode);
   const bounds = useMemo(() => getZoneTransformBounds(zone), [zone]);
-  const dragHandlers = useDecalDragTranslate(
+  const gesture = useDecalGesture(
     zone,
     transform,
+    artwork,
     bounds,
     onTransformChange,
-    onSelect
+    onSelect,
+    zone.allowScaling
   );
 
   if (!transform) return null;
 
-  const dragProps =
-    transformMode === "translate"
-      ? {
-          onPointerDown: dragHandlers.onPointerDown,
-          onPointerMove: dragHandlers.onPointerMove,
-          onPointerUp: dragHandlers.onPointerUp,
-        }
-      : {};
+  // Move and resize are always live directly on the artwork — no mode
+  // switch needed between them. Rotation is still an explicit, exclusive
+  // mode (it needs its own dedicated handle), so the rotate gizmo only
+  // shows up when transformMode is "rotate", and the direct-manipulation
+  // handlers step aside while it's up so the two don't fight over the same
+  // pointer.
+  const showRotateGizmo = isActive && transformMode === "rotate";
+
+  const gestureProps = showRotateGizmo
+    ? {}
+    : {
+        onPointerDown: gesture.onPointerDown,
+        onPointerMove: gesture.onPointerMove,
+        onPointerUp: gesture.onPointerUp,
+        onPointerOut: gesture.onPointerOut,
+      };
 
   return (
     <>
@@ -231,7 +227,7 @@ function SingleDecalLayer({
           e.stopPropagation();
           onSelect(zone.id);
         }}
-        {...dragProps}
+        {...gestureProps}
       >
         <DecalMaterial
           texture={texture}
@@ -243,11 +239,10 @@ function SingleDecalLayer({
       {isActive && (
         <>
           <DecalOutline transform={transform} />
-          {transformMode !== "translate" && (
-            <DecalTransformGizmo
+          {showRotateGizmo && (
+            <DecalRotateGizmo
               zone={zone}
               transform={transform}
-              mode={transformMode}
               onChange={onTransformChange}
             />
           )}
@@ -257,7 +252,7 @@ function SingleDecalLayer({
   );
 }
 
-// ─── DecalLayer (public entry) ─────────────────────────────────────
+// DecalLayer (public entry)
 
 interface DecalLayerProps {
   artwork: ArtworkState;
