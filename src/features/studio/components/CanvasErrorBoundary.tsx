@@ -30,7 +30,7 @@ export class CanvasErrorBoundary extends React.Component<Props, State> {
     if (this.state.hasError) {
       return (
         <>
-        <div className="relatiive z-40 flex h-full w-full items-center justify-center rounded-xl bg-muted text-sm text-muted-foreground">
+        <div className="relatiive z-50 flex h-full w-full items-center justify-center rounded-xl bg-muted text-sm text-muted-foreground">
             Unable to load 3D preview.
         </div>
         <div className="mt-6">
