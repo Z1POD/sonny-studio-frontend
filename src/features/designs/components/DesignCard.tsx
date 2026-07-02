@@ -116,20 +116,20 @@ export function DesignCard({ design, onOpenDetail, onMutated }: DesignCardProps)
           onClick={() => onOpenDetail(design)}
         >
           <div className="flex items-start justify-between gap-2">
-            <p className="line-clamp-2 flex-1 text-sm font-medium leading-snug">
+            <p className="line-clamp-1 flex-1 text-sm font-medium leading-snug">
               {design.title}
             </p>
             <p className="shrink-0 text-sm font-semibold">{getRetailPrice(design)}</p>
           </div>
 
-          <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+          {/* <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
             <span>
               {new Date(design.created_at).toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",
               })}
             </span>
-          </div>
+          </div> */}
 
           <button
             onClick={(e) => { e.stopPropagation(); onOpenDetail(design); }}

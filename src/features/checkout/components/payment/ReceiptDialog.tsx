@@ -71,14 +71,14 @@ export function ReceiptDialog({
             <Shield className="h-4 w-4 text-primary" />
             Verify your payment
           </DialogTitle>
-          <DialogDescription className="text-muted-foreground/60 text-left text-sm">
+          <DialogDescription className="text-muted-foreground/60 text-left text-sm mt-2">
             Enter your receipt details below so we can confirm your payment.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-1">
           <div className="space-y-1.5">
-            <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+            <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground/80">
               {refLabel}
             </Label>
             <Input
@@ -86,7 +86,7 @@ export function ReceiptDialog({
               onChange={(e) => setReceiptIdentifier(e.target.value)}
               maxLength={199}
               placeholder={refPlaceholder || "Enter transaction ID or receipt number"}
-              className={`h-12 rounded-xl font-mono text-muted-foreground/40 text-sm mt-2 ${
+              className={`h-12 rounded-xl font-mono text-sm mt-2 ${
                 receiptError
                   ? "border-destructive focus-visible:ring-destructive"
                   : "border-border"
@@ -107,7 +107,7 @@ export function ReceiptDialog({
 
           {requiresAccountNumber && (
             <div className="space-y-1.5">
-              <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+              <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground/80">
                 {payerAccountLabel}
               </Label>
               <Input
@@ -119,7 +119,7 @@ export function ReceiptDialog({
                 placeholder="e.g. 12345678"
                 inputMode="numeric"
                 maxLength={12}
-                className={`h-12 rounded-xl font-mono text-muted-foreground/40 text-sm tracking-widest ${
+                className={`h-12 rounded-xl font-mono text-sm tracking-widest ${
                   payerError
                     ? "border-destructive focus-visible:ring-destructive"
                     : "border-border"
