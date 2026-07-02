@@ -225,7 +225,7 @@ export function LoginCard() {
                         Verifying…
                       </span>
                     ) : (
-                      "\\u00A0"
+                      ""
                     )}
                   </p>
 
@@ -240,7 +240,7 @@ export function LoginCard() {
                     <button
                       onClick={() => requestOtp(true)}
                       disabled={resending}
-                      className="text-[12px] font-medium text-white/60 underline underline-offset-4 transition hover:text-white disabled:opacity-50"
+                      className="text-[12px] mb-4 font-medium text-white/60 underline underline-offset-4 transition hover:text-white disabled:opacity-50"
                     >
                       {resending ? (
                         <span className="inline-flex items-center gap-1.5">

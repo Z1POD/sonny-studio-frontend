@@ -78,7 +78,7 @@ export function LoginDialog({ open, onOpenChange, redirectTo = "/catalog" }: Log
           </DrawerDescription>
         </DrawerHeader>
 
-        <div className="mx-auto w-full max-w-sm px-6 pb-10 pt-4 safe-bottom">
+        <div className="mx-auto w-full max-w-sm px-6 pb-10 pt-4 safe-bottom bg-[#083b32] rounded-t-2xl">
           <AnimatePresence mode="wait">
             {stage === "username" ? (
               <motion.div
@@ -190,7 +190,7 @@ export function LoginDialog({ open, onOpenChange, redirectTo = "/catalog" }: Log
                         className={`h-12 w-10 rounded-xl text-base font-medium text-white transition-all ${
                           otpError
                             ? "border-red-400/60 ring-red-400/20 focus-visible:ring-red-400/40"
-                            : "border-white/10 focus-visible:ring-white/20"
+                            : "border-white/20 focus-visible:ring-white/20"
                         }`}
                       />
                     ))}
@@ -217,7 +217,7 @@ export function LoginDialog({ open, onOpenChange, redirectTo = "/catalog" }: Log
                       Verifying…
                     </span>
                   ) : (
-                    "\\u00A0"
+                    ""
                   )}
                 </p>
 
@@ -232,7 +232,7 @@ export function LoginDialog({ open, onOpenChange, redirectTo = "/catalog" }: Log
                   <button
                     onClick={() => requestOtp(true)}
                     disabled={resending}
-                    className="text-[12px] font-medium text-white/60 underline underline-offset-4 transition hover:text-white disabled:opacity-50"
+                    className="text-[12px] mb-4 font-medium text-white/60 underline underline-offset-4 transition hover:text-white disabled:opacity-50"
                   >
                     {resending ? (
                       <span className="inline-flex items-center gap-1.5">
