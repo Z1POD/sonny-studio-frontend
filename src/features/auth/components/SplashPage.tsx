@@ -3,7 +3,7 @@
 "use client";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Loader2, ArrowRight, Shirt, Palette, ShoppingBag, Sparkles } from "lucide-react";
+import { Loader2, ArrowRight, Shirt, Palette, ShoppingBag, Sparkles, ShoppingCart } from "lucide-react";
 import { getMiniAppUrl } from "../lib/miniapp";
 import { LoginDialog } from "./LoginDialog";
 
@@ -30,7 +30,7 @@ function FeatureCard({
       initial={{ opacity: 0, scale: 0.85 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.6, delay, ease: [0.4, 0, 0.2, 1] }}
-      className="absolute pointer-events-none hidden sm:block"
+      className="absolute pointer-events-none sm:block"
       style={{ left: x, top: y }}
     >
       <div className="flex items-center gap-2.5 rounded-2xl border border-white/[0.08] bg-white/[0.06] px-4 py-2.5 backdrop-blur-md shadow-2xl shadow-black/20">
@@ -47,29 +47,32 @@ export function SplashPage({ isSigningIn = false }: SplashPageProps) {
   const miniAppUrl = getMiniAppUrl();
 
   return (
-    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-[#0a0a0f] text-white">
+    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-[#083b32] text-white">
       {/* ── Background ── */}
-
-      {/* Static ambient glow spots (CSS only, no JS animation) */}
       <div
-        className="absolute inset-0 -z-20"
-        style={{
-          background: `
-            radial-gradient(circle at 20% 35%, rgba(139, 92, 246, 0.18), transparent 50%),
-            radial-gradient(circle at 80% 20%, rgba(236, 72, 153, 0.14), transparent 45%),
-            radial-gradient(circle at 60% 80%, rgba(59, 130, 246, 0.12), transparent 55%),
-            #0a0a0f
-          `,
-        }}
-      />
+        className="absolute inset-0 -z-30 bg-cover bg-center"
+        />
 
-      {/* Subtle noise texture */}
-      <div
-        className="absolute inset-0 -z-10 opacity-[0.025]"
+        {/* Dark cinematic overlay */}
+        <div className="absolute inset-0 -z-20 bg-black/60" />
+
+        {/* Luxury gold glow */}
+        <div
+        className="absolute inset-0 -z-10"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+            background: `
+            radial-gradient(circle at 25% 18%, rgba(212,175,55,.22), transparent 40%),
+            radial-gradient(circle at 78% 25%, rgba(255,232,170,.12), transparent 35%),
+            linear-gradient(
+                to bottom,
+                rgba(0,0,0,.25),
+                rgba(0,0,0,.45),
+                rgba(0,0,0,.82)
+            )
+            `,
         }}
-      />
+        />
+
 
       {/* ── Content ── */}
       <div className="relative z-10 flex flex-1 flex-col">
@@ -98,8 +101,9 @@ export function SplashPage({ isSigningIn = false }: SplashPageProps) {
         <div className="relative flex flex-1 flex-col items-center justify-center px-6">
           {/* Floating feature cards */}
           <FeatureCard icon={Palette} label="Design" delay={0.4} x="8%" y="18%" />
-          <FeatureCard icon={Shirt} label="Preview" delay={0.55} x="72%" y="12%" />
-          <FeatureCard icon={ShoppingBag} label="Sell" delay={0.7} x="65%" y="55%" />
+          <FeatureCard icon={Shirt} label="Mockups" delay={0.55} x="72%" y="12%" />
+          <FeatureCard icon={ShoppingCart} label="Order" delay={0.3} x="35%" y="85%" />
+          <FeatureCard icon={ShoppingBag} label="Sell" delay={0.7} x="75%" y="65%" />
           <FeatureCard icon={Sparkles} label="Create" delay={0.85} x="12%" y="58%" />
 
           {/* Headline */}
@@ -109,15 +113,15 @@ export function SplashPage({ isSigningIn = false }: SplashPageProps) {
             transition={{ duration: 0.7, delay: 0.1, ease: [0.4, 0, 0.2, 1] }}
             className="text-center"
           >
-            <h1 className="text-[clamp(2.5rem,8vw,5.5rem)] font-bold leading-[1.05] tracking-tighter">
+            <h1 className="text-[clamp(2.5rem,8vw,5.5rem)] font-bold leading-[1.05] tracking-tighter text-white">
               Design your
               <br />
-              <span className="bg-gradient-to-r from-violet-400 via-fuchsia-400 to-amber-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-b from-[#FFF2C2] via-[#D4AF37] to-[#4A3B17] bg-clip-text text-transparent">
                 next drop.
               </span>
             </h1>
-            <p className="mx-auto mt-5 max-w-sm text-[15px] leading-relaxed text-white/50 sm:max-w-md sm:text-base">
-              Create custom apparel, preview it in real-time, and sell to your
+            <p className="mx-auto mt-5 max-w-sm text-[15px] leading-relaxed text-white/50 hidden sm:block sm:max-w-md sm:text-base">
+              Create custom apparel, preview it in real-time, and order it for yourself or sell to your
               audience — all from one studio.
             </p>
           </motion.div>

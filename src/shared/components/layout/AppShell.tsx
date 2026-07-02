@@ -158,7 +158,7 @@ function StudioNavFab() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 16 }}
               transition={{ type: "spring", damping: 28, stiffness: 340 }}
-              className="fixed top-20 inset-x-0 z-50 md:hidden safe-top"
+              className="fixed top-20 inset-x-0 z-40 md:hidden safe-top"
             >
               <div className="mx-4 mb-4 overflow-hidden rounded-2xl border border-border/60 bg-surface/90 shadow-2xl backdrop-blur-xl">
                 <div className="grid grid-cols-4">

@@ -36,9 +36,13 @@ const DRAG_THRESHOLD = 0.0025;
 // "the edge" for resize purposes — a fraction of the artwork's own
 // half-extent, clamped so tiny decals still get a workable grab target and
 // large ones don't grow an oversized border.
-const EDGE_MARGIN_RATIO = 0.18;
-const EDGE_MARGIN_MIN = 0.006; // 0.6cm
-const EDGE_MARGIN_MAX = 0.035; // 3.5cm
+// const EDGE_MARGIN_RATIO = 0.18;
+// const EDGE_MARGIN_MIN = 0.006; // 0.6cm
+// const EDGE_MARGIN_MAX = 0.035; // 3.5cm
+
+const EDGE_MARGIN_RATIO = 0.05;
+const EDGE_MARGIN_MIN = 0.0025; // 2.5 mm
+const EDGE_MARGIN_MAX = 0.01;   // 1 cm
 
 type HandleZone =
   | "interior"

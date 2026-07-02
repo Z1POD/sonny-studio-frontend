@@ -63,7 +63,7 @@ export function LoginDialog({ open, onOpenChange, redirectTo = "/catalog" }: Log
       }}
       modal={false}
     >
-      <DrawerContent className="border-white/[0.08] bg-[oklch(0.1_0.02_280)]/95 backdrop-blur-xl">
+      <DrawerContent className="border-white/[0.08] bg-[#083b32]/80 backdrop-blur-xl shadow-2xl">
         <DrawerHeader className="mx-auto w-full max-w-sm pb-1 pt-7 text-center">
           <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-[0.75rem] bg-white text-[oklch(0.08_0.02_280)]">
             <Sparkles className="h-5 w-5" />
@@ -151,7 +151,7 @@ export function LoginDialog({ open, onOpenChange, redirectTo = "/catalog" }: Log
                   target="_blank"
                   rel="noreferrer"
                   aria-disabled={!signupLink}
-                  className={`flex h-12 w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.04] text-[13px] font-medium text-white/70 backdrop-blur-sm transition hover:bg-white/[0.08] hover:text-white ${
+                  className={`flex h-12 w-full items-center justify-center mb-4 gap-2 rounded-full border border-white/10 bg-white/[0.04] text-[13px] font-medium text-white/70 backdrop-blur-sm transition hover:bg-white/[0.08] hover:text-white ${
                     !signupLink ? "pointer-events-none opacity-50" : ""
                   }`}
                 >

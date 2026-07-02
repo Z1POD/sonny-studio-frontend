@@ -25,7 +25,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   return (
-    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-[oklch(0.08_0.02_280)] px-4 safe-top safe-bottom">
+    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-[#083b32] px-4 safe-top safe-bottom">
       {/* Subtle ambient glow */}
       <div
         className="pointer-events-none absolute inset-0 -z-10"
