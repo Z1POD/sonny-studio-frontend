@@ -60,7 +60,7 @@ function GizmoModeSwitch({
       <p className="text-center text-[11px] text-muted-foreground/70">
         {mode === "rotate"
           ? "Drag the on-model handle to rotate"
-          : "Drag the artwork to move it, or grab an edge or corner to resize — pinch with two fingers on touch"}
+          : "Drag the artwork to move it, or drag a corner pin to resize"}
       </p>
     </div>
   );

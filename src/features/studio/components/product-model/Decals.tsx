@@ -10,8 +10,14 @@ import {
   decomposeDecalTransform,
   getZoneTransformBounds,
   type DecalTransform,
+  type ZoneTransformBounds,
 } from "../../hooks/useDecalTransforms";
-import { useDecalGesture } from "../../hooks/useDecalGesture";
+import { useDecalDragMove } from "../../hooks/useDecalDragMove";
+import {
+  useDecalCornerResize,
+  CORNER_SIGN,
+  type Corner,
+} from "../../hooks/useDecalCornerResize";
 
 // DecalMaterial
 
@@ -88,9 +94,109 @@ function DecalOutline({ transform }: { transform: DecalTransform }) {
   );
 }
 
+// DecalCornerHandles
+// Four draggable pins, one per corner, rendered in the decal's own local
+// plane (same position/rotation as the outline). Each pin is its own hit
+// target with a fixed generous radius — independent of the artwork's own
+// size — so tiny artwork is just as easy to grab as large artwork.
+
+const CORNERS: Corner[] = ["tl", "tr", "bl", "br"];
+const PIN_HIT_RADIUS = 0.018;
+const PIN_OUTER_RADIUS = 0.009;
+const PIN_INNER_RADIUS = 0.0052;
+const PIN_LOCAL_Z = 0.003; // lifted slightly toward the camera along the decal's own normal
+
+interface CornerHandleProps {
+  corner: Corner;
+  zone: PrintArea;
+  transform: DecalTransform;
+  artwork: ArtworkState;
+  bounds: ZoneTransformBounds;
+  onChange: (patch: Partial<ArtworkState>) => void;
+  onSelect: (zoneId: string) => void;
+}
+
+function CornerHandle({
+  corner,
+  zone,
+  transform,
+  artwork,
+  bounds,
+  onChange,
+  onSelect,
+}: CornerHandleProps) {
+  const handlers = useDecalCornerResize(zone, transform, artwork, bounds, onChange, onSelect, corner);
+  const { sx, sy } = CORNER_SIGN[corner];
+  const localPosition: [number, number, number] = [
+    (sx * transform.scale.x) / 2,
+    (sy * transform.scale.y) / 2,
+    PIN_LOCAL_Z,
+  ];
+
+  return (
+    <group position={localPosition} renderOrder={600}>
+      {/* Generous invisible hit target, sized for touch regardless of artwork size */}
+      <mesh
+        onPointerDown={handlers.onPointerDown}
+        onPointerMove={handlers.onPointerMove}
+        onPointerUp={handlers.onPointerUp}
+        onPointerOver={handlers.onPointerOver}
+        onPointerOut={handlers.onPointerOut}
+      >
+        <circleGeometry args={[PIN_HIT_RADIUS, 24]} />
+        <meshBasicMaterial transparent opacity={0} depthTest={false} />
+      </mesh>
+      {/* Visible pin */}
+      <mesh renderOrder={601}>
+        <circleGeometry args={[PIN_OUTER_RADIUS, 24]} />
+        <meshBasicMaterial color="#2f5fe0" depthTest={false} depthWrite={false} />
+      </mesh>
+      <mesh renderOrder={602} position={[0, 0, 0.0006]}>
+        <circleGeometry args={[PIN_INNER_RADIUS, 24]} />
+        <meshBasicMaterial color="#ffffff" depthTest={false} depthWrite={false} />
+      </mesh>
+    </group>
+  );
+}
+
+interface DecalCornerHandlesProps {
+  zone: PrintArea;
+  transform: DecalTransform;
+  artwork: ArtworkState;
+  bounds: ZoneTransformBounds;
+  onChange: (patch: Partial<ArtworkState>) => void;
+  onSelect: (zoneId: string) => void;
+}
+
+function DecalCornerHandles({
+  zone,
+  transform,
+  artwork,
+  bounds,
+  onChange,
+  onSelect,
+}: DecalCornerHandlesProps) {
+  return (
+    <group position={transform.position} rotation={transform.rotation}>
+      {CORNERS.map((corner) => (
+        <CornerHandle
+          key={corner}
+          corner={corner}
+          zone={zone}
+          transform={transform}
+          artwork={artwork}
+          bounds={bounds}
+          onChange={onChange}
+          onSelect={onSelect}
+        />
+      ))}
+    </group>
+  );
+}
+
 // DecalRotateGizmo
-// Move and resize now both happen via direct pointer interaction on the
-// decal itself (see useDecalGesture) — this gizmo is only for rotation,
+// Move and resize both happen via direct pointer interaction on the decal
+// itself (interior drag + corner pins) — this gizmo is only for rotation,
 // which still needs its own dedicated handle.
 
 interface DecalRotateGizmoProps {
@@ -187,33 +293,26 @@ function SingleDecalLayer({
 }: SingleDecalLayerProps) {
   const transform = useDecalTransform(zone, artwork, meshNode);
   const bounds = useMemo(() => getZoneTransformBounds(zone), [zone]);
-  const gesture = useDecalGesture(
-    zone,
-    transform,
-    artwork,
-    bounds,
-    onTransformChange,
-    onSelect,
-    zone.allowScaling
-  );
+  const moveHandlers = useDecalDragMove(zone, transform, bounds, onTransformChange, onSelect);
 
   if (!transform) return null;
 
-  // Move and resize are always live directly on the artwork — no mode
-  // switch needed between them. Rotation is still an explicit, exclusive
-  // mode (it needs its own dedicated handle), so the rotate gizmo only
-  // shows up when transformMode is "rotate", and the direct-manipulation
-  // handlers step aside while it's up so the two don't fight over the same
-  // pointer.
+  // Interior drag → move, always live directly on the artwork. Rotation is
+  // still an explicit, exclusive mode (it needs its own dedicated handle),
+  // so the rotate gizmo only shows up when transformMode is "rotate", and
+  // move + the corner resize pins step aside while it's up so nothing
+  // fights over the same pointer.
   const showRotateGizmo = isActive && transformMode === "rotate";
+  const showCornerHandles = isActive && !showRotateGizmo && zone.allowScaling;
 
-  const gestureProps = showRotateGizmo
+  const moveProps = showRotateGizmo
     ? {}
     : {
-        onPointerDown: gesture.onPointerDown,
-        onPointerMove: gesture.onPointerMove,
-        onPointerUp: gesture.onPointerUp,
-        onPointerOut: gesture.onPointerOut,
+        onPointerDown: moveHandlers.onPointerDown,
+        onPointerMove: moveHandlers.onPointerMove,
+        onPointerUp: moveHandlers.onPointerUp,
+        onPointerOver: moveHandlers.onPointerOver,
+        onPointerOut: moveHandlers.onPointerOut,
       };
 
   return (
@@ -227,7 +326,7 @@ function SingleDecalLayer({
           e.stopPropagation();
           onSelect(zone.id);
         }}
-        {...gestureProps}
+        {...moveProps}
       >
         <DecalMaterial
           texture={texture}
@@ -239,6 +338,16 @@ function SingleDecalLayer({
       {isActive && (
         <>
           <DecalOutline transform={transform} />
+          {showCornerHandles && (
+            <DecalCornerHandles
+              zone={zone}
+              transform={transform}
+              artwork={artwork}
+              bounds={bounds}
+              onChange={onTransformChange}
+              onSelect={onSelect}
+            />
+          )}
           {showRotateGizmo && (
             <DecalRotateGizmo
               zone={zone}
