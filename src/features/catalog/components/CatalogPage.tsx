@@ -224,7 +224,7 @@ export function CatalogPage() {
                       {/* Bottom Layout Details Stack */}
                       <div className="space-y-1 sm:space-y-3.5 min-h-0 flex flex-col justify-end">
                         <div className="space-y-0.5 sm:space-y-1">
-                          <span className="inline-block rounded bg-white/20 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider">
+                          <span className="inline-block rounded bg-white/20 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider line-clamp-1">
                             {b.brand.name}
                           </span>
                           <h5 className="text-sm sm:text-base font-semibold leading-tight tracking-tight line-clamp-1">
