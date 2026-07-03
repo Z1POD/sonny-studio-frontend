@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { ordersInfiniteQuery } from "../queries";
 import type { OrderListItem, OrderStatus } from "../api";
 import { OrderDetailSheet } from "./OrderDetailSheet";
+import { BrandLoader } from "@/components/ui/loader";
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
 
@@ -216,7 +217,7 @@ export function OrdersPage() {
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <BrandLoader size="md" />
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -249,7 +250,10 @@ export function OrdersPage() {
               disabled={isFetchingNextPage}
             >
               {isFetchingNextPage ? (
-                <><Loader2 className="mr-2 h-3 w-3 animate-spin" />Loading…</>
+                <>
+                  <BrandLoader size="sm" className="mr-2" />
+                  Loading...
+                </>
               ) : (
                 "Load more"
               )}

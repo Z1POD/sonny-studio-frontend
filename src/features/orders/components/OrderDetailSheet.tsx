@@ -21,6 +21,7 @@ import { orderDetailQuery, orderKeys } from "../queries";
 import { ordersApi } from "../api";
 import type { OrderDetail, PaymentMethod } from "../api";
 import { useConfirm } from "@/features/store/components/ConfirmModal";
+import { BrandLoader } from "@/components/ui/loader";
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
 
@@ -428,7 +429,7 @@ export function OrderDetailSheet({
               <div className="flex-1 overflow-y-auto px-5 pb-8">
                 {isLoading || !order ? (
                   <div className="flex items-center justify-center py-20">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <BrandLoader size="md" />
                   </div>
                 ) : (
                   <OrderDetailContent

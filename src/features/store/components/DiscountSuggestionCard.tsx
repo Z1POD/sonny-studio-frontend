@@ -39,6 +39,7 @@ import { discountApi, type DiscountRule, type DiscountType, type Coupon } from "
 import { discountRulesQuery, couponsQuery, discountKeys } from "../discountQueries";
 import { type ProductListItem } from "../api";
 import { useShareDrawer } from "@/shared/components/ShareDrawer";
+import { BrandLoader } from "@/components/ui/loader";
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
 
@@ -426,7 +427,7 @@ function RulePanel({
 
                 {coupons.isLoading ? (
                   <div className="flex justify-center py-4">
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    <BrandLoader size="md" />
                   </div>
                 ) : !coupons.data?.data.length ? (
                   <p className="text-xs text-muted-foreground py-2">
