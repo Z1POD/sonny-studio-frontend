@@ -10,6 +10,7 @@ import { CheckOut } from "@/features/checkout/components/CheckOut";
 import { DesignCard } from "./DesignCard";
 import { EmptyDesigns } from "./EmptyDesigns";
 import { BrandLoader } from "@/components/ui/loader";
+import { AlertCircle, Plus } from "lucide-react";
 
 const FILTER_TABS = [
   { label: "All", value: "" },
@@ -91,7 +92,7 @@ export function UserDesignsPage() {
           />
         ) : (
           <AnimatePresence mode="popLayout">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-0 md:gap-3 overflow-hidden rounded-t-3xl">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-0 md:gap-3 overflow-hidden rounded-t-3xl">
               {allDesigns.map((design) => (
                 <DesignCard
                   key={design.id}
