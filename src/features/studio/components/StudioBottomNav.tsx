@@ -1,12 +1,11 @@
-// src/features/studio/components/StudioBottomNav.tsx
 /**
- * StudioBottomNav.tsx — v4
+ * StudioBottomNav.tsx — v5
  *
  * Apple HIG-inspired minimal bottom navigation.
  * - Home/exit button navigates to /designs
  * - Price bar slides out when artwork is applied
  * - Pill-style active states, SF-style icon+label layout
- * - Layers button opens LayerManager
+ * - Grouped by structural and functional hierarchies
  */
 
 import { useState, useEffect } from "react";
@@ -20,7 +19,6 @@ import {
   ImagePlus,
   ShoppingBag,
   Loader2,
-  X,
 } from "lucide-react";
 import { useStudioStore } from "../store";
 import { LayerManager } from "./LayerManager";
@@ -36,7 +34,8 @@ interface StudioBottomNavProps {
   artworkLibraryOpen?: boolean;
 }
 
-const NAV_ITEMS: {
+// Global/Structural navigation items (excluding Design & Move for explicit layout placement)
+const PRE_SPLIT_NAV_ITEMS: {
   id: NonNullable<StudioPanelId>;
   icon: React.ReactNode;
   label: string;
@@ -55,11 +54,6 @@ const NAV_ITEMS: {
     id: "printArea",
     icon: <SquareDashed className="h-[18px] w-[18px]" />,
     label: "Zone",
-  },
-  {
-    id: "decal",
-    icon: <Move className="h-[18px] w-[18px]" />,
-    label: "Move",
   },
 ];
 
@@ -134,8 +128,25 @@ export function StudioBottomNav({
           {/* Main Nav Bar */}
           <div className="flex items-center rounded-2xl border border-border/50 bg-background/80 px-2 py-1.5 backdrop-blur-xl shadow-lg gap-0.5">
 
-            {/* Panel nav items */}
-            {NAV_ITEMS.map((item) => (
+            {/* 1. Info Button */}
+            <NavButton
+              icon={<Info className="h-[18px] w-[18px]" />}
+              label="Info"
+              active={activePanel === "info"}
+              onClick={() => onTogglePanel(activePanel === "info" ? null : "info")}
+            />
+
+            {/* 2. Design Button (Now next to Info) */}
+            <NavButton
+              icon={<ImagePlus className="h-[18px] w-[18px]" />}
+              label="Design"
+              active={artworkLibraryOpen}
+              highlighted={!artworkLibraryOpen && hasArtwork}
+              onClick={() => onToggleArtworkLibrary?.()}
+            />
+
+            {/* 3. Remaining Panel Items (Color, Zone) */}
+            {PRE_SPLIT_NAV_ITEMS.filter(item => item.id !== "info").map((item) => (
               <NavButton
                 key={item.id}
                 icon={item.icon}
@@ -148,7 +159,7 @@ export function StudioBottomNav({
             {/* Divider */}
             <div className="mx-1 h-5 w-px shrink-0 rounded-full bg-border/60" />
 
-            {/* Layers */}
+            {/* 4. Layers Drawer Button */}
             <NavButton
               icon={<Layers className="h-[18px] w-[18px]" />}
               label="Layers"
@@ -156,13 +167,12 @@ export function StudioBottomNav({
               onClick={() => setLayerManagerOpen(true)}
             />
 
-            {/* Artwork Library / Design */}
+            {/* 5. Move / Nudge Button (Now next to Layers after split) */}
             <NavButton
-              icon={<ImagePlus className="h-[18px] w-[18px]" />}
-              label="Design"
-              active={artworkLibraryOpen}
-              highlighted={!artworkLibraryOpen && hasArtwork}
-              onClick={() => onToggleArtworkLibrary?.()}
+              icon={<Move className="h-[18px] w-[18px]" />}
+              label="Nudge"
+              active={activePanel === "decal"}
+              onClick={() => onTogglePanel(activePanel === "decal" ? null : "decal")}
             />
           </div>
         </div>
@@ -174,7 +184,7 @@ export function StudioBottomNav({
   );
 }
 
-// NavButton 
+// NavButton Component
 interface NavButtonProps {
   icon: React.ReactNode;
   label: string;
