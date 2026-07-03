@@ -1,7 +1,7 @@
 // src/features/studio/components/product-model/Decals.tsx
 
 import { useRef, useMemo, useEffect } from "react";
-import { Decal, TransformControls, useTexture } from "@react-three/drei";
+import { Decal, TransformControls, useTexture, Line } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import type { ArtworkState, PrintArea, TransformMode } from "../../store";
@@ -52,45 +52,36 @@ function DecalMaterial({
 // DecalOutline
 
 function DecalOutline({ transform }: { transform: DecalTransform }) {
-  const lineRef = useRef<THREE.Line>(null!);
-
-  const geometry = useMemo(() => {
+  const points = useMemo(() => {
     const w = transform.scale.x / 2;
     const h = transform.scale.y / 2;
-    const points = [
-      new THREE.Vector3(-w, -h, 0),
-      new THREE.Vector3(w, -h, 0),
-      new THREE.Vector3(w, h, 0),
-      new THREE.Vector3(-w, h, 0),
-      new THREE.Vector3(-w, -h, 0),
-    ];
-    return new THREE.BufferGeometry().setFromPoints(points);
+    return [
+      [ -w, -h, 0 ],
+      [  w, -h, 0 ],
+      [  w,  h, 0 ],
+      [ -w,  h, 0 ],
+      [ -w, -h, 0 ], // Close the loop
+    ] as [number, number, number][];
   }, [transform.scale.x, transform.scale.y]);
 
-  useEffect(() => {
-    lineRef.current?.computeLineDistances();
-  }, [geometry]);
-
   return (
-    <line
-      ref={lineRef}
-      geometry={geometry}
+    <Line
+      points={points}
       position={transform.position}
       rotation={transform.rotation}
       renderOrder={500}
-    >
-      <lineDashedMaterial
-        color="#2f5fe0"
-        dashSize={0.012}
-        gapSize={0.008}
-        transparent
-        opacity={0.9}
-        depthTest
-        polygonOffset
-        polygonOffsetFactor={-8}
-        polygonOffsetUnits={-8}
-      />
-    </line>
+      color="#2f5fe0"
+      lineWidth={4}
+      dashed                 
+      dashSize={0.012}       
+      gapSize={0.008}        
+      transparent
+      opacity={0.9}
+      depthTest
+      polygonOffset
+      polygonOffsetFactor={-8}
+      polygonOffsetUnits={-8}
+    />
   );
 }
 
@@ -102,9 +93,9 @@ function DecalOutline({ transform }: { transform: DecalTransform }) {
 
 const CORNERS: Corner[] = ["tl", "tr", "bl", "br"];
 const PIN_HIT_RADIUS = 0.018;
-const PIN_OUTER_RADIUS = 0.009;
-const PIN_INNER_RADIUS = 0.0052;
-const PIN_LOCAL_Z = 0.003; // lifted slightly toward the camera along the decal's own normal
+const PIN_OUTER_RADIUS = 0.016;
+const PIN_INNER_RADIUS = 0.0072;
+const PIN_LOCAL_Z = 0.013; // lifted slightly toward the camera along the decal's own normal
 
 interface CornerHandleProps {
   corner: Corner;
