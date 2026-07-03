@@ -170,3 +170,20 @@
 [data-sonner-toaster][data-position="top-center"] {
   top: var(--toast-offset, 24px) !important;
 }
+
+
+@keyframes brand-loader {
+  0%, 80%, 100% {
+    transform: scale(0.65);
+    opacity: .35;
+  }
+
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-brand-loader {
+  animation: brand-loader 1.2s infinite ease-in-out;
+} 

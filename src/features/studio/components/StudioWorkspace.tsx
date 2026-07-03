@@ -8,7 +8,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Loader2, Shirt } from "lucide-react";
+import { Shirt } from "lucide-react";
 import { toast } from "sonner";
 import { useStudioStore, getDefaultArtwork } from "../store";
 import { StudioCanvas, type StudioCanvasHandle } from "./StudioCanvas";
@@ -20,6 +20,7 @@ import { CheckOut } from "@/features/checkout/components/CheckOut";
 import { useStudioInit } from "../hooks/useStudioInit";
 import { useStudioCheckout } from "../hooks/useStudioCheckout";
 import { useTelegram } from "@/shared/hooks/use-telegram";
+import { BrandLoader } from "@/components/ui/loader";
 
 const CM = 0.01;
 
@@ -90,7 +91,7 @@ export function StudioWorkspace() {
   if (isLoadingAny || !product) {
     return (
       <div className="flex h-[70vh] items-center justify-center text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" />
+        <BrandLoader size="md" />
       </div>
     );
   }

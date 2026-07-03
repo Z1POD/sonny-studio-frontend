@@ -16,7 +16,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowUpRight, ImageIcon, Shirt, Plus, Sparkles,
   Store as StoreIcon, Wallet as WalletIcon,
-  Share2, Pencil, Check, Globe, Archive, Trash2, Loader2,
+  Share2, Pencil, Check, Globe, Archive, Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ import { EditProductModal } from "./EditProductModal";
 import { useConfirm } from "./ConfirmModal";
 import { useShareDrawer } from "@/shared/components/ShareDrawer";
 import { DiscountSuggestionCard } from "./DiscountSuggestionCard";
+import { BrandLoader } from "@/components/ui/loader";
 
 // ─── Stat tile ────────────────────────────────────────────────────────────────
 
@@ -58,7 +59,7 @@ function OverlayBtn({
       title={title}
       className="flex h-7 w-7 items-center justify-center rounded-full border border-white/30 bg-black/40 text-white/80 backdrop-blur-sm transition hover:bg-black/60 disabled:opacity-40"
     >
-      {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : children}
+      {loading ? <BrandLoader size="md" /> : children}
     </button>
   );
 }

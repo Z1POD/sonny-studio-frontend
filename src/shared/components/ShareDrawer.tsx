@@ -37,7 +37,7 @@ import { useOverlayStore } from "@/shared/stores/overlay-store";
 import { useTelegram } from "@/shared/hooks/use-telegram";
 import { storeProductApi } from "@/features/store/api";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// Types
 
 export interface ProductStoryFlags {
   /** Has active discount / coupon */
@@ -70,7 +70,7 @@ export interface ShareTarget {
   flags?: ProductStoryFlags;
 }
 
-// ─── Story Text Composer ──────────────────────────────────────────────────────
+// Story Text Composer
 
 /**
  * Composes a clean, engaging Telegram Story caption from product data.
@@ -136,7 +136,7 @@ function composeStoryText(target: ShareTarget): string {
   return lines.join("\n");
 }
 
-// ─── Icon wrappers ─────────────────────────────────────────────────────────────
+// Icon wrappers
 
 /** TikTok SVG (not in lucide) */
 function TikTokIcon({ size = 20 }: { size?: number }) {
@@ -156,7 +156,7 @@ function WhatsAppIcon({ size = 20 }: { size?: number }) {
   );
 }
 
-// ─── Social button configs ────────────────────────────────────────────────────
+// Social button configs
 
 interface SocialBtn {
   id: string;
@@ -245,7 +245,7 @@ const SOCIAL_BUTTONS: SocialBtn[] = [
   },
 ];
 
-// ─── SocialIcon ───────────────────────────────────────────────────────────────
+// SocialIcon
 
 function SocialIcon({ btn, url, title, onDone }: {
   btn: SocialBtn;
@@ -283,7 +283,7 @@ function SocialIcon({ btn, url, title, onDone }: {
   );
 }
 
-// ─── MenuRow ──────────────────────────────────────────────────────────────────
+// MenuRow
 
 function MenuRow({
   icon,
@@ -322,7 +322,7 @@ function MenuRow({
   );
 }
 
-// ─── ShareDrawerContent ───────────────────────────────────────────────────────
+// ShareDrawerContent
 
 interface ShareDrawerContentProps {
   target: ShareTarget;
@@ -412,7 +412,7 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
         <p className="mt-0.5 text-[12px] text-muted-foreground truncate">{target.url}</p>
       </div>
 
-      {/* ── Telegram Story CTA (inside Telegram Mini App) ── */}
+      {/* Telegram Story CTA (inside Telegram Mini App) */}
       {inTelegram && (
         <div className="px-4 pb-3">
           <Button
@@ -430,7 +430,7 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
         </div>
       )}
 
-      {/* ── Social icon row (non-Telegram / always shown outside TG) ── */}
+      {/* Social icon row (non-Telegram / always shown outside TG) */}
       {!inTelegram && (
         <div className="px-5 pb-4">
           <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-hide">
@@ -482,7 +482,7 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
         </div>
       )}
 
-      {/* ── Action menu card ── */}
+      {/* Action menu card */}
       <div className="mx-4 mb-8 overflow-hidden rounded-2xl bg-surface-elevated border border-border/40">
         <MenuRow
           icon={<Link2 className="h-4 w-4" />}
@@ -501,7 +501,7 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
   );
 }
 
-// ─── Hook ─────────────────────────────────────────────────────────────────────
+// Hook
 
 export function useShareDrawer() {
   const openSheet = useOverlayStore((s) => s.openSheet);
@@ -527,7 +527,7 @@ export function useShareDrawer() {
   return { openShareDrawer };
 }
 
-// ─── Standalone trigger ───────────────────────────────────────────────────────
+// Standalone trigger
 
 interface ShareDrawerTriggerProps {
   children: React.ReactNode;

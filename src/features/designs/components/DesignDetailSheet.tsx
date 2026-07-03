@@ -28,6 +28,7 @@ import { useConfirm } from "@/features/store/components/ConfirmModal";
 import { useCheckoutStore } from "@/features/checkout/store";
 import { DesignLightbox } from "./DesignLightbox";
 import type { ApparelProduct, PrintArea } from "@/features/studio/store";
+import { BrandLoader } from "@/components/ui/loader";
 
 // ─── Build ApparelProduct from saved product's render_config ─────────────────
 // Mirrors mapSavedProductToApparelProduct in StudioWorkspace.
@@ -307,7 +308,7 @@ export function DesignDetailSheet({ design, onClose, onMutated }: DesignDetailSh
               <div className="flex-1 overflow-y-auto pb-8 max-w-[100%] md:max-w-[600px] mx-auto no-scrollbar">
                 {isLoading || !detail ? (
                   <div className="flex items-center justify-center py-20">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <BrandLoader size="md" />
                   </div>
                 ) : (
                   <div className="space-y-5 px-5">
@@ -465,7 +466,7 @@ export function DesignDetailSheet({ design, onClose, onMutated }: DesignDetailSh
                       disabled={reorderLoading || isLoading}
                     >
                       {reorderLoading ? (
-                        <><Loader2 className="h-4 w-4 animate-spin" />Preparing order…</>
+                        <><BrandLoader size="md" />Preparing order…</>
                       ) : (
                         <>
                           <ShoppingCart className="h-4 w-4" />

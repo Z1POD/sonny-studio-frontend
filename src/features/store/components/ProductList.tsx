@@ -23,6 +23,7 @@ import { storeProductApi, getRetailPrice, type ProductListItem } from "../api";
 import { EditProductModal } from "./EditProductModal";
 import { useConfirm } from "./ConfirmModal";
 import { useShareDrawer } from "@/shared/components/ShareDrawer";
+import { BrandLoader } from "@/components/ui/loader";
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
@@ -260,7 +261,7 @@ export function ProductListModal({ onClose }: { onClose: () => void }) {
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {isLoading ? (
             <div className="flex h-32 items-center justify-center">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              <BrandLoader size="md" />
             </div>
           ) : allProducts.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
@@ -290,7 +291,7 @@ export function ProductListModal({ onClose }: { onClose: () => void }) {
                     onClick={() => fetchNextPage()} disabled={isFetchingNextPage}
                   >
                     {isFetchingNextPage
-                      ? <><Loader2 className="mr-2 h-3 w-3 animate-spin" /> Loading…</>
+                      ? <><BrandLoader size="sm" /> Loading…</>
                       : <><ChevronDown className="mr-2 h-3 w-3" /> Load more</>
                     }
                   </Button>

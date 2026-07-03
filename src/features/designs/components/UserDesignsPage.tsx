@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { AnimatePresence } from "framer-motion";
-import { Loader2, Plus, AlertCircle } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { designsInfiniteQuery } from "../queries";
@@ -10,6 +9,7 @@ import { DesignDetailSheet } from "./DesignDetailSheet";
 import { CheckOut } from "@/features/checkout/components/CheckOut";
 import { DesignCard } from "./DesignCard";
 import { EmptyDesigns } from "./EmptyDesigns";
+import { BrandLoader } from "@/components/ui/loader";
 
 const FILTER_TABS = [
   { label: "All", value: "" },
@@ -74,7 +74,7 @@ export function UserDesignsPage() {
       <div className="flex-1 overflow-y-auto px-1 md:px-4 py-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <BrandLoader />
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
@@ -113,7 +113,10 @@ export function UserDesignsPage() {
               disabled={isFetchingNextPage}
             >
               {isFetchingNextPage ? (
-                <><Loader2 className="mr-2 h-3 w-3 animate-spin" />Loading…</>
+                <>
+                  <BrandLoader size="sm" className="mr-2" />
+                  Loading...
+                </>
               ) : (
                 "Load more"
               )}
