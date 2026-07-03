@@ -71,7 +71,7 @@ function DecalOutline({ transform }: { transform: DecalTransform }) {
       rotation={transform.rotation}
       renderOrder={500}
       color="#2f5fe0"
-      lineWidth={4}
+      lineWidth={2}
       dashed                 
       dashSize={0.012}       
       gapSize={0.008}        
@@ -93,8 +93,8 @@ function DecalOutline({ transform }: { transform: DecalTransform }) {
 
 const CORNERS: Corner[] = ["tl", "tr", "bl", "br"];
 const PIN_HIT_RADIUS = 0.018;
-const PIN_OUTER_RADIUS = 0.016;
-const PIN_INNER_RADIUS = 0.0072;
+const PIN_OUTER_RADIUS = 0.013;
+const PIN_INNER_RADIUS = 0.0042;
 const PIN_LOCAL_Z = 0.013; // lifted slightly toward the camera along the decal's own normal
 
 interface CornerHandleProps {
