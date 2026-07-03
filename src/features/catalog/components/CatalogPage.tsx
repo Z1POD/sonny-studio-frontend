@@ -134,7 +134,7 @@ export function CatalogPage() {
           </p>
         </div>
       ) : (
-        <div className="mt-6 grid grid-cols-2 gap-2 sm:gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="mt-6 grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {items.map((b) => {
             const isShowingDetails = hoveredItemId === b.id;
 
@@ -155,7 +155,7 @@ export function CatalogPage() {
                 }}
                 className="
                   group relative
-                  aspect-[2/3] sm:aspect-[3/4]
+                  aspect-[4/4] sm:aspect-[3/4]
                   w-full
                   overflow-hidden
                   rounded-2xl
