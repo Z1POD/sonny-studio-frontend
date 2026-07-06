@@ -62,14 +62,14 @@ export function Header({ variant = "full" }: HeaderProps) {
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 h-14 md:h-20 transition-colors duration-300 md:w-[800px] md:mx-auto",
-        !isMinimal && "hidden md:block",
+        "top-0 z-50 h-14 transition-colors duration-300 md:h-20",
+        isMinimal ? "fixed inset-x-0" : "sticky hidden md:block md:mx-auto md:w-[800px]",
         isHome && !isExpanded && !isMinimal ? "border-none bg-transparent" : "rounded-2xl",
       )}
     >
       <div
         className={cn(
-          "absolute left-1/2 top-0 mt-2 flex w-full -translate-x-1/2 items-center gap-1.5 rounded-2xl border border-border bg-background/70 px-4 shadow-2xl backdrop-blur transition-all duration-300 md:bg-glass-strong md:px-8 md:backdrop-blur",
+          "absolute left-1/2 top-0 mt-2 flex w-full -translate-x-1/2 items-center gap-1.5 rounded-2xl border border-border bg-background/60 px-4 shadow-2xl backdrop-blur transition-all duration-300 md:bg-glass md:px-8 md:backdrop-blur",
           isExpanded
             ? "h-auto max-w-[calc(100%-2rem)] flex-col gap-4 py-4"
             : isMinimal
@@ -112,7 +112,7 @@ export function Header({ variant = "full" }: HeaderProps) {
             isExpanded ? "w-full justify-between" : "justify-center",
           )}
         >
-         
+
           <button
             aria-label={isExpanded ? "Close navigation menu" : "Open navigation menu"}
             aria-expanded={isExpanded}
