@@ -1,14 +1,18 @@
-// src/features/checkout/components/CheckOut.tsx — v4
+// src/features/checkout/components/CheckOut.tsx — v5
 /**
- * Changes from v3:
- *  - mockupUrls prop is now OPTIONAL and falls back to store.mockupUrls
- *    so UserDesignsPage (reorder flow) doesn't need to pass dataUrls at all.
- *  - Back/close button moved inside the header row (no floating div).
- *  - No other logic changes — StepVariantQuantity, StepShipping, StepReview,
- *    StepPayment are all unchanged.
+ * Changes from v4:
+ *  - Supports two entry points: the existing Studio flow (pick variants →
+ *    shipping → review → payment) and a new Cart flow (shipping → review →
+ *    payment). Which one applies is read from `useCheckoutStore().origin`,
+ *    set by `startCheckoutFromCart()` when checkout is opened from the cart drawer.
+ *  - STEPS is now computed per-origin instead of a fixed constant, and the
+ *    close/back button logic keys off "is this the first step" rather than
+ *    a hardcoded `step === "variants"` check.
+ *  - No changes to StepShipping / StepReview / StepPayment's own internals
+ *    here — they already read order data through the store's getters.
  */
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, X } from "lucide-react";
 import { useCheckoutStore } from "../store";
@@ -18,7 +22,7 @@ import { StepReview } from "./StepReview";
 import { StepPayment } from "./StepPayment";
 import type { CheckoutStep } from "../types";
 
-const STEPS: { id: CheckoutStep; label: string }[] = [
+const ALL_STEPS: { id: CheckoutStep; label: string }[] = [
   { id: "variants", label: "Variants" },
   { id: "shipping", label: "Shipping" },
   { id: "review", label: "Review" },
@@ -42,25 +46,40 @@ export function CheckOut({ mockupUrls: mockupUrlsProp }: CheckOutProps) {
     variants,
     mockupUrl,
     mockupUrls: storeMockupUrls,
+    // `origin` is read defensively — if store.ts hasn't been updated with
+    // it yet, this simply falls back to the existing Studio-only behavior.
+    origin,
     goBack,
     goForward,
     saveDraft,
     reset,
-  } = useCheckoutStore();
+  } = useCheckoutStore() as ReturnType<typeof useCheckoutStore> & { origin?: "studio" | "cart" };
+
+  const isCartOrigin = origin === "cart";
+
+  // Cart-initiated checkout skips variant selection — it's already resolved
+  // per line in the cart itself.
+  const STEPS = useMemo(
+    () => (isCartOrigin ? ALL_STEPS.filter((s) => s.id !== "variants") : ALL_STEPS),
+    [isCartOrigin],
+  );
 
   // Prefer prop (live captures from studio), fall back to store CDN URLs (reorder)
   const resolvedMockupUrls =
     mockupUrlsProp && mockupUrlsProp.length > 0 ? mockupUrlsProp : storeMockupUrls;
 
+  const firstStepId = STEPS[0]?.id;
+  const isFirstStep = step === firstStepId;
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen && step !== "payment") {
-        step === "variants" ? reset() : goBack();
+        isFirstStep ? reset() : goBack();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [isOpen, step, goBack, reset]);
+  }, [isOpen, step, isFirstStep, goBack, reset]);
 
   const handleClose = useCallback(() => {
     if (
@@ -84,9 +103,9 @@ export function CheckOut({ mockupUrls: mockupUrlsProp }: CheckOutProps) {
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex flex-col bg-background"
     >
-      {/* Header */}
+      {/* ─── Header ─────────────────────────────────────────────────── */}
       <header className="flex items-center gap-3 border-b border-border bg-surface/80 px-4 py-3 md:pt-3 pt-[100px] backdrop-blur-xl">
-        {step == "variants" ? (
+        {isFirstStep ? (
           <button
             onClick={handleClose}
             className="grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors hover:bg-muted"
@@ -108,7 +127,7 @@ export function CheckOut({ mockupUrls: mockupUrlsProp }: CheckOutProps) {
 
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-base font-semibold leading-tight">
-            {productName || "Checkout"}
+            {productName || (isCartOrigin ? "Your bag" : "Checkout")}
           </h1>
           <p className="text-[11px] text-muted-foreground">
             Step {currentStepIdx + 1} of {STEPS.length}:{" "}
@@ -117,7 +136,7 @@ export function CheckOut({ mockupUrls: mockupUrlsProp }: CheckOutProps) {
         </div>
       </header>
 
-      {/* Progress bar  */}
+      {/* ─── Progress bar ────────────────────────────────────────────── */}
       <div className="flex items-center gap-1 px-4 py-2">
         {STEPS.map((s, i) => (
           <div key={s.id} className="flex flex-1 items-center">
@@ -130,11 +149,11 @@ export function CheckOut({ mockupUrls: mockupUrlsProp }: CheckOutProps) {
         ))}
       </div>
 
-      {/* Step content  */}
+      {/* ─── Step content ────────────────────────────────────────────── */}
       <div className="flex-1 overflow-hidden">
         <div className="mx-auto h-full max-w-[600px] px-2 sm:px-6">
           <AnimatePresence mode="wait" custom={direction}>
-            {step === "variants" && (
+            {step === "variants" && !isCartOrigin && (
               <motion.div
                 key="variants"
                 custom={direction}

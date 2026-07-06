@@ -122,7 +122,7 @@ export function StepShipping({ onContinue }: Props) {
     setFieldErrors,
     clearFieldError,
     getTotalQuantity,
-    basePrice,
+    getSubtotal,
   } = useCheckoutStore();
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -160,7 +160,7 @@ export function StepShipping({ onContinue }: Props) {
       return;
     }
     const qty = getTotalQuantity();
-    const subtotal = basePrice * qty;
+    const subtotal = getSubtotal();
     setShippingLoading(true);
     checkoutApi
       .getShippingOptions(shippingAddress.cityId, qty, subtotal)
@@ -174,7 +174,7 @@ export function StepShipping({ onContinue }: Props) {
       })
       .catch(() => setFieldErrors({ vendor: "Failed to load shipping options" }))
       .finally(() => setShippingLoading(false));
-  }, [shippingAddress.cityId, basePrice, getTotalQuantity, setShippingOptions, setShippingLoading, setFieldErrors, setSelectedVendorCode, setSelectedPickupId, selectedVendorCode, selectedPickupId]);
+  }, [shippingAddress.cityId, getSubtotal, getTotalQuantity, setShippingOptions, setShippingLoading, setFieldErrors, setSelectedVendorCode, setSelectedPickupId, selectedVendorCode, selectedPickupId]);
 
   const nameValidation = validateName(shippingAddress.fullName);
 

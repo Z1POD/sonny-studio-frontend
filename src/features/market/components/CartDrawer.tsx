@@ -1,9 +1,10 @@
-// src/features/cart/CartDrawer.tsx
+// src/features/market/components/CartDrawer.tsx
 
 import { Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useCart } from "../store";
-import { useAuth } from "@/features/auth/store";
+import { useAuthStore } from "@/features/auth/store";
+import { useCheckoutStore } from "@/features/checkout/store";
 import { formatPrice } from "@/lib/format";
 import {
   Drawer,
@@ -16,13 +17,14 @@ import {
 export function CartDrawer() {
   const open = useCart((s) => s.drawerOpen);
   const close = useCart((s) => s.closeDrawer);
-  const openCheckout = useCart((s) => s.openCheckout);
   const items = useCart((s) => s.items);
   const setQty = useCart((s) => s.setQty);
   const remove = useCart((s) => s.remove);
   const subtotal = useCart((s) => s.subtotal());
-  const user = useAuth((s) => s.user);
-  const openAuth = useAuth((s) => s.openSheet);
+  const user = useAuthStore((s) => s.user);
+  const openAuth = useAuthStore((s) => s.openSheet);
+
+  const startCheckoutFromCart = useCheckoutStore((s) => (s as any).startCheckoutFromCart);
 
   const currency = items[0]?.currency;
 
@@ -33,7 +35,21 @@ export function CartDrawer() {
       toast("Sign in to continue checkout");
       return;
     }
-    openCheckout();
+
+    startCheckoutFromCart(
+      items.map((i) => ({
+        productId: i.product_id,
+        title: i.title,
+        thumbnailUrl: i.mockup_url ?? i.thumbnail_url,
+        colorName: i.color_name,
+        colorHex: i.color_hex,
+        size: i.size,
+        quantity: i.quantity,
+        unitPrice: i.unit_price,
+        currencySymbol: i.currency.symbol,
+      })),
+    );
+    close();
   };
 
   return (

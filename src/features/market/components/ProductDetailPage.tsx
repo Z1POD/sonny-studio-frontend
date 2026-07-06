@@ -101,17 +101,9 @@ function ProductDetailContent({
 
   return (
     <div className="relative pb-28 md:pb-16">
-      <div className="mx-auto max-w-7xl px-4 pt-2 md:px-8">
-        <Link
-          to="/marketplace"
-          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" /> Back to marketplace
-        </Link>
-      </div>
-        <div className="mx-auto grid max-w-7xl gap-6 px-1 md:px-4 pb:4 md:pb-32 pt-4 md:grid-cols-[1.2fr_1fr] md:gap-12 md:px-8 md:pb-16 md:pt-4">
+        <div className="mx-auto grid max-w-7xl gap-6 px-1 md:px-4 pb:4 md:pb-32 md:grid-cols-[1.2fr_1fr] md:gap-12 md:px-8 md:pb-16 md:pt-4">
             {/* Fullscreen thumbnail hero — up to 85vh per spec */}
-            <div className="relative mt-3 h-[85vh] max-h-[900px] w-full overflow-hidden bg-surface md:mx-auto md:max-w-5xl md:rounded-[2rem] md:border md:border-border">
+            <div className="relative h-[85vh] max-h-[900px] w-full overflow-hidden bg-surface md:mx-auto md:max-w-5xl rounded-2xl md:rounded-[2rem] md:border md:border-border">
                 {is3D ? (
                 // Stand-in for the 3D viewer — swap this panel for the real canvas.
                 <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-muted/30 text-muted-foreground">
