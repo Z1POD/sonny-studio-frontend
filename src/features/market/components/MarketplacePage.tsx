@@ -31,6 +31,7 @@ export function MarketplacePage() {
       category: search.category || undefined,
       store: search.store || undefined,
       sort: search.sort || "popular",
+      page_size: 12,
     }),
     [search.q, search.category, search.store, search.sort],
   );
@@ -59,16 +60,16 @@ export function MarketplacePage() {
           <div className="mx-auto grid max-w-7xl items-center gap-8 px-4 pb-16 pt-10 md:grid-cols-2 md:gap-16 md:px-8 md:pb-24 md:pt-16">
             <div>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/5 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-gold">
-                <Sparkles className="h-3 w-3" /> {heroCollection?.name ?? "Marketplace"}
+                <Sparkles className="h-3 w-3" /> {heroCollection?.name ?? "Custom Apparel Marketplace"}
               </span>
               <h1 className="mt-5 text-4xl font-semibold leading-[1.02] tracking-[-0.04em] md:text-6xl">
-                Apparel,
+                Made to order,
                 <br />
-                <span className="text-gold">considered.</span>
+                <span className="text-gold">designed by you.</span>
               </h1>
               <p className="mt-5 max-w-md text-base text-muted-foreground">
                 {heroCollection?.description ??
-                  "Studio-built pieces, ready to wear — shipped from independent creator storefronts."}
+                  "Customize tees, hoodies, bags, mugs, bottles and more in our design studio. Keep your creation for yourself, or publish it to the marketplace with your own markup — we handle production, fulfillment, and delivery for every order."}
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 {featured && (
@@ -77,14 +78,14 @@ export function MarketplacePage() {
                     params={{ slug: featured.slug }}
                     className="inline-flex h-12 items-center gap-2 rounded-full bg-foreground px-6 text-sm font-semibold text-background transition-transform active:scale-[0.98]"
                   >
-                    View piece
+                    Shop this piece
                   </Link>
                 )}
                 <a
                   href="#shop-all"
                   className="inline-flex h-12 items-center rounded-full border border-border bg-surface px-6 text-sm font-medium hover:border-gold"
                 >
-                  Shop all
+                  Shop all pieces
                 </a>
               </div>
             </div>
@@ -165,10 +166,10 @@ export function MarketplacePage() {
         </section>
       )}
 
-      {/* FEATURED STUDIOS — only unfiltered; tap filters the grid below by store */}
+      {/* FEATURED CREATORS — only unfiltered; tap filters the grid below by store */}
       {!isFiltered && homepage && homepage.top_stores.length > 0 && (
         <section className="mx-auto max-w-7xl border-t border-border px-4 py-14 md:px-8">
-          <h2 className="text-xl font-semibold tracking-tight md:text-2xl">Featured studios</h2>
+          <h2 className="text-xl font-semibold tracking-tight md:text-2xl">Featured creators</h2>
           <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3">
             {homepage.top_stores.map((s) => (
               <button
@@ -186,7 +187,7 @@ export function MarketplacePage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-surface/90 via-surface/40 to-transparent" />
                 <div className="relative z-10">
                   <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                    Studio
+                    Storefront
                   </p>
                   <p className="mt-2 text-lg font-semibold tracking-tight">{s.name}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{s.product_count} pieces</p>
@@ -208,7 +209,7 @@ export function MarketplacePage() {
               {isFiltered ? "Results" : "Shop all"}
             </p>
             <h2 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
-              {search.q ? `"${search.q}"` : search.store ? "Studio pieces" : "Every piece"}
+              {search.q ? `"${search.q}"` : search.store ? "Storefront pieces" : "Every piece"}
             </h2>
             {total > 0 && <p className="mt-1 text-xs text-muted-foreground">{total} products</p>}
           </div>
@@ -231,9 +232,9 @@ export function MarketplacePage() {
         ) : products.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-border bg-muted/20 p-12 text-center">
             <Search className="mx-auto mb-3 h-5 w-5 text-muted-foreground" />
-            <h3 className="text-base font-semibold">No products found</h3>
+            <h3 className="text-base font-semibold">No pieces found</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Try a different search or clear your filters.
+              Try a different search or clear your filters to see more pieces.
             </p>
           </div>
         ) : (
@@ -252,7 +253,7 @@ export function MarketplacePage() {
                   className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-surface px-6 text-sm font-medium transition hover:border-gold disabled:opacity-50"
                 >
                   {isFetchingNextPage && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {isFetchingNextPage ? "Loading…" : "Load more"}
+                  {isFetchingNextPage ? "Loading…" : "Load more pieces"}
                 </button>
               </div>
             )}
