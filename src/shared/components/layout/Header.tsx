@@ -16,53 +16,33 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store";
 import { useCart } from "@/features/market/store";
+import { useTheme } from "@/shared/stores/theme-store";
 import { cn } from "@/lib/utils";
 import { UserMenu } from "./UserMenu";
 
-// Core, always-thumb-reachable destinations for an apparel-customization +
-// resale marketplace. Studio isn't listed here — it's only ever entered via
-// Catalog (pick a blank, then customize), so a standalone link would just
-// detour through a "pick something to customize" CTA.
 const NAV = [
   { to: "/marketplace", label: "Market", icon: StoreIcon },
   { to: "/catalog", label: "Customize", icon: LayoutGrid },
   { to: "/designs", label: "Designs", icon: PenLine },
 ] as const;
 
-// NOTE: no theme provider/hook exists elsewhere in the codebase yet, so this
-// is self-contained — flips a `dark` class on <html> and persists the choice.
-// Assumes Tailwind's `darkMode: "class"` strategy. If a real theme system
-// (next-themes, a shared store, etc.) gets added later, swap this out for
-// that instead of keeping two sources of truth.
-function ThemeToggle() {
-  const [isDark, setIsDark] = useState(
-    () => typeof document !== "undefined" && document.documentElement.classList.contains("dark"),
-  );
 
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", isDark);
-    try {
-      localStorage.setItem("theme", isDark ? "dark" : "light");
-    } catch {
-      /* storage unavailable */
-    }
-  }, [isDark]);
+function ThemeToggle() {
+  const mode = useTheme((s) => s.mode);
+  const toggle = useTheme((s) => s.toggle);
 
   return (
     <button
-      onClick={() => setIsDark((v) => !v)}
-      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      onClick={toggle}
+      aria-label={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
       className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
     >
-      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      {mode === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
     </button>
   );
 }
 
 interface HeaderProps {
-  /** "minimal" is for focused, immersive screens (Studio, product detail)
-   *  where a full nav would compete with the page's own primary action —
-   *  just the nav-menu toggle, theme toggle, and cart stay reachable. */
   variant?: "full" | "minimal";
 }
 
@@ -89,7 +69,7 @@ export function Header({ variant = "full" }: HeaderProps) {
     >
       <div
         className={cn(
-          "absolute left-1/2 top-0 mt-2 flex w-full -translate-x-1/2 items-center gap-1.5 rounded-2xl border border-border bg-background/60 px-4 shadow-2xl backdrop-blur transition-all duration-300 md:bg-glass md:px-8 md:backdrop-blur",
+          "absolute left-1/2 top-0 mt-2 flex w-full -translate-x-1/2 items-center gap-1.5 rounded-2xl border border-border bg-background/70 px-4 shadow-2xl backdrop-blur transition-all duration-300 md:bg-glass-strong md:px-8 md:backdrop-blur",
           isExpanded
             ? "h-auto max-w-[calc(100%-2rem)] flex-col gap-4 py-4"
             : isMinimal
@@ -97,8 +77,6 @@ export function Header({ variant = "full" }: HeaderProps) {
               : "h-10 max-w-[190px] justify-between md:h-16 md:max-w-7xl",
         )}
       >
-        {/* Logo — hidden entirely in minimal mode (no back button anymore;
-            the chevron below is the only nav affordance there) */}
         {!isMinimal && (
           <Link
             to="/marketplace"
@@ -134,9 +112,7 @@ export function Header({ variant = "full" }: HeaderProps) {
             isExpanded ? "w-full justify-between" : "justify-center",
           )}
         >
-          {/* Expand/collapse the nav menu — mobile-only affordance on the
-              full header (desktop already shows inline links), but the only
-              way to reach nav links at all on the compact minimal header. */}
+         
           <button
             aria-label={isExpanded ? "Close navigation menu" : "Open navigation menu"}
             aria-expanded={isExpanded}
@@ -182,9 +158,6 @@ export function Header({ variant = "full" }: HeaderProps) {
           </div>
         </div>
 
-        {/* Expanded nav links — mobile-only on the full header (desktop
-            already shows inline links above); shown at every breakpoint on
-            the minimal header since it never has the inline nav strip. */}
         {isExpanded && (
           <nav
             className={cn(

@@ -8,6 +8,7 @@ import { Header } from "./Header";
 import { BottomNav } from "./BottomNav";
 import { CartDrawer } from "@/features/market/components/CartDrawer";
 import { CheckOut } from "@/features/checkout/components/CheckOut";
+import { useTheme, applyThemeClass } from "@/shared/stores/theme-store";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
@@ -19,6 +20,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isMinimal = isStudio || isProductDetail;
 
   const { isTelegram, isFullscreen, disableVerticalSwipes, enableVerticalSwipes } = useTelegram();
+
+  // Applied here (mounted on every route) rather than inside the theme
+  // toggle button, since that button only renders in the minimal header —
+  // without this, pages that never mount the toggle would never sync the
+  // <html> class to the persisted mode.
+  const themeMode = useTheme((s) => s.mode);
+  useEffect(() => {
+    applyThemeClass(themeMode);
+  }, [themeMode]);
 
   // Block swipe-down-to-close in studio (fullscreen TG miniapp only).
   // Falls back gracefully on older Bot API versions — the methods simply won't exist.

@@ -100,7 +100,7 @@ export function MarketplacePage() {
                   alt={featured.title}
                   className="h-full w-full object-cover"
                 />
-                <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between rounded-2xl border border-border bg-background/70 px-4 py-3 backdrop-blur">
+                <div className="absolute bottom-2 left-4 right-4 flex items-end justify-between rounded-2xl border border-border bg-background/70 px-4 py-3 backdrop-blur">
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                       {featured.store.name}
