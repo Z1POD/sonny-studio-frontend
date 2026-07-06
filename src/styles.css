@@ -58,10 +58,23 @@
 
   --shadow-elevated: 0 12px 40px -8px oklch(0 0 0 / 0.55);
   --shadow-glow: 0 0 32px -4px oklch(0.66 0.18 254 / 0.45);
+
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-gold-foreground: var(--gold-foreground);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+
+  --font-display: "SF Pro Display", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "SF Pro Text", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --shadow-glass: 0 1px 0 0 oklch(1 0 0 / 0.05) inset, 0 20px 60px -20px oklch(0 0 0 / 0.5);
+  --shadow-gold: 0 8px 30px -8px oklch(0.78 0.13 84 / 0.4);
 }
 
 :root {
   /* Dark by default — Apple/iOS visionOS feel */
+  /* --background: #083b32; */
   --background: oklch(0.13 0.005 270);
   --foreground: oklch(0.97 0.005 270);
 
@@ -108,7 +121,54 @@
   --sidebar-border: oklch(1 0 0 / 0.09);
   --sidebar-ring: oklch(0.68 0.18 254 / 0.55);
 
+  --ring: oklch(0.78 0.13 84);
+
+  --gold: oklch(0.78 0.13 84);
+  --gold-soft: oklch(0.85 0.08 84);
+  --gold-foreground: oklch(0.145 0 0);
+  --sidebar-ring: oklch(0.78 0.13 84);
+
   --toast-offset: 48px;
+}
+
+.dark {
+  --background: oklch(0 0 0);
+  --foreground: oklch(0.985 0 0);
+  --surface: oklch(0.08 0 0);
+  --surface-elevated: oklch(0.13 0 0);
+
+  --card: oklch(0.08 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.08 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0 0 0);
+  --secondary: oklch(0.15 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.16 0 0);
+  --muted-foreground: oklch(0.68 0 0);
+  --accent: oklch(0.16 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.65 0.22 27);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --border: oklch(1 0 0 / 0.08);
+  --input: oklch(1 0 0 / 0.1);
+  --ring: oklch(0.78 0.13 84);
+
+  --gold: oklch(0.82 0.13 84);
+  --gold-soft: oklch(0.72 0.11 84);
+  --gold-foreground: oklch(0 0 0);
+
+  --sidebar: oklch(0.05 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.985 0 0);
+  --sidebar-primary-foreground: oklch(0 0 0);
+  --sidebar-accent: oklch(0.15 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 0.08);
+  --sidebar-ring: oklch(0.78 0.13 84);
 }
 
 @layer base {
@@ -186,4 +246,4 @@
 
 .animate-brand-loader {
   animation: brand-loader 1.2s infinite ease-in-out;
-} 
+}

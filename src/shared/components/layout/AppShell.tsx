@@ -4,6 +4,7 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart3,
+  Building2,
   CircleDotDashed,
   LayoutGrid,
   LogOut,
@@ -13,29 +14,46 @@ import {
   X,
   PenLine,
   ShoppingBag,
+  Receipt,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useAuthStore } from "@/features/auth/store";
 import { useTelegram } from "@/shared/hooks/use-telegram";
+import { useHasVerifiedStore } from "@/shared/hooks/use-store-access";
+import { useCart } from "@/features/market/store";
 import { cn } from "@/lib/utils";
 
+// Core tabs — always visible to every signed-in user. Orders moved out of
+// here into the account dropdown (see ACCOUNT_NAV below); a Cart button
+// takes its slot so the bottom bar / studio tray still land on 5 columns.
 const NAV = [
-  // { to: "/store", label: "Store", icon: StoreIcon },
-  // { to: "/analytics", label: "Analytics", icon: BarChart3 },
-  // { to: "/wallet", label: "Wallet", icon: WalletIcon },
+  { to: "/marketplace", label: "Market", icon: StoreIcon },
   { to: "/catalog", label: "Catalog", icon: LayoutGrid },
   { to: "/studio", label: "Studio", icon: Palette },
   { to: "/designs", label: "Designs", icon: PenLine },
-  { to: "/orders", label: "Orders", icon: ShoppingBag },
-
 ] as const;
 
-// Avatar dropdown 
+// Always shown in the account dropdown, for every signed-in user.
+const ACCOUNT_NAV = [
+  { to: "/orders", label: "Orders", icon: Receipt },
+] as const;
+
+// Creator-only tabs — only shown once the user's store is verified.
+// Live exclusively in the avatar dropdown now (mobile + desktop), so the
+// main nav stays uncluttered for everyone else.
+const RESTRICTED_NAV = [
+  { to: "/store", label: "Store", icon: Building2 },
+  { to: "/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/wallet", label: "Wallet", icon: WalletIcon },
+] as const;
+
+// Avatar dropdown
 
 function UserMenu() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const { isTelegram } = useTelegram();
+  const hasVerifiedStore = useHasVerifiedStore();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -68,7 +86,7 @@ function UserMenu() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -4 }}
             transition={{ duration: 0.12 }}
-            className="absolute right-0 top-10 z-50 min-w-[180px] overflow-hidden rounded-2xl border border-border/60 bg-surface shadow-xl"
+            className="absolute right-0 top-10 z-50 min-w-[200px] overflow-hidden rounded-2xl border border-border/60 bg-surface shadow-xl"
           >
             {/* User info */}
             <div className="border-b border-border/40 px-4 py-3">
@@ -78,6 +96,34 @@ function UserMenu() {
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground mt-0.5">
                 {user?.role ?? "guest"}
               </p>
+            </div>
+
+            {/* Account nav — Orders, always; then creator business tools once
+                the store is verified. Shown on both mobile and desktop now. */}
+            <div className="border-b border-border/40 py-1.5">
+              {ACCOUNT_NAV.map(({ to, label, icon: Icon }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  onClick={() => setOpen(false)}
+                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-muted-foreground transition hover:bg-surface-overlay hover:text-foreground"
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {label}
+                </Link>
+              ))}
+              {hasVerifiedStore &&
+                RESTRICTED_NAV.map(({ to, label, icon: Icon }) => (
+                  <Link
+                    key={to}
+                    to={to}
+                    onClick={() => setOpen(false)}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-muted-foreground transition hover:bg-surface-overlay hover:text-foreground"
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {label}
+                  </Link>
+                ))}
             </div>
 
             {/* Logout — only outside Telegram */}
@@ -94,6 +140,51 @@ function UserMenu() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+// Cart trigger — pill style for the desktop top bar
+
+function CartNavButton() {
+  const cartCount = useCart((s) => s.items.reduce((a, b) => a + b.quantity, 0));
+  const openCart = useCart((s) => s.openDrawer);
+
+  return (
+    <button
+      onClick={openCart}
+      aria-label="Open cart"
+      className="relative inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground"
+    >
+      <ShoppingBag className="h-3.5 w-3.5" />
+      Cart
+      {cartCount > 0 && (
+        <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
+          {cartCount}
+        </span>
+      )}
+    </button>
+  );
+}
+
+// Cart trigger — tile style for the mobile bottom bar / studio tray
+
+function CartNavTile() {
+  const cartCount = useCart((s) => s.items.reduce((a, b) => a + b.quantity, 0));
+  const openCart = useCart((s) => s.openDrawer);
+  return (
+    <button
+      onClick={openCart}
+      aria-label="Open cart"
+      className="relative flex flex-col items-center gap-1 py-2 text-[10px] text-muted-foreground"
+    >
+      <ShoppingBag className="h-5 w-5" />
+      Cart
+      {cartCount > 0 && (
+        <span className="absolute right-[28%] top-1 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
+          {cartCount}
+        </span>
+      )}
+    </button>
   );
 }
 
@@ -161,7 +252,7 @@ function StudioNavFab() {
               className="fixed top-20 inset-x-0 z-40 md:hidden safe-top"
             >
               <div className="mx-4 mb-4 overflow-hidden rounded-2xl border border-border/60 bg-surface/90 shadow-2xl backdrop-blur-xl">
-                <div className="grid grid-cols-4">
+                <div className="grid grid-cols-5">
                   {NAV.map(({ to, label, icon: Icon }) => {
                     const active = location.pathname.startsWith(to);
                     return (
@@ -184,6 +275,7 @@ function StudioNavFab() {
                       </Link>
                     );
                   })}
+                  <CartNavTile />
                 </div>
               </div>
             </motion.nav>
@@ -218,7 +310,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Top bar — desktop only */}
       <header className="sticky top-0 z-30 glass border-b border-border safe-top hidden md:block">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-5 sm:px-8">
-          <Link to="/store" className="flex items-center gap-2">
+          <Link to="/marketplace" className="flex items-center gap-2">
             <div className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-primary/15 text-primary">
               <Palette className="h-4 w-4" />
             </div>
@@ -251,6 +343,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </Link>
               );
             })}
+
+            {/* Cart — sits in the main bar itself, not the account dropdown */}
+            <span className="mx-1.5 h-4 w-px bg-border" aria-hidden />
+            <CartNavButton />
           </nav>
 
           <UserMenu />
@@ -265,7 +361,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Bottom tab bar — mobile only, non-studio pages */}
       {!isStudio && (
         <nav className="sticky bottom-3 w-[95%] z-30 glass-strong border border-border rounded-2xl mx-auto safe-bottom shadow-2xl md:hidden backdrop-blur-xl">
-          <div className="mx-auto grid max-w-md grid-cols-4">
+          <div className="mx-auto grid max-w-md grid-cols-5">
             {NAV.map(({ to, label, icon: Icon }) => {
               const active = location.pathname.startsWith(to);
               return (
@@ -282,6 +378,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </Link>
               );
             })}
+            <CartNavTile />
           </div>
         </nav>
       )}

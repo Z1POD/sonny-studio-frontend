@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Check, FileCheck } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { useCheckoutStore } from "../../store";
 
@@ -11,6 +12,7 @@ interface SuccessStateProps {
 
 export function SuccessState({ orderNumber }: SuccessStateProps) {
   const { reset } = useCheckoutStore();
+  const navigate = useNavigate(); // Initialized the navigator
 
   return (
     <motion.div
@@ -39,16 +41,20 @@ export function SuccessState({ orderNumber }: SuccessStateProps) {
         <Button
           onClick={() => {
             reset();
-            window.location.href = "/orders";
+            navigate({ to: "/orders" });
           }}
           className="w-full h-12 rounded-2xl text-base font-semibold"
         >
           <FileCheck className="mr-2 h-4 w-4" />
           Track order
         </Button>
+        
         <Button
           variant="ghost"
-          onClick={reset}
+          onClick={() => {
+            reset();
+            navigate({ to: "/catalog" });
+          }}
           className="w-full h-10 text-sm text-muted-foreground"
         >
           Continue shopping
