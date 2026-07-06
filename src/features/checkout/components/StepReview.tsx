@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCheckoutStore } from "../store";
+import { useCart } from "@/features/market/store";
 import { orderApi } from "../api";
 import { toast } from "sonner";
 
@@ -57,6 +58,8 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
     getTotalQuantity,
     getSubtotal,
   } = useCheckoutStore();
+
+  const clearCart = useCart((s) => s.clear);
 
   const isCartOrigin = origin === "cart";
   const totalQty = getTotalQuantity();
@@ -162,6 +165,7 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
       });
 
       setOrder(order);
+      if (isCartOrigin) clearCart();
       onContinue();
     } catch (e: any) {
       const msg = e?.message ?? "Failed to create order";
