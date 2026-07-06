@@ -33,6 +33,8 @@ interface Props {
 
 export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
   const {
+    origin,
+    cartItems,
     productName,
     variants,
     selectedVariants,
@@ -53,9 +55,10 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
     setFieldErrors,
     getOrderItems,
     getTotalQuantity,
+    getSubtotal,
   } = useCheckoutStore();
 
-
+  const isCartOrigin = origin === "cart";
   const totalQty = getTotalQuantity();
 
   const primaryMockup = useMemo(
@@ -63,27 +66,60 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
     [mockupUrls, mockupUrl],
   );
 
-  // Get selected variant details
+  // Get line items to display.
+  // Studio flow: resolved from `variants` + `selectedVariants`.
+  // Cart flow: `selectedVariants` is never populated (cart lines are already
+  // resolved product+color+size+qty), so build display rows from
+  // `cartItems` instead — this was also silently empty before.
   const selectedItems = useMemo(() => {
-    const items: Array<{ variant: typeof variants[0]; quantity: number }> = [];
+    if (isCartOrigin) {
+      return cartItems.map((line) => ({
+        key: `${line.productId}:${line.colorName}:${line.size}`,
+        title: line.title,
+        colorHex: line.colorHex,
+        colorName: line.colorName,
+        size: line.size,
+        quantity: line.quantity,
+        lineTotal: line.unitPrice * line.quantity,
+      }));
+    }
+    const items: Array<{
+      key: string; title: string; colorHex: string; colorName: string;
+      size: string; quantity: number; lineTotal: number;
+    }> = [];
     for (const sel of selectedVariants.values()) {
       const variant = variants.find((v) => v.id === sel.variantId);
-      if (variant) items.push({ variant, quantity: sel.quantity });
+      if (variant) {
+        items.push({
+          key: variant.id,
+          title: productName,
+          colorHex: variant.color.hex,
+          colorName: variant.color.name,
+          size: variant.size,
+          quantity: sel.quantity,
+          lineTotal: (basePrice + printCost) * sel.quantity,
+        });
+      }
     }
     return items;
-  }, [selectedVariants, variants]);
+  }, [isCartOrigin, cartItems, selectedVariants, variants, productName, basePrice, printCost]);
 
-  // Calculate prices correctly with print cost
-  const { unitPrice, subtotal, shippingCost, total } = useMemo(() => {
-    const unit = basePrice + printCost;
-    const sub = unit * totalQty;
+  // Calculate prices.
+  // Subtotal now comes from the store's own getSubtotal(), which already
+  // branches on origin (sums cart line totals vs. basePrice+printCost × qty).
+  // Recomputing it locally from basePrice/printCost was the bug: those two
+  // fields are never populated for cart-origin checkout (startCheckoutFromCart
+  // resets to `...initial`, leaving basePrice/printCost at 0), so subtotal
+  // silently came out as 0 whenever checkout started from the cart.
+  const { subtotal, shippingCost, total } = useMemo(() => {
+    const sub = getSubtotal();
     let ship = 0;
     if (fulfillmentType === "delivery" && shippingOptions) {
       const opt = shippingOptions.delivery.find((d) => d.vendorCode === selectedVendorCode);
       if (opt && !opt.isFree) ship = parseFloat(opt.cost);
     }
-    return { unitPrice: unit, subtotal: sub, shippingCost: ship, total: sub + ship };
-  }, [basePrice, printCost, totalQty, fulfillmentType, shippingOptions, selectedVendorCode]);
+    return { subtotal: sub, shippingCost: ship, total: sub + ship };
+  }, [getSubtotal, fulfillmentType, shippingOptions, selectedVendorCode, totalQty]);
 
   const selectedDelivery = shippingOptions?.delivery.find((d) => d.vendorCode === selectedVendorCode);
   const selectedPickup = shippingOptions?.pickup.find((p) => p.locationId === selectedPickupId);
@@ -200,22 +236,22 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
               <h3 className="text-sm font-semibold">Items</h3>
             </div>
 
-          {selectedItems.map(({ variant, quantity }) => (
-            <div key={variant.id} className="flex items-center justify-between py-2 border-t border-border/40 first:border-t-0">
+          {selectedItems.map((item) => (
+            <div key={item.key} className="flex items-center justify-between py-2 border-t border-border/40 first:border-t-0">
               <div className="flex items-center gap-3">
                 <span
                   className="h-6 w-6 rounded-full border border-border/40"
-                  style={{ backgroundColor: variant.color.hex }}
+                  style={{ backgroundColor: item.colorHex }}
                 />
                 <div>
-                  <p className="text-sm font-medium">{productName}</p>
+                  <p className="text-sm font-medium">{item.title}</p>
                   <p className="text-[11px] text-muted-foreground">
-                    {variant.color.name} · {variant.size} × {quantity}
+                    {item.colorName} · {item.size} × {item.quantity}
                   </p>
                 </div>
               </div>
               <span className="text-sm font-medium tabular-nums">
-                {currencySymbol} {(unitPrice * quantity).toFixed(2)}
+                {currencySymbol} {item.lineTotal.toFixed(2)}
               </span>
             </div>
           ))}

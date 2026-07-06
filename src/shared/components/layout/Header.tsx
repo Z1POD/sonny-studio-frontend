@@ -71,7 +71,7 @@ export function Header({ variant = "full" }: HeaderProps) {
         className={cn(
           "absolute left-1/2 top-0 mt-2 flex w-full -translate-x-1/2 items-center gap-1.5 rounded-2xl border border-border bg-background/60 px-4 shadow-2xl backdrop-blur transition-all duration-300 md:bg-glass md:px-8 md:backdrop-blur",
           isExpanded
-            ? "h-auto max-w-[calc(100%-2rem)] flex-col gap-4 py-4"
+            ? "h-auto max-w-[calc(100%-2rem)] md:max-w-[600px] flex-col gap-4 py-4"
             : isMinimal
               ? "h-10 max-w-[150px] justify-center md:h-12"
               : "h-10 max-w-[190px] justify-between md:h-16 md:max-w-7xl",
