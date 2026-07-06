@@ -40,7 +40,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   // Extra top clearance on mobile when running in TG fullscreen mode so our
   // elements don't clash with the native close / menu icons (~52 px covers them).
-  const tgSafeTop = isTelegram && isFullscreen && !isStudio ? "pt-[54px] md:pt-0" : "";
+  const tgSafeTop = isTelegram && isFullscreen && !isStudio ? "" : "" // "pt-[54px] md:pt-0" : "";
 
   return (
     <div className={cn("flex min-h-dvh flex-col bg-background", tgSafeTop)}>

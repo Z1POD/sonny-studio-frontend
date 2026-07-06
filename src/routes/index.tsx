@@ -5,7 +5,7 @@ import { SplashPage } from "@/features/auth/components/SplashPage";
 
 export const Route = createFileRoute("/")({
   beforeLoad: () => {
-    if (getStoredToken()) throw redirect({ to: "/catalog" });
+    if (getStoredToken()) throw redirect({ to: "/marketplace" });
   },
   head: () => ({
     meta: [

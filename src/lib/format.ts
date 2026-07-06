@@ -9,10 +9,10 @@ export const formatPrice = (amount: number | string, currency?: Currency) => {
 
   // Check if the currency is Ethiopian Birr (by code or symbol text)
   if (sym === "Birr") {
-    return `${n.toFixed(2)} ${sym}`;
+    return `${n.toFixed(1)} ${sym}`;
   }
   else if (sym === "ETB"){
-    return `${sym} ${n.toFixed(2)}`;
+    return `${sym} ${n.toFixed(1)}`;
   }
 
   // Fallback for all other standard international currency configurations

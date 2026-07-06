@@ -8,7 +8,7 @@ export const Route = createFileRoute("/login")({
   }),
   beforeLoad: ({ search }) => {
     if (getStoredToken()) {
-      throw redirect({ to: search.redirect || "/catalog" });
+      throw redirect({ to: search.redirect || "/marketplace" });
     }
   },
   head: () => ({

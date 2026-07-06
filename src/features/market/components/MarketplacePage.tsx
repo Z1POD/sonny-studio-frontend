@@ -85,7 +85,7 @@ export function MarketplacePage() {
                   href="#shop-all"
                   className="inline-flex h-12 items-center rounded-full border border-border bg-surface px-6 text-sm font-medium hover:border-gold"
                 >
-                  Shop all pieces
+                  Explor
                 </a>
               </div>
             </div>
@@ -106,7 +106,7 @@ export function MarketplacePage() {
                     <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                       {featured.store.name}
                     </p>
-                    <p className="text-sm font-semibold">{featured.title}</p>
+                    <p className="text-sm font-semibold line-clamp-2">{featured.title}</p>
                   </div>
                   <p className="text-sm font-semibold tabular-nums">
                     {formatPrice(featured.retail_price, featured.currency)}
