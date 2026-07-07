@@ -21,6 +21,6 @@ export const Route = createFileRoute("/")({
 });
 
 function IndexPage() {
-  const { tgLoading } = useTelegramAutoLogin({ redirectTo: "/catalog" });
+  const { tgLoading } = useTelegramAutoLogin({ redirectTo: "/marketplace" });
   return <SplashPage isSigningIn={tgLoading} />;
 }

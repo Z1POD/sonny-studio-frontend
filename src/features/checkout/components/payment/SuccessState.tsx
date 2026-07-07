@@ -53,7 +53,7 @@ export function SuccessState({ orderNumber }: SuccessStateProps) {
           variant="ghost"
           onClick={() => {
             reset();
-            navigate({ to: "/catalog" });
+            navigate({ to: "/marketplace" });
           }}
           className="w-full h-10 text-sm text-muted-foreground"
         >

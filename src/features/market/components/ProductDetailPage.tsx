@@ -134,7 +134,7 @@ function ProductDetailContent({
                     onLoadingChange={(loading) => setViewerLoading(loading)}
                     onError={() => {
                         setIs3D(false);
-                        toast.error("3D preview unavailable — showing photos instead");
+                        toast.error("showing photos instead");
                     }}
                     />
 

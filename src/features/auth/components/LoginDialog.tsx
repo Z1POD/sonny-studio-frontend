@@ -22,7 +22,7 @@ interface LoginDialogProps {
   redirectTo?: string;
 }
 
-export function LoginDialog({ open, onOpenChange, redirectTo = "/catalog" }: LoginDialogProps) {
+export function LoginDialog({ open, onOpenChange, redirectTo = "/marketplace" }: LoginDialogProps) {
   const {
     stage,
     username,

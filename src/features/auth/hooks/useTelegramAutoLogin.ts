@@ -25,7 +25,7 @@ interface UseTelegramAutoLoginOptions {
 }
 
 export function useTelegramAutoLogin({
-  redirectTo = "/catalog",
+  redirectTo = "/marketplace",
   enabled = true,
 }: UseTelegramAutoLoginOptions = {}) {
   const navigate = useNavigate();

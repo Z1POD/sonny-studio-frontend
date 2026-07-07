@@ -61,7 +61,7 @@ export function useOtpFlow({
   const [resendCountdown, setResendCountdown] = useState(0);
 
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const finalRedirect = redirectTo ?? search.redirect ?? "/catalog";
+  const finalRedirect = redirectTo ?? search.redirect ?? "/marketplace";
 
   const startCountdown = (seconds: number) => {
     if (countdownRef.current) clearInterval(countdownRef.current);
