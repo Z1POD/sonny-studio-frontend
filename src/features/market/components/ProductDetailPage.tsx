@@ -6,7 +6,7 @@ import { useMemo, useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Box, Check, Image as ImageIcon, Loader2, ShoppingBag, Star } from "lucide-react";
+import { ArrowLeft, Box, Check, Eye, Image as ImageIcon, Loader2, ShoppingBag, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { useCart } from "../store";
@@ -189,7 +189,7 @@ function ProductDetailContent({
                 {has3D && (
                 <button
                 onClick={() => setIs3D((v) => !v)}
-                className="absolute right-4 top-12 md:top-4 z-51 inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-[11px] font-medium text-foreground backdrop-blur transition hover:border-gold"
+                className="absolute right-4 bottom-4 z-51 inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-[11px] font-medium text-foreground backdrop-blur transition hover:border-gold"
                 >
                 {is3D ? (
                     <>
@@ -237,9 +237,13 @@ function ProductDetailContent({
                     </div>
                     <span className="text-muted-foreground">·</span>
                     <span className="text-muted-foreground">{product.reviews_summary.total_reviews} reviews</span>
+                    <span className="text-muted-foreground">·</span>
                 </div>
                 )}
-
+                <div className="flex items-center gap-1 text-muted-foreground">
+                    <Eye className="h-3.5 w-3.5"/>
+                    <span className="text-muted-foreground">{product.stats.view_count}</span>
+                </div>
                 <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{product.description}</p>
 
                 {product.variants.colors.length > 1 && (
