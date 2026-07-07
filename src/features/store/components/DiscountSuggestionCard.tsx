@@ -41,7 +41,7 @@ import { type ProductListItem } from "../api";
 import { useShareDrawer } from "@/shared/components/ShareDrawer";
 import { BrandLoader } from "@/components/ui/loader";
 
-// ─── Small helpers ────────────────────────────────────────────────────────────
+//     Small helpers                                                             
 
 function useCopyToClipboard() {
   const [copied, setCopied] = useState<string | null>(null);
@@ -60,7 +60,7 @@ function DiscountTypeIcon({ type }: { type: DiscountType }) {
   return <Zap className="h-3 w-3" />;
 }
 
-// ─── Create rule form ─────────────────────────────────────────────────────────
+//     Create rule form                                                          
 
 function CreateRuleForm({ onCreated }: { onCreated: (rule: DiscountRule) => void }) {
   const [name, setName] = useState("");
@@ -156,7 +156,7 @@ function CreateRuleForm({ onCreated }: { onCreated: (rule: DiscountRule) => void
   );
 }
 
-// ─── Coupon row ───────────────────────────────────────────────────────────────
+//     Coupon row                                                                
 
 function CouponRow({ coupon }: { coupon: Coupon }) {
   const { copied, copy } = useCopyToClipboard();
@@ -214,7 +214,7 @@ function CouponRow({ coupon }: { coupon: Coupon }) {
   );
 }
 
-// ─── Rule accordion panel ─────────────────────────────────────────────────────
+//     Rule accordion panel                                                      
 
 function RulePanel({
   rule,
@@ -467,7 +467,7 @@ function RulePanel({
   );
 }
 
-// ─── Shared drawer/modal body ─────────────────────────────────────────────────
+//     Shared drawer/modal body                                                  
 
 function DiscountOverlayBody({ publishedProducts }: { publishedProducts: ProductListItem[] }) {
   const [showCreateRule, setShowCreateRule] = useState(false);
@@ -547,7 +547,7 @@ function DiscountOverlayBody({ publishedProducts }: { publishedProducts: Product
   );
 }
 
-// ─── Responsive overlay: Sheet (mobile) ↔ Dialog (desktop) ───────────────────
+//     Responsive overlay: Sheet (mobile) ↔ Dialog (desktop)                    
 
 function DiscountOverlay({
   open,
@@ -597,7 +597,7 @@ function DiscountOverlay({
   );
 }
 
-// ─── Public: the suggestion card tile ────────────────────────────────────────
+//     Public: the suggestion card tile                                         
 
 interface Props {
   products: ProductListItem[];

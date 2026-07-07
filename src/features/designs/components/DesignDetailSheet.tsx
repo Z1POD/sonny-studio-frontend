@@ -30,7 +30,7 @@ import { DesignLightbox } from "./DesignLightbox";
 import type { ApparelProduct, PrintArea } from "@/features/studio/store";
 import { BrandLoader } from "@/components/ui/loader";
 
-// ─── Build ApparelProduct from saved product's render_config ─────────────────
+//     Build ApparelProduct from saved product's render_config                  
 // Mirrors mapSavedProductToApparelProduct in StudioWorkspace.
 // No extra fetch — everything needed is already in detail.render_config.
 
@@ -126,7 +126,7 @@ function buildApparelProductFromDetail(detail: any): ApparelProduct {
   };
 }
 
-// ─── Component ─────────────────────────────────────────────────────────────────
+//     Component                                                                  
 
 interface DesignDetailSheetProps {
   design: ProductListItem | null;
@@ -151,7 +151,7 @@ export function DesignDetailSheet({ design, onClose, onMutated }: DesignDetailSh
   });
   const detail = (detailRaw as any)?.data ?? detailRaw;
 
-  // ── Mutations ───────────────────────────────────────────────────────────────
+  //    Mutations                                                                
   const deleteMutation = useMutation({
     mutationFn: () => storeProductApi.deleteProduct(design!.id),
     onSuccess: () => {
@@ -191,7 +191,7 @@ export function DesignDetailSheet({ design, onClose, onMutated }: DesignDetailSh
     if (ok) archiveMutation.mutate();
   };
 
-  // ── Reorder: reconstruct ApparelProduct from detail.render_config ───────────
+  //    Reorder: reconstruct ApparelProduct from detail.render_config            
   // Fast path — no extra API call needed. All data is already in the product detail.
   const handleReorder = async () => {
     if (!detail) { toast.error("Design details still loading"); return; }
@@ -209,7 +209,7 @@ export function DesignDetailSheet({ design, onClose, onMutated }: DesignDetailSh
     }
   };
 
-  // ── Studio navigation ───────────────────────────────────────────────────────
+  //    Studio navigation                                                        
   const handleEditInStudio = () => {
     onClose();
     navigate({

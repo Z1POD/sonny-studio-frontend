@@ -25,7 +25,7 @@ import { useConfirm } from "./ConfirmModal";
 import { useShareDrawer } from "@/shared/components/ShareDrawer";
 import { BrandLoader } from "@/components/ui/loader";
 
-// ─── Status badge ─────────────────────────────────────────────────────────────
+//     Status badge                                                              
 
 function StatusBadge({ status, is_published }: { status: string; is_published: boolean }) {
   const published = is_published || status === "published";
@@ -51,7 +51,7 @@ function NotReadyBadge() {
   );
 }
 
-// ─── Row action button ────────────────────────────────────────────────────────
+//     Row action button                                                         
 
 function ActionBtn({
   onClick, title, loading, danger, children,
@@ -78,7 +78,7 @@ function ActionBtn({
   );
 }
 
-// ─── Product row ──────────────────────────────────────────────────────────────
+//     Product row                                                               
 
 function ProductRow({
   product, onEdit, onMutated,
@@ -212,7 +212,7 @@ function ProductRow({
   );
 }
 
-// ─── ProductListModal ─────────────────────────────────────────────────────────
+//     ProductListModal                                                          
 
 export function ProductListModal({ onClose }: { onClose: () => void }) {
   const [editTarget, setEditTarget] = useState<ProductListItem | null>(null);
@@ -315,7 +315,7 @@ export function ProductListModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ─── Sheet trigger ────────────────────────────────────────────────────────────
+//     Sheet trigger                                                             
 
 export function ProductListSheet() {
   const [open, setOpen] = useState(false);

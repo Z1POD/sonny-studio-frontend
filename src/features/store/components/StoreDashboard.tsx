@@ -31,7 +31,7 @@ import { useShareDrawer } from "@/shared/components/ShareDrawer";
 import { DiscountSuggestionCard } from "./DiscountSuggestionCard";
 import { BrandLoader } from "@/components/ui/loader";
 
-// ─── Stat tile ────────────────────────────────────────────────────────────────
+//     Stat tile                                                                 
 
 function StatTile({ label, value }: { label: string; value: string }) {
   return (
@@ -42,7 +42,7 @@ function StatTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-// ─── Overlay action button (on thumbnail) ─────────────────────────────────────
+//     Overlay action button (on thumbnail)                                      
 
 function OverlayBtn({
   onClick, title, loading, children,
@@ -64,7 +64,7 @@ function OverlayBtn({
   );
 }
 
-// ─── Product card ─────────────────────────────────────────────────────────────
+//     Product card                                                              
 
 function ProductCard({
   p, onEdit, onMutated,
@@ -227,7 +227,7 @@ function ProductCard({
   );
 }
 
-// ─── StoreDashboard ───────────────────────────────────────────────────────────
+//     StoreDashboard                                                            
 
 export function StoreDashboard() {
   const summary = useQuery(storeSummaryQuery());

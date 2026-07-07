@@ -47,7 +47,7 @@ export function useStudioCheckout({ canvasRef, savedProductId }: UseStudioChecko
   const selectedTiers   = useStudioStore((s) => s.selectedTiers);
   const openCheckout    = useCheckoutStore((s) => s.open);
 
-  // Print cost─
+  // Print cost 
   const calculatePrintCost = useCallback((): number => {
     if (!product) return 0;
     let cost = 0;
@@ -100,7 +100,7 @@ export function useStudioCheckout({ canvasRef, savedProductId }: UseStudioChecko
       });
   }, [product, artworks, selectedMethods, selectedTiers]);
 
-  // render_config snapshot─
+  // render_config snapshot 
   const buildRenderConfig = useCallback(() => {
     if (!product) return {};
     const cam    = product.cameraConfig;

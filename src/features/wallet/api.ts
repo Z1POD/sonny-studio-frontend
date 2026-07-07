@@ -6,7 +6,7 @@
 
 import { api } from "@/shared/api/client";
 
-// ─── Shared shapes ────────────────────────────────────────────────────────────
+//     Shared shapes                                                             
 
 export interface Currency {
   code: string;
@@ -154,7 +154,7 @@ export interface Pagination {
   previous: string | null;
 }
 
-// ─── API object ───────────────────────────────────────────────────────────────
+//     API object                                                                
 
 export const walletApi = {
   /** GET /wallet/ — full wallet details */

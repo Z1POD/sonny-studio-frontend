@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { artworkApi, type ArtworkItem } from "../api";
 import { artworkLibraryInfiniteQuery, artworkKeys } from "../queries";
 
-/* ─── Types ───────────────────────────────────────────────────────────────── */
+/*     Types                                                                   */
 
 interface ArtworkLibraryProps {
   onSelect: (artwork: { url: string; aspect: number }) => void;
@@ -20,7 +20,7 @@ interface ArtworkLibraryProps {
   onClose?: () => void;
 }
 
-/* ─── ArtworkCard ─────────────────────────────────────────────────────────── */
+/*     ArtworkCard                                                             */
 
 function ArtworkCard({
   artwork,
@@ -79,7 +79,7 @@ function ArtworkCard({
   );
 }
 
-/* ─── PanelBody ───────────────────────────────────────────────────────────── */
+/*     PanelBody                                                               */
 
 function PanelBody({
   onUploadClick,
@@ -235,7 +235,7 @@ function PanelBody({
   );
 }
 
-/* ─── ArtworkLibrary ──────────────────────────────────────────────────────── */
+/*     ArtworkLibrary                                                          */
 
 export function ArtworkLibrary({ onSelect, isOpen: controlledIsOpen, onClose }: ArtworkLibraryProps) {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
@@ -361,7 +361,7 @@ export function ArtworkLibrary({ onSelect, isOpen: controlledIsOpen, onClose }: 
     </motion.button>
   ) : null;
 
-  /* ── Desktop: slide-in side panel ── */
+  /*    Desktop: slide-in side panel    */
   if (!isMobile) {
     return (
       <>
@@ -383,7 +383,7 @@ export function ArtworkLibrary({ onSelect, isOpen: controlledIsOpen, onClose }: 
     );
   }
 
-  /* ── Mobile: bottom-sheet ── */
+  /*    Mobile: bottom-sheet    */
   return (
     <>
       {toggleBtn}

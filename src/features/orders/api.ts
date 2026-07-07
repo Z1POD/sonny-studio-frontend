@@ -6,7 +6,7 @@
 
 import { api } from "@/shared/api/client";
 
-// ─── Shared shapes ────────────────────────────────────────────────────────────
+//     Shared shapes                                                             
 
 export interface OrderCurrency {
   code: string;
@@ -133,7 +133,7 @@ export type PaymentStatus =
   | "paid"
   | "failed";
 
-// ─── List item ────────────────────────────────────────────────────────────────
+//     List item                                                                 
 
 export interface OrderListItem {
   id: string;
@@ -170,7 +170,7 @@ export interface OrderListResponse {
   };
 }
 
-// ─── Full detail ──────────────────────────────────────────────────────────────
+//     Full detail                                                               
 
 export interface OrderDetail {
   id: string;
@@ -211,7 +211,7 @@ interface DetailApiResponse {
   data: OrderDetail;
 }
 
-// ─── Payment ──────────────────────────────────────────────────────────────────
+//     Payment                                                                   
 
 export interface SubmitReceiptPayload {
   order_id: string;
@@ -262,7 +262,7 @@ export interface PaymentProvider {
   }>;
 }
 
-// ─── API object ───────────────────────────────────────────────────────────────
+//     API object                                                                
 
 export const ordersApi = {
   list: async (params?: {

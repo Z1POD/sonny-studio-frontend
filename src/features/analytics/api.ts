@@ -4,7 +4,7 @@ import { api } from "@/shared/api/client";
 
 export type AnalyticsRange = "7d" | "30d" | "90d";
 
-// ── Core types ─────────────────────────────────────────────────────────────
+//    Core types                                                              
 
 export interface RevenueSeries {
   date: string;       // "2025-06-01"

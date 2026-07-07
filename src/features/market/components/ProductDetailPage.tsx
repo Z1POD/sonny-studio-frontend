@@ -5,17 +5,23 @@
 // per request, this is a finished, ready-to-buy piece, not a live configurator.
 //
 // A "3D view" toggle sits at the top-right of the hero, opposite the
-// "Limited" badge. It's a placeholder for now — flips `is3D` and swaps the
-// hero for a stand-in panel — the real 3D viewer plugs in there next.
+// "Limited" badge — shown only when the product has a rigged GLB
+// (`viewer_3d.model_url`). It renders the real `ApparelCanvas` viewer:
+// drag-to-rotate / pinch-or-scroll-to-zoom via OrbitControls, a loading
+// overlay while the model streams in, and a floating color picker (bottom
+// of the canvas) once it's loaded. The photo hero also supports swipe
+// (via framer-motion drag) between mockup images, not just the dot/
+// thumbnail navigation.
 //
 // Data is fetched directly with `useQuery` (no route loader/prefetch) to
 // match the CatalogPage pattern. "Add to bag" uses the marketplace's own
 // cart store (`../store`).
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Box, Check, Image as ImageIcon, Loader2, ShoppingBag, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
@@ -24,6 +30,7 @@ import { formatPrice } from "@/lib/format";
 import type { ProductDetail } from "../api";
 import { productQuery } from "../queries";
 import { ProductCard } from "./ProductCard";
+import { ApparelCanvas } from "./viewer/ApparelCanvas";
 
 export function ProductDetailPage({ slug }: { slug: string }) {
   const { data: product, isLoading, isError } = useQuery(productQuery(slug));
@@ -74,13 +81,28 @@ function ProductDetailContent({
   );
   const [size, setSize] = useState(color?.sizes[0] ?? product.variants.sizes[0] ?? "M");
   const [activeImage, setActiveImage] = useState(0);
+  const [imageDirection, setImageDirection] = useState(1);
   const [isAdded, setIsAdded] = useState(false);
-  // Placeholder toggle — swaps the hero to a 3D viewer stand-in. Wired up to
-  // the real viewer once `product.viewer_3d` has a concrete shape.
+  // 3D / photo toggle. Only offered when the product actually ships a
+  // rigged GLB (`viewer_3d.model_url`) — otherwise the button never renders.
   const [is3D, setIs3D] = useState(false);
+  const [viewerLoading, setViewerLoading] = useState(true);
+  const has3D = !!product.viewer_3d?.model_url;
+
+  // Re-arm the loading overlay every time the 3D view is (re-)opened, since
+  // the Canvas unmounts/remounts with it.
+  useEffect(() => {
+    if (is3D) setViewerLoading(true);
+  }, [is3D]);
 
   const gallery = product.mockups.length > 0 ? product.mockups.map((m) => m.url) : [product.thumbnail_url];
   const unitPrice = color?.prices?.[size] ?? product.pricing.retail_price;
+
+  const goToImage = (index: number) => {
+    if (index < 0 || index >= gallery.length || index === activeImage) return;
+    setImageDirection(index > activeImage ? 1 : -1);
+    setActiveImage(index);
+  };
 
   const onPickColor = (name: string) => {
     setColorName(name);
@@ -100,18 +122,77 @@ function ProductDetailContent({
   };
 
   return (
-    <div className="relative pb-28 md:pb-16">
-        <div className="mx-auto grid max-w-7xl gap-6 px-1 md:px-4 pb:4 md:pb-32 md:grid-cols-[1.2fr_1fr] md:gap-12 md:px-8 md:pb-16 md:pt-4">
+    <div className="relative pb-28 md:pb-0">
+        <div className="mx-auto grid max-w-7xl gap-6 px-1 md:px-4 pb:4 md:grid-cols-[1.2fr_1fr] md:gap-12 md:px-8 md:pt-4 md:mt-8">
             {/* Fullscreen thumbnail hero — up to 85vh per spec */}
             <div className="relative h-[85vh] max-h-[900px] w-full overflow-hidden bg-surface md:mx-auto md:max-w-5xl rounded-2xl md:rounded-[2rem] md:border md:border-border">
-                {is3D ? (
-                // Stand-in for the 3D viewer — swap this panel for the real canvas.
-                <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-muted/30 text-muted-foreground">
-                    <Box className="h-8 w-8" />
-                    <p className="text-sm">3D preview coming soon</p>
+                {is3D && has3D && product.viewer_3d ? (
+                <div className="relative h-full w-full">
+                    <ApparelCanvas
+                    color={color ?? product.variants.colors[0]}
+                    viewer={product.viewer_3d}
+                    onLoadingChange={(loading) => setViewerLoading(loading)}
+                    onError={() => {
+                        setIs3D(false);
+                        toast.error("3D preview unavailable — showing photos instead");
+                    }}
+                    />
+
+                    {viewerLoading && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/60 backdrop-blur-sm">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        <p className="text-xs text-muted-foreground">Loading 3D preview…</p>
+                    </div>
+                    )}
+
+                    {/* Floating color picker — only once the model has fully loaded */}
+                    {!viewerLoading && product.variants.colors.length > 1 && (
+                    <div className="absolute inset-x-0 bottom-4 flex justify-center">
+                        <div className="flex items-center gap-2 rounded-full border border-white/20 bg-background/80 px-3 py-2 shadow-lg backdrop-blur">
+                        {product.variants.colors.map((v) => (
+                            <button
+                            key={v.name}
+                            title={v.name}
+                            onClick={() => onPickColor(v.name)}
+                            className={`h-7 w-7 rounded-full border-2 transition-transform hover:scale-110 ${
+                                colorName === v.name ? "border-foreground scale-110" : "border-white/40"
+                            }`}
+                            style={{ background: v.hex }}
+                            />
+                        ))}
+                        </div>
+                    </div>
+                    )}
                 </div>
                 ) : (
-                <img src={gallery[activeImage]} alt={product.title} className="h-full w-full object-cover" />
+                <div className="relative h-full w-full overflow-hidden">
+                    <AnimatePresence initial={false} custom={imageDirection} mode="popLayout">
+                    <motion.img
+                        key={activeImage}
+                        src={gallery[activeImage]}
+                        alt={product.title}
+                        custom={imageDirection}
+                        variants={{
+                        enter: (dir: number) => ({ x: dir > 0 ? "100%" : "-100%", opacity: 0 }),
+                        center: { x: 0, opacity: 1 },
+                        exit: (dir: number) => ({ x: dir > 0 ? "-100%" : "100%", opacity: 0 }),
+                        }}
+                        initial="enter"
+                        animate="center"
+                        exit="exit"
+                        transition={{ type: "spring", stiffness: 300, damping: 32 }}
+                        drag={gallery.length > 1 ? "x" : false}
+                        dragConstraints={{ left: 0, right: 0 }}
+                        dragElastic={0.6}
+                        onDragEnd={(_, info) => {
+                        const threshold = 60;
+                        if (info.offset.x < -threshold) goToImage(activeImage + 1);
+                        else if (info.offset.x > threshold) goToImage(activeImage - 1);
+                        }}
+                        className="absolute inset-0 h-full w-full object-cover cursor-grab active:cursor-grabbing"
+                    />
+                    </AnimatePresence>
+                </div>
                 )}
 
                 {product.is_limited_edition && (
@@ -120,10 +201,12 @@ function ProductDetailContent({
                 </span>
                 )}
 
-                {/* 3D / photo toggle — top-right corner of the hero */}
+                {/* 3D / photo toggle — top-right corner of the hero. Only offered
+                    when the product actually has a rigged 3D model. */}
+                {has3D && (
                 <button
                 onClick={() => setIs3D((v) => !v)}
-                className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-[11px] font-medium text-foreground backdrop-blur transition hover:border-gold"
+                className="absolute right-4 top-4 z-60 inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-[11px] font-medium text-foreground backdrop-blur transition hover:border-gold"
                 >
                 {is3D ? (
                     <>
@@ -135,13 +218,14 @@ function ProductDetailContent({
                     </>
                 )}
                 </button>
+                )}
 
                 {!is3D && gallery.length > 1 && (
                 <div className="absolute inset-x-0 bottom-4 flex justify-center gap-2">
                     {gallery.map((_, i) => (
                     <button
                         key={i}
-                        onClick={() => setActiveImage(i)}
+                        onClick={() => goToImage(i)}
                         aria-label={`Image ${i + 1}`}
                         className={`h-1.5 rounded-full transition-all ${
                         i === activeImage ? "w-6 bg-foreground" : "w-1.5 bg-foreground/30"
@@ -226,7 +310,7 @@ function ProductDetailContent({
                     {gallery.map((url, i) => (
                         <button
                         key={i}
-                        onClick={() => setActiveImage(i)}
+                        onClick={() => goToImage(i)}
                         className={`aspect-square overflow-hidden rounded-xl border ${
                             i === activeImage ? "border-foreground" : "border-border"
                         }`}
@@ -237,6 +321,37 @@ function ProductDetailContent({
                     </div>
                 </section>
                 )}
+
+                {/* Price + add-to-bag CTA. Fixed to the viewport bottom on
+                    mobile; on md+ it drops into normal flow right here,
+                    below the color/size/thumbnail sections above. */}
+                <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface px-4 pb-[max(env(safe-area-inset-bottom),1rem)] pt-3 backdrop-blur md:static md:z-auto md:mt-8 md:rounded-2xl md:border md:px-6 md:py-5 md:pb-5 md:backdrop-blur-none">
+                    <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+                        <div>
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Total</p>
+                            <p className="text-2xl font-semibold tracking-tight tabular-nums">
+                                {formatPrice(unitPrice, product.pricing.currency)}
+                            </p>
+                        </div>
+                        <button
+                            onClick={onAdd}
+                            disabled={!color || isAdded}
+                            className={`flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl font-semibold transition-all duration-300 active:scale-[0.98] disabled:opacity-50 md:flex-none md:px-8 ${
+                                isAdded ? "bg-green-600 text-white" : "bg-gold text-gold-foreground"
+                            }`}
+                        >
+                            {isAdded ? (
+                                <>
+                                    <Check className="h-4 w-4" /> Added!
+                                </>
+                            ) : (
+                                <>
+                                    <ShoppingBag className="h-4 w-4" /> Add to bag
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
 
             </div>
         </div>
@@ -252,35 +367,6 @@ function ProductDetailContent({
           </div>
         </section>
       )}
-
-      {/* Fixed price + place-order / add-to-bag CTA */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface px-4 pb-[max(env(safe-area-inset-bottom),1rem)] pt-3 backdrop-blur md:sticky md:mx-auto md:mt-8 md:max-w-3xl md:rounded-2xl md:border">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Total</p>
-            <p className="text-2xl font-semibold tracking-tight tabular-nums">
-              {formatPrice(unitPrice, product.pricing.currency)}
-            </p>
-          </div>
-          <button
-            onClick={onAdd}
-            disabled={!color || isAdded}
-            className={`flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl font-semibold transition-all duration-300 active:scale-[0.98] disabled:opacity-50 md:flex-none md:px-8 ${
-              isAdded ? "bg-green-600 text-white" : "bg-gold text-gold-foreground"
-            }`}
-          >
-            {isAdded ? (
-              <>
-                <Check className="h-4 w-4" /> Added!
-              </>
-            ) : (
-              <>
-                <ShoppingBag className="h-4 w-4" /> Add to bag
-              </>
-            )}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

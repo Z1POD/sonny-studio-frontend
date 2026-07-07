@@ -350,7 +350,7 @@ export function toZoneTransform(artwork: ArtworkState): ZoneTransform {
 
 
 
-// ─── Print size classification ──────────────────────────────────────────────
+//     Print size classification                                               
 
 export type PrintSizeTier = "logo" | "a6" | "a5" | "a4" | "a3" | "large";
 
@@ -611,7 +611,7 @@ export function buildEnhancedSnapshot(
   };
 }
 
-// ─── Save Dialog State ─────────────────────────────────────────────────────
+//     Save Dialog State                                                      
 
 export interface SaveDialogState {
   isOpen: boolean;

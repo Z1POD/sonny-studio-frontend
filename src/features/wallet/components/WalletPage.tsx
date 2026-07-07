@@ -44,7 +44,7 @@ import {
 } from "../queries";
 import { walletApi, type WithdrawalMethod, type PaymentMethod, type LedgerTransaction, type Withdrawal } from "../api";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+//     Helpers                                                                   
 
 function formatMoney(amount: string | number, symbol = "$"): string {
   const n = typeof amount === "string" ? parseFloat(amount) : amount;
@@ -100,7 +100,7 @@ function categoryIcon(category: string) {
   }
 }
 
-// ─── Withdrawal Request Modal ────────────────────────────────────────────────
+//     Withdrawal Request Modal                                                 
 
 function WithdrawRequestModal({
   onClose,
@@ -243,7 +243,7 @@ function WithdrawRequestModal({
   );
 }
 
-// ─── Add Method Modal ────────────────────────────────────────────────────────
+//     Add Method Modal                                                         
 
 function AddMethodModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
@@ -392,7 +392,7 @@ function AddMethodModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ─── Payout Settings Modal ───────────────────────────────────────────────────
+//     Payout Settings Modal                                                    
 
 function PayoutSettingsModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
@@ -500,7 +500,7 @@ function PayoutSettingsModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ─── Transaction Row ──────────────────────────────────────────────────────────
+//     Transaction Row                                                           
 
 function TransactionRow({ t }: { t: LedgerTransaction }) {
   const isCredit = t.entry.type === "credit";
@@ -545,7 +545,7 @@ function TransactionRow({ t }: { t: LedgerTransaction }) {
   );
 }
 
-// ─── Withdrawal Row ───────────────────────────────────────────────────────────
+//     Withdrawal Row                                                            
 
 function WithdrawalRow({
   w,
@@ -601,7 +601,7 @@ function WithdrawalRow({
   );
 }
 
-// ─── Empty State ──────────────────────────────────────────────────────────────
+//     Empty State                                                               
 
 function EmptyState({ message }: { message: string }) {
   return (
@@ -614,7 +614,7 @@ function EmptyState({ message }: { message: string }) {
   );
 }
 
-// ─── Error State ──────────────────────────────────────────────────────────────
+//     Error State                                                               
 
 function ErrorState({ message }: { message: string }) {
   return (
@@ -627,7 +627,7 @@ function ErrorState({ message }: { message: string }) {
   );
 }
 
-// ─── Loading Skeleton ─────────────────────────────────────────────────────────
+//     Loading Skeleton                                                          
 
 function ListSkeleton({ count = 5 }: { count?: number }) {
   return (
@@ -639,7 +639,7 @@ function ListSkeleton({ count = 5 }: { count?: number }) {
   );
 }
 
-// ─── WalletPage ───────────────────────────────────────────────────────────────
+//     WalletPage                                                                
 
 export function WalletPage() {
   const qc = useQueryClient();
@@ -870,7 +870,7 @@ export function WalletPage() {
   );
 }
 
-// ─── Modal wrapper (bottom sheet mobile / centred desktop) ───────────────────
+//     Modal wrapper (bottom sheet mobile / centred desktop)                    
 
 function ModalWrapper({
   title,

@@ -41,7 +41,7 @@ export function UserDesignsPage() {
   return (
     <div className="flex h-full flex-col">
       {/* Sticky header + filter tabs */}
-      <div className="sticky top-0 z-10 border-b border-border/60 bg-background/90 px-4 pb-0 pt-8 backdrop-blur">
+      <div className="sticky top-0 z-10 border-b border-border/60 bg-background/90 px-4 pb-0 pt-4 backdrop-blur">
         <div className="mb-3 flex items-center justify-between">
           <h1 className="text-xl font-semibold tracking-tight">My Designs</h1>
           <Button

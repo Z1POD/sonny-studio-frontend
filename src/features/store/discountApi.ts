@@ -6,7 +6,7 @@
 
 import { api } from "@/shared/api/client";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+//     Types                                                                     
 
 export type DiscountType = "percentage" | "fixed_amount" | "free_shipping";
 export type DiscountScope = "item" | "order" | "shipping";
@@ -91,7 +91,7 @@ export interface PublicLink {
   is_active: boolean;
 }
 
-// ─── API ──────────────────────────────────────────────────────────────────────
+//     API                                                                       
 
 export const discountApi = {
   // Discount Rules

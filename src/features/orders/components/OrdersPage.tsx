@@ -22,7 +22,7 @@ import type { OrderListItem, OrderStatus } from "../api";
 import { OrderDetailSheet } from "./OrderDetailSheet";
 import { BrandLoader } from "@/components/ui/loader";
 
-// ─── Status helpers ────────────────────────────────────────────────────────────
+//     Status helpers                                                             
 
 const STATUS_TABS: { label: string; value: string }[] = [
   { label: "All", value: "" },
@@ -79,7 +79,7 @@ function paymentBadge(paymentStatus: string) {
   return null;
 }
 
-// ─── Order card ───────────────────────────────────────────────────────────────
+//     Order card                                                                
 
 function OrderCard({
   order,
@@ -158,7 +158,7 @@ function OrderCard({
   );
 }
 
-// ─── Empty state ──────────────────────────────────────────────────────────────
+//     Empty state                                                               
 
 function EmptyOrders({ filtered }: { filtered: boolean }) {
   return (
@@ -176,7 +176,7 @@ function EmptyOrders({ filtered }: { filtered: boolean }) {
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+//     Main component                                                            
 
 export function OrdersPage() {
   const [activeTab, setActiveTab] = useState("");

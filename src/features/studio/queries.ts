@@ -3,7 +3,7 @@
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import { studioApi, artworkApi } from "./api";
 
-/* ─── Studio product ──────────────────────────────────────────────────────── */
+/*     Studio product                                                          */
 
 export const studioKeys = {
   all: ["studio"] as const,
@@ -17,7 +17,7 @@ export const studioDetailQuery = (slugOrId: string) =>
     staleTime: 60_000,
   });
 
-/* ─── Artwork library ─────────────────────────────────────────────────────── */
+/*     Artwork library                                                         */
 
 export const artworkKeys = {
   all: ["artworks"] as const,

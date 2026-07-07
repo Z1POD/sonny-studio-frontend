@@ -7,7 +7,7 @@ import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import { storeProductApi } from "./api";
 import { walletApi } from "@/features/wallet/api";
 
-// ─── Keys ─────────────────────────────────────────────────────────────────────
+//     Keys                                                                      
 
 export const storeProductKeys = {
   all: ["store-products"] as const,
@@ -18,7 +18,7 @@ export const storeProductKeys = {
   detail: (id: string) => [...storeProductKeys.details(), id] as const,
 };
 
-// ─── Queries ──────────────────────────────────────────────────────────────────
+//     Queries                                                                   
 
 export const storeProductsQuery = (params?: {
   page?: number;
@@ -39,7 +39,7 @@ export const storeProductDetailQuery = (id: string) =>
     enabled: !!id,
   });
 
-// ─── Infinite / paginated ─────────────────────────────────────────────────────
+//     Infinite / paginated                                                      
 
 export const storeProductsInfiniteQuery = (pageSize = 20) =>
   infiniteQueryOptions({
@@ -67,7 +67,7 @@ export const storeStatsQuery = () =>
     staleTime: 60_000,
   });
 
-// ─── Wallet (uses new wallet API) ─────────────────────────────────────────────
+//     Wallet (uses new wallet API)                                              
 
 export const walletQuery = () =>
   queryOptions({

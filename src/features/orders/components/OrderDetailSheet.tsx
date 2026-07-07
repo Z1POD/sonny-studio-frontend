@@ -23,7 +23,7 @@ import type { OrderDetail, PaymentMethod } from "../api";
 import { useConfirm } from "@/features/store/components/ConfirmModal";
 import { BrandLoader } from "@/components/ui/loader";
 
-// ─── Status helpers ────────────────────────────────────────────────────────────
+//     Status helpers                                                             
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pending",
@@ -52,7 +52,7 @@ function statusColor(status: string) {
   }
 }
 
-// ─── Timeline step ────────────────────────────────────────────────────────────
+//     Timeline step                                                             
 
 function TimelineStep({
   label,
@@ -107,7 +107,7 @@ function TimelineStep({
   );
 }
 
-// ─── Payment method card ──────────────────────────────────────────────────────
+//     Payment method card                                                       
 
 function PaymentMethodCard({
   method,
@@ -176,7 +176,7 @@ function PaymentMethodCard({
   );
 }
 
-// ─── Receipt submission form ───────────────────────────────────────────────────
+//     Receipt submission form                                                    
 
 function ReceiptForm({
   orderId,
@@ -271,7 +271,7 @@ function ReceiptForm({
   );
 }
 
-// ─── Verification poller ──────────────────────────────────────────────────────
+//     Verification poller                                                       
 
 function VerificationPoller({
   txRef,
@@ -336,7 +336,7 @@ function VerificationPoller({
   );
 }
 
-// ─── Main sheet ───────────────────────────────────────────────────────────────
+//     Main sheet                                                                
 
 export function OrderDetailSheet({
   orderId,
@@ -458,7 +458,7 @@ export function OrderDetailSheet({
   );
 }
 
-// ─── Content ──────────────────────────────────────────────────────────────────
+//     Content                                                                   
 
 function OrderDetailContent({
   order,

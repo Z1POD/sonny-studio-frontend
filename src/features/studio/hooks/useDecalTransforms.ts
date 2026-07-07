@@ -168,13 +168,13 @@ export function computeDecalTransform(
 ): DecalTransform | null {
   const placement = placementOverride ?? zone.placement;
 
-  // ── 1. Base surface orientation 
+  //    1. Base surface orientation 
   const baseRotation = (!placementOverride && zone.worldBounds?.rotation)
     ? new THREE.Euler(...zone.worldBounds.rotation)
     : placementToRotation(placement);
   const baseQuat = new THREE.Quaternion().setFromEuler(baseRotation);
 
-  // ── 2. Zone centre
+  //    2. Zone centre
   let centre: THREE.Vector3;
   if (!placementOverride && zone.worldBounds?.center) {
     centre = new THREE.Vector3(...zone.worldBounds.center);
@@ -186,7 +186,7 @@ export function computeDecalTransform(
     centre = getHardcodedCentre(placement);
   }
 
-  // ── 3. Projector depth 
+  //    3. Projector depth 
   let halfThickness: number;
   if (!placementOverride && zone.worldBounds?.halfExtents?.[2] != null) {
     halfThickness = zone.worldBounds.halfExtents[2];
@@ -199,11 +199,11 @@ export function computeDecalTransform(
     halfThickness = 0.02;
   }
 
-  // ── 4. Print area physical size (cm → metres)
+  //    4. Print area physical size (cm → metres)
   const zoneWidthM  = zone.widthCm  * CM;
   const zoneHeightM = zone.heightCm * CM;
 
-  // ── 5. User scale (aspect-preserving)
+  //    5. User scale (aspect-preserving)
   const limits = zone.transformLimits ?? {
     minScale: 0.02,
     maxScale: Math.min(zoneWidthM, zoneHeightM) * 0.95,
@@ -214,7 +214,7 @@ export function computeDecalTransform(
   const finalScaleX = Math.min(scaleX, maxWidth);
   const finalScaleY = finalScaleX / artwork.decalAspect;
 
-  // ── 6. Offset clamped to zone ──
+  //    6. Offset clamped to zone   
   const halfZoneW = zoneWidthM  / 2;
   const halfZoneH = zoneHeightM / 2;
   const halfArtW  = finalScaleX / 2;
@@ -229,21 +229,21 @@ export function computeDecalTransform(
   // applying it again here would cancel it back out. Use the stored value as-is.
   const offsetY   = Math.max(-halfZoneH + halfArtH, Math.min(halfZoneH - halfArtH, artwork.decalOffsetY));
 
-  // ── 7. World position
+  //    7. World position
   const offsetLocal = new THREE.Vector3(offsetX, offsetY, 0);
   const offsetWorld = offsetLocal.clone().applyQuaternion(baseQuat);
   const position    = centre.clone().add(offsetWorld);
 
-  // ── 8. Projector depth 
+  //    8. Projector depth 
   const depthZ = halfThickness * 2 + SURFACE_EPSILON * 2;
 
-  // ── 9. Final rotation (surface normal + user spin)
+  //    9. Final rotation (surface normal + user spin)
   // Negate rotation: canvas uses clockwise-positive, Three.js uses counter-clockwise-positive.
   const userSpin  = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -artwork.decalRotation));
   const finalQuat = baseQuat.clone().multiply(userSpin);
   const rotation  = new THREE.Euler().setFromQuaternion(finalQuat);
 
-  // ── 10. Scale vector
+  //    10. Scale vector
   const scale = new THREE.Vector3(finalScaleX, finalScaleY, depthZ);
 
   return { position, scale, rotation };
@@ -256,14 +256,14 @@ export function computeWrapFaceTransform(
 ): DecalTransform | null {
   const { placement, bleedFactor } = face;
 
-  // ── Orientation 
+  //    Orientation 
   const baseRotation = placementToRotation(placement);
   const baseQuat     = new THREE.Quaternion().setFromEuler(baseRotation);
 
-  // ── Centre of this face on the mesh──
+  //    Centre of this face on the mesh  
   const centre = computeCentreFromMesh(placement, meshNode);
 
-  // ── Full mesh bounds → face dimension
+  //    Full mesh bounds → face dimension
   const box  = new THREE.Box3().setFromObject(meshNode);
   const size = new THREE.Vector3();
   box.getSize(size);

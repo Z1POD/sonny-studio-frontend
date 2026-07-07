@@ -5,7 +5,7 @@
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import { walletApi } from "./api";
 
-// ─── Keys ─────────────────────────────────────────────────────────────────────
+//     Keys                                                                      
 
 export const walletKeys = {
   all: ["wallet"] as const,
@@ -19,7 +19,7 @@ export const walletKeys = {
     [...walletKeys.all, "withdrawals", params ?? {}] as const,
 };
 
-// ─── Queries ──────────────────────────────────────────────────────────────────
+//     Queries                                                                   
 
 export const walletDetailQuery = () =>
   queryOptions({

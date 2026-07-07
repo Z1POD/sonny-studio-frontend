@@ -21,7 +21,7 @@ import type {
   VerificationStatus,
 } from "./types";
 
-/* ─── Shipping ───────────────────────────────────────────────────────────── */
+/*     Shipping                                                               */
 
 interface ShippingCitiesResponse {
   success: boolean;
@@ -74,7 +74,7 @@ export const checkoutApi = {
   },
 };
 
-/* ─── Orders ─────────────────────────────────────────────────────────────── */
+/*     Orders                                                                 */
 
 interface CreateOrderPayload {
   items: Array<{ product_id: string; size: string; color_name: string; quantity: number }>;
@@ -174,7 +174,7 @@ export const orderApi = {
   },
 };
 
-/* ─── Payment ────────────────────────────────────────────────────────────── */
+/*     Payment                                                                */
 
 interface SubmitReceiptPayload {
   order_id: string;
@@ -183,7 +183,7 @@ interface SubmitReceiptPayload {
   payer_account?: string;
 }
 
-// ── Full response from POST /payment/submit-receipt/ ─────────────────────────
+//    Full response from POST /payment/submit-receipt/                          
 // Backend verifies synchronously and returns the ACTUAL result straight away.
 // is_terminal = true  → show result immediately, skip polling
 // is_terminal = false → still processing, start polling

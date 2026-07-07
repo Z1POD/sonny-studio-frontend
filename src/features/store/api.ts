@@ -10,7 +10,7 @@
 
 import { api } from "@/shared/api/client";
 
-// ─── Shared shapes ────────────────────────────────────────────────────────────
+//     Shared shapes                                                             
 
 export interface ProductCurrency {
   code: string;
@@ -47,7 +47,7 @@ export interface ProductAnalytics {
   share_count: number;
 }
 
-// ─── List item ────────────────────────────────────────────────────────────────
+//     List item                                                                 
 
 export interface ProductListItem {
   id: string;
@@ -81,7 +81,7 @@ export interface ProductListResponse {
   };
 }
 
-// ─── Full detail ──────────────────────────────────────────────────────────────
+//     Full detail                                                               
 
 export interface ProductDetail {
   id: string;
@@ -112,7 +112,7 @@ interface DetailApiResponse {
   data: ProductDetail;
 }
 
-// ─── Create payload ───────────────────────────────────────────────────────────
+//     Create payload                                                            
 
 export interface PrintAreaPayload {
   print_area_id?: string;
@@ -155,7 +155,7 @@ export interface CreateProductPayload {
   max_quantity?: number | null;
 }
 
-// ─── Update payload ───────────────────────────────────────────────────────────
+//     Update payload                                                            
 
 export interface UpdateProductPayload {
   title?: string;
@@ -170,7 +170,7 @@ export interface UpdateProductPayload {
   render_config?: Record<string, unknown>;
 }
 
-// ─── Assets upload ────────────────────────────────────────────────────────────
+//     Assets upload                                                             
 
 export interface AssetsUploadResponse {
   success: boolean;
@@ -182,7 +182,7 @@ export interface AssetsUploadResponse {
   };
 }
 
-// ─── API object ───────────────────────────────────────────────────────────────
+//     API object                                                                
 
 export const storeProductApi = {
   list: async (params?: {
@@ -252,7 +252,7 @@ export const storeProductApi = {
   },
 };
 
-// ─── Convenience query factory ────────────────────────────────────────────────
+//     Convenience query factory                                                 
 // Exported so StudioWorkspace can import directly without going through queries.ts
 // (avoids a potential circular dep chain: queries → api → queries)
 

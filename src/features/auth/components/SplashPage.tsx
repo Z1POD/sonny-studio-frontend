@@ -11,7 +11,7 @@ interface SplashPageProps {
   isSigningIn?: boolean;
 }
 
-/* ── Floating feature card (decorative) ── */
+/*    Floating feature card (decorative)    */
 function FeatureCard({
   icon: Icon,
   label,
@@ -41,14 +41,14 @@ function FeatureCard({
   );
 }
 
-/* ── Main splash page ── */
+/*    Main splash page    */
 export function SplashPage({ isSigningIn = false }: SplashPageProps) {
   const [loginOpen, setLoginOpen] = useState(false);
   const miniAppUrl = getMiniAppUrl();
 
   return (
     <div className="relative flex min-h-dvh flex-col overflow-hidden bg-[#083b32] text-white">
-      {/* ── Background ── */}
+      {/*    Background    */}
       <div
         className="absolute inset-0 -z-30 bg-cover bg-center"
         />
@@ -74,7 +74,7 @@ export function SplashPage({ isSigningIn = false }: SplashPageProps) {
         />
 
 
-      {/* ── Content ── */}
+      {/*    Content    */}
       <div className="relative z-10 flex flex-1 flex-col">
         {/* Nav */}
         <motion.header
@@ -127,7 +127,7 @@ export function SplashPage({ isSigningIn = false }: SplashPageProps) {
           </motion.div>
         </div>
 
-        {/* ── Bottom CTA with frosted blur fade ── */}
+        {/*    Bottom CTA with frosted blur fade    */}
         <div className="relative">
           {/* Frosted blur overlay fading upward */}
           <div

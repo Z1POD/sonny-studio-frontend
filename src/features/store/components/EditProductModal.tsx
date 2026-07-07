@@ -27,7 +27,7 @@ import { storeProductDetailQuery, storeProductKeys } from "../queries";
 import { storeProductApi, type ProductVariant } from "../api";
 import { useConfirm } from "./ConfirmModal";
 
-// ─── Variant matrix ───────────────────────────────────────────────────────────
+//     Variant matrix                                                            
 
 function VariantMatrix({
   variants,
@@ -121,7 +121,7 @@ function VariantMatrix({
   );
 }
 
-// ─── Pricing preview ──────────────────────────────────────────────────────────
+//     Pricing preview                                                           
 
 function PricingPreview({
   basePrice,
@@ -156,11 +156,11 @@ function PricingPreview({
   );
 }
 
-// ─── Tab type ─────────────────────────────────────────────────────────────────
+//     Tab type                                                                  
 
 type Tab = "info" | "variants";
 
-// ─── EditProductModal ─────────────────────────────────────────────────────────
+//     EditProductModal                                                          
 
 interface Props {
   productId: string;

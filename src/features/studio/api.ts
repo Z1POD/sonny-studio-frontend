@@ -3,7 +3,7 @@
 import { api } from "@/shared/api/client";
 import type { StudioData } from "./store";
 
-/* ─── Studio product ──────────────────────────────────────────────────────── */
+/*     Studio product                                                          */
 
 export const studioApi = {
   get: async (slugOrId: string): Promise<StudioData> => {
@@ -11,7 +11,7 @@ export const studioApi = {
   },
 };
 
-/* ─── Artwork ─────────────────────────────────────────────────────────────── */
+/*     Artwork                                                                 */
 
 /**
  * Normalised shape used throughout the studio feature.

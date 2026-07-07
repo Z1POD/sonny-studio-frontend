@@ -2,7 +2,7 @@
 
 import type { ArtworkState, PrintArea } from "@/features/studio/store";
 
-// ─── Checkout Step State ────────────────────────────────────────────────────
+//     Checkout Step State                                                     
 
 export type CheckoutStep = "variants" | "shipping" | "review" | "payment";
 
@@ -208,7 +208,7 @@ export interface VerificationStatus {
   verifiedAt?: string;
 }
 
-// ─── Checkout Draft ─────────────────────────────────────────────────────────
+//     Checkout Draft                                                          
 
 export interface CheckoutDraft {
   id: string;
@@ -238,7 +238,7 @@ export interface CheckoutDraft {
   };
 }
 
-// ─── Form Validation ──────────────────────────────────────────────────────
+//     Form Validation                                                       
 
 export interface FieldErrors {
   fullName?: string;
@@ -252,7 +252,7 @@ export interface FieldErrors {
   payerAccount?: string;
 }
 
-// ─── Multi-Variant Selection ──────────────────────────────────────────────
+//     Multi-Variant Selection                                               
 
 export interface VariantSelection {
   variantId: string;
