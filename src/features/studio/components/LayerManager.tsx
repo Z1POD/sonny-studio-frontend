@@ -1,14 +1,5 @@
 // src/features/studio/components/LayerManager.tsx
-/**
- * LayerManager.tsx — v2
- *
- * Proper layer management with:
- * - Visual z-index stack (higher index = rendered on top)
- * - Layer reordering via up/down controls
- * - "Full wrap" badge when placement === "full"
- * - Thumbnail preview with overlay warning when a logo sits atop a full wrap
- * - Tap a layer to jump to that print area
- */
+
 
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 import { Layers, X, GripVertical, Trash2, ArrowUp, ArrowDown, AlertTriangle } from "lucide-react";
@@ -25,8 +16,6 @@ export function LayerManager({ open, onClose }: LayerManagerProps) {
   const product = store.product;
   const artworks = store.artworks;
 
-  // Build ordered layer list — sorted by sortOrder then by whether they have artwork
-  // We derive z-index from position in this array (index 0 = bottom, last = top)
   const activeLayers = (product?.printAreas ?? [])
     .filter((area) => artworks[area.id]?.decalUrl)
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
