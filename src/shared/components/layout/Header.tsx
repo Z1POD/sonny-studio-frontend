@@ -6,7 +6,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   ChevronDown,
   ChevronUp,
-  LayoutGrid,
+  Palette,
   Moon,
   PenLine,
   ShoppingBag,
@@ -22,7 +22,7 @@ import { UserMenu } from "./UserMenu";
 
 const NAV = [
   { to: "/marketplace", label: "Market", icon: StoreIcon },
-  { to: "/catalog", label: "Customize", icon: LayoutGrid },
+  { to: "/catalog", label: "Customize", icon: Palette },
   { to: "/designs", label: "Designs", icon: PenLine },
 ] as const;
 

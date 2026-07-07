@@ -14,8 +14,9 @@ import {
   Check,
   Palette,
   ChevronRight,
+  Store,
 } from "lucide-react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,8 +24,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { storeProductDetailQuery, storeProductKeys } from "../queries";
-import { storeProductApi, type ProductVariant } from "../api";
+import { storeProductApi, type ProductVariant, type UpdateProductPayload } from "../api";
 import { useConfirm } from "./ConfirmModal";
+import { useHasVerifiedStore } from "@/shared/hooks/use-store-access";
 
 //     Variant matrix                                                            
 
@@ -157,7 +159,7 @@ function PricingPreview({
 
 //     Tab type                                                                  
 
-type Tab = "info" | "variants";
+type Tab = "details" | "sell";
 
 //     EditProductModal                                                          
 
@@ -171,6 +173,7 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [confirm, ConfirmModal] = useConfirm();
+  const hasStore = useHasVerifiedStore();
 
   const { data: product, isLoading } = useQuery(storeProductDetailQuery(productId));
 
@@ -182,7 +185,7 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
   const [isLimited, setIsLimited] = useState(false);
   const [maxQty, setMaxQty] = useState(100);
   const [enabledIds, setEnabledIds] = useState<Set<string>>(new Set());
-  const [tab, setTab] = useState<Tab>("info");
+  const [tab, setTab] = useState<Tab>("details");
   const [dirty, setDirty] = useState(false);
 
   // Hydrate form once product loads
@@ -235,17 +238,19 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
   const mutation = useMutation({
     mutationFn: async () => {
       if (!product) throw new Error("No product");
-      const base = parseFloat(product.pricing?.base_price ?? "0") || 0;
-      const markupAmt = (base * markupPct) / 100;
 
-      return storeProductApi.update(productId, {
-        title,
-        description,
-        markup_price: markupAmt.toFixed(2),
-        enabled_variants: [...enabledIds],
-        is_limited_edition: isLimited,
-        max_quantity: isLimited ? maxQty : null,
-      });
+      const payload: UpdateProductPayload = { title, description };
+
+      if (hasStore) {
+        const base = parseFloat(product.pricing?.base_price ?? "0") || 0;
+        const markupAmt = (base * markupPct) / 100;
+        payload.markup_price = markupAmt.toFixed(2);
+        payload.enabled_variants = [...enabledIds];
+        payload.is_limited_edition = isLimited;
+        payload.max_quantity = isLimited ? maxQty : null;
+      }
+
+      return storeProductApi.update(productId, payload);
     },
     onSuccess: () => {
       toast.success("Product updated");
@@ -339,28 +344,30 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
           ) : (
             <div className="flex flex-col overflow-hidden" style={{ maxHeight: "calc(90dvh - 80px)" }}>
               {/* Tabs */}
-              <div className="flex gap-0 border-b border-border/40 px-5">
-                {(["info", "variants"] as Tab[]).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setTab(t)}
-                    className={`px-4 py-2.5 text-xs font-medium capitalize transition border-b-2 ${
-                      tab === t
-                        ? "border-primary text-foreground"
-                        : "border-transparent text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {t === "info" ? "Info & Pricing" : "Variants"}
-                  </button>
-                ))}
-              </div>
+              {hasStore && (
+                <div className="flex gap-0 border-b border-border/40 px-5">
+                  {(["details", "sell"] as Tab[]).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setTab(t)}
+                      className={`px-4 py-2.5 text-xs font-medium capitalize transition border-b-2 ${
+                        tab === t
+                          ? "border-primary text-foreground"
+                          : "border-transparent text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {t === "details" ? "Details" : "Sell in Store"}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Scrollable body */}
               <div className="flex-1 overflow-y-auto px-5 py-4 no-scrollbar">
                 <AnimatePresence mode="wait">
-                  {tab === "info" && (
+                  {tab === "details" && (
                     <motion.div
-                      key="info"
+                      key="details"
                       initial={{ opacity: 0, x: -6 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 6 }}
@@ -396,6 +403,55 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
                         />
                       </div>
 
+                      {/* Edit in Studio */}
+                      {product.snapshot && (
+                        <div className="rounded-xl border border-border/40 bg-surface-elevated/30 p-3">
+                          <p className="text-xs font-medium">3D Mockup</p>
+                          <p className="mt-0.5 text-[11px] text-muted-foreground">
+                            Reopen the studio canvas to adjust artwork placement, colors, and angles.
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-2 h-8 rounded-full text-xs"
+                            onClick={handleEditInStudio}
+                          >
+                            <Palette className="mr-1.5 h-3.5 w-3.5" />
+                            Edit in Studio
+                            <ChevronRight className="ml-1 h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Upsell for non-sellers */}
+                      {!hasStore && (
+                        <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
+                          <Store className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">Have something worth selling?</p>
+                            <p className="mt-0.5 text-[11px] text-muted-foreground">
+                              Get a verified store to set pricing, curate variants, and publish this design to the marketplace.
+                            </p>
+                            <Button asChild variant="outline" size="sm" className="mt-2 h-8 rounded-full text-xs">
+                              <Link to="/store">
+                                Get a store
+                                <ChevronRight className="ml-1 h-3 w-3" />
+                              </Link>
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+
+                  {tab === "sell" && hasStore && (
+                    <motion.div
+                      key="sell"
+                      initial={{ opacity: 0, x: -6 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 6 }}
+                      className="space-y-4"
+                    >
                       {/* Markup — slider + number input */}
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between gap-2">
@@ -433,9 +489,8 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
                         />
                       </div>
 
-                      {/* Toggles */}
+                      {/* Limited edition */}
                       <div className="space-y-2">
-                        {/* Limited edition */}
                         <div className="flex items-center justify-between rounded-xl border border-border/60 bg-surface-elevated/40 p-3">
                           <div>
                             <p className="text-sm font-medium">Limited edition</p>
@@ -461,35 +516,7 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
                         )}
                       </div>
 
-                      {/* Edit in Studio */}
-                      {product.snapshot && (
-                        <div className="rounded-xl border border-border/40 bg-surface-elevated/30 p-3">
-                          <p className="text-xs font-medium">3D Mockup</p>
-                          <p className="mt-0.5 text-[11px] text-muted-foreground">
-                            Reopen the studio canvas to adjust artwork placement, colors, and angles.
-                          </p>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="mt-2 h-8 rounded-full text-xs"
-                            onClick={handleEditInStudio}
-                          >
-                            <Palette className="mr-1.5 h-3.5 w-3.5" />
-                            Edit in Studio
-                            <ChevronRight className="ml-1 h-3 w-3" />
-                          </Button>
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-
-                  {tab === "variants" && (
-                    <motion.div
-                      key="variants"
-                      initial={{ opacity: 0, x: -6 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 6 }}
-                    >
+                      {/* Variant matrix */}
                       {allVariants.length === 0 ? (
                         <p className="py-8 text-center text-sm text-muted-foreground">
                           No variant data available.
