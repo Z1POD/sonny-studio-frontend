@@ -73,7 +73,6 @@
 }
 
 :root {
-  /* Dark by default — Apple/iOS visionOS feel */
   /* --background: #083b32; */
   --background: oklch(0.13 0.005 270);
   --foreground: oklch(0.97 0.005 270);

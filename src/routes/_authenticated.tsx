@@ -89,8 +89,8 @@ function AuthenticatedLayout() {
         {/* Bottom Steps - Mobile optimized card grid */}
         <div className="w-full max-w-sm pb-8 z-10">
           <div className="grid grid-cols-3 gap-2.5">
-            {steps.map(({ label }) => (
-              <div>
+            {steps.map(({ label }, index) => (
+              <div key={label || index}> 
                 <p className="mt-2 text-center text-[10px] font-medium tracking-wide text-white/70">
                   {label}
                 </p>
