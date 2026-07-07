@@ -31,6 +31,7 @@ import type { ProductDetail } from "../api";
 import { productQuery } from "../queries";
 import { ProductCard } from "./ProductCard";
 import { ApparelCanvas } from "./viewer/ApparelCanvas";
+import { BrandLoader } from "@/components/ui/loader";
 
 export function ProductDetailPage({ slug }: { slug: string }) {
   const { data: product, isLoading, isError } = useQuery(productQuery(slug));
@@ -40,7 +41,7 @@ export function ProductDetailPage({ slug }: { slug: string }) {
   if (isLoading) {
     return (
       <div className="flex h-[60dvh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <BrandLoader size="md" />
       </div>
     );
   }
@@ -206,7 +207,7 @@ function ProductDetailContent({
                 {has3D && (
                 <button
                 onClick={() => setIs3D((v) => !v)}
-                className="absolute right-4 top-8 z-60 inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-[11px] font-medium text-foreground backdrop-blur transition hover:border-gold"
+                className="absolute right-4 top-8 md:top-4 z-51 inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-[11px] font-medium text-foreground backdrop-blur transition hover:border-gold"
                 >
                 {is3D ? (
                     <>

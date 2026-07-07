@@ -291,7 +291,7 @@ export function ProductListModal({ onClose }: { onClose: () => void }) {
                     onClick={() => fetchNextPage()} disabled={isFetchingNextPage}
                   >
                     {isFetchingNextPage
-                      ? <><BrandLoader size="sm" /> Loading…</>
+                      ? <><Loader2 className="h-3 w-3 animate-spin" /> Loading…</>
                       : <><ChevronDown className="mr-2 h-3 w-3" /> Load more</>
                     }
                   </Button>
