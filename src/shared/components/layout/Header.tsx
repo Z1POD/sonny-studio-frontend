@@ -63,7 +63,7 @@ export function Header({ variant = "full" }: HeaderProps) {
     <header
         className={cn(
           "z-50 h-14 transition-colors duration-300 md:h-20",
-          isMinimal ? "fixed inset-x-0 top-[var(--tg-safe-area-top,0px)]" : "sticky hidden md:block md:mx-auto md:w-[800px]",
+          isMinimal ? "fixed inset-x-0 top-[var(--tg-safe-area-top,0px)] md:pt-0" : "sticky hidden md:block md:mx-auto md:w-[800px]",
           isHome && !isExpanded && !isMinimal ? "border-none bg-transparent" : "rounded-2xl",
         )}
       >
