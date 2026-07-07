@@ -67,7 +67,7 @@ export function CartDrawer() {
           </button>
         </DrawerHeader>
 
-        <div className="max-h-[55vh] overflow-y-auto px-4 py-4 md:px-6">
+        <div className="max-h-[55dvh] overflow-y-auto px-4 py-4 md:px-6">
           {items.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
               <div className="grid h-14 w-14 place-items-center rounded-full bg-muted">

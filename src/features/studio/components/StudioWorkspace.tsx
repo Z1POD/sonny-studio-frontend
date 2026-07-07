@@ -90,7 +90,7 @@ export function StudioWorkspace() {
 
   if (isLoadingAny || !product) {
     return (
-      <div className="flex h-[70vh] items-center justify-center text-muted-foreground">
+      <div className="flex h-[70dvh] items-center justify-center text-muted-foreground">
         <BrandLoader size="md" />
       </div>
     );

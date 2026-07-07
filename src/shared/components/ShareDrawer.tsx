@@ -398,7 +398,7 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
           <img
             src={target.imageUrl}
             alt={target.title}
-            className="relative z-10 mx-auto block max-h-[38vh] w-auto object-contain"
+            className="relative z-10 mx-auto block max-h-[38dvh] w-auto object-contain"
             style={{ aspectRatio: "4/5" }}
           />
         </div>

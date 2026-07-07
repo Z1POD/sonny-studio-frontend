@@ -177,6 +177,7 @@ export function useTelegram() {
 
     setTg(telegram);
     telegram.ready();
+    telegram.expand();
     setIsReady(true);
 
     // Bot API 7.7+ fullscreen state, kept in sync with the native event.

@@ -373,7 +373,7 @@ export function ArtworkLibrary({ onSelect, isOpen: controlledIsOpen, onClose }: 
               animate={{ opacity: 1, x: 0, width: 280 }}
               exit={{ opacity: 0, x: -20, width: 0 }}
               transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-              className="pointer-events-auto absolute left-4 top-4 z-30 w-[320px] max-w-[90vw] overflow-hidden rounded-2xl shadow-elevated"
+              className="pointer-events-auto absolute left-4 top-4 z-30 w-[320px] max-w-[90dvw] overflow-hidden rounded-2xl shadow-elevated"
             >
               <PanelBody {...bodyProps} />
             </motion.aside>

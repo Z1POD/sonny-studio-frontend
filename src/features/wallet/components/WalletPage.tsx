@@ -278,7 +278,7 @@ function AddMethodModal({ onClose }: { onClose: () => void }) {
   const allRequiredFilled = selectedPm?.required_fields.every((f) => details[f]?.trim()) ?? false;
 
   return (
-    <div className="space-y-5 max-h-[70vh] overflow-y-auto pr-1 no-scrollbar">
+    <div className="space-y-5 max-h-[70dvh] overflow-y-auto pr-1 no-scrollbar">
       {/* Payment method selection */}
       <div className="space-y-2">
         <Label>Payment method</Label>
@@ -418,7 +418,7 @@ function PayoutSettingsModal({ onClose }: { onClose: () => void }) {
   });
 
   return (
-    <div className="space-y-5 max-h-[70vh] overflow-y-auto pr-1 no-scrollbar">
+    <div className="space-y-5 max-h-[70dvh] overflow-y-auto pr-1 no-scrollbar">
       <div className="space-y-3">
         <Label>Your withdrawal methods</Label>
         {methods.length === 0 ? (
@@ -903,7 +903,7 @@ function ModalWrapper({
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: "100%", opacity: 0 }}
         transition={{ type: "spring", damping: 30, stiffness: 320 }}
-        className="relative z-10 w-full max-h-[90dvh] overflow-hidden rounded-t-3xl border border-border/60 bg-surface shadow-2xl md:w-[650px] md:rounded-3xl md:max-h-[85vh]"
+        className="relative z-10 w-full max-h-[90dvh] overflow-hidden rounded-t-3xl border border-border/60 bg-surface shadow-2xl md:w-[650px] md:rounded-3xl md:max-h-[8dvh]"
       >
         <div className="flex justify-center pt-3 pb-1 md:hidden">
           <div className="h-1 w-10 rounded-full bg-border" />
@@ -920,7 +920,7 @@ function ModalWrapper({
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
-        <div className="px-5 py-5" style={{ maxHeight: "calc(85vh - 80px)", overflowY: "auto" }}>
+        <div className="px-5 py-5" style={{ maxHeight: "calc(8dvh - 80px)", overflowY: "auto" }}>
           {children}
         </div>
       </motion.div>

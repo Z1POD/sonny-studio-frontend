@@ -73,7 +73,7 @@ export function DesignLightbox({ images, initialIndex = 0, onClose }: DesignLigh
           animate="center"
           exit="exit"
           transition={{duration: 0.25, ease: "easeInOut", }}
-          className="flex max-h-[85dvh] max-w-[90vw] items-center justify-center"
+          className="flex max-h-[85dvh] max-w-[90dvw] items-center justify-center"
           onClick={(e) => e.stopPropagation()}
         >
           <TransformWrapper
@@ -86,13 +86,13 @@ export function DesignLightbox({ images, initialIndex = 0, onClose }: DesignLigh
               wheel={{ disabled: true }}
             >
               <TransformComponent
-                wrapperClass="!max-h-[85dvh] !max-w-[90vw]"
+                wrapperClass="!max-h-[85dvh] !max-w-[90dvw]"
                 contentClass="flex items-center justify-center"
               >
                 <img
                   src={images[idx].url}
                   alt={images[idx].label ?? `Mockup ${idx + 1}`}
-                  className="max-h-[85dvh] max-w-[90vw] rounded-2xl object-contain shadow-2xl select-none"
+                  className="max-h-[85dvh] max-w-[90dvw] rounded-2xl object-contain shadow-2xl select-none"
                   draggable={false}
                 />
               </TransformComponent>

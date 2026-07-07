@@ -63,7 +63,7 @@ export function LightboxRoot() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.22 }}
-            className="flex max-h-[92vh] max-w-[92vw] flex-col items-center"
+            className="flex max-h-[92dvh] max-w-[92dvw] flex-col items-center"
           >
             <button
               type="button"
@@ -76,7 +76,7 @@ export function LightboxRoot() {
             <img
               src={lightbox.images[lightbox.index].src}
               alt={lightbox.images[lightbox.index].alt ?? ""}
-              className="max-h-[82vh] max-w-[92vw] rounded-xl object-contain"
+              className="max-h-[82dvh] max-w-[92dvw] rounded-xl object-contain"
             />
             {lightbox.images[lightbox.index].caption && (
               <p className="mt-3 text-sm text-white/80">

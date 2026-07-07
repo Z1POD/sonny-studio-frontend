@@ -343,7 +343,7 @@ export function ProductListSheet() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 320 }}
-              className="fixed inset-x-0 bottom-0 z-50 max-h-[90dvh] overflow-hidden rounded-t-3xl border border-border/60 bg-surface shadow-2xl md:inset-x-auto md:left-1/2 md:bottom-auto md:top-1/2 md:h-[80vh] md:w-[680px] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-3xl"
+              className="fixed inset-x-0 bottom-0 z-50 max-h-[90dvh] overflow-hidden rounded-t-3xl border border-border/60 bg-surface shadow-2xl md:inset-x-auto md:left-1/2 md:bottom-auto md:top-1/2 md:h-[80dvh] md:w-[680px] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-3xl"
             >
               <div className="flex justify-center pt-3 md:hidden">
                 <div className="h-1 w-10 rounded-full bg-border" />

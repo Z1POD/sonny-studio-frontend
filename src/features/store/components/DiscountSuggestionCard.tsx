@@ -586,7 +586,7 @@ function DiscountOverlay({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md h-[85vh] flex flex-col gap-4 p-6">
+      <DialogContent className="max-w-md h-[85dvh] flex flex-col gap-4 p-6">
         <DialogHeader className="shrink-0 space-y-0.5">
           <DialogTitle>{TITLE}</DialogTitle>
           <DialogDescription className="text-xs">{DESC}</DialogDescription>

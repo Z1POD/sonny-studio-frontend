@@ -311,7 +311,7 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: "100%", opacity: 0 }}
           transition={{ type: "spring", damping: 30, stiffness: 320 }}
-          className="relative z-10 w-full max-h-[90dvh] overflow-hidden rounded-t-3xl border border-border/60 bg-surface shadow-2xl md:w-[720px] md:rounded-3xl md:max-h-[85vh]"
+          className="relative z-10 w-full max-h-[90dvh] overflow-hidden rounded-t-3xl border border-border/60 bg-surface shadow-2xl md:w-[720px] md:rounded-3xl md:max-h-[85dvh]"
         >
           {/* Mobile drag handle */}
           <div className="flex justify-center pt-3 pb-1 md:hidden">

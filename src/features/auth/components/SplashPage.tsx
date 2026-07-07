@@ -113,7 +113,7 @@ export function SplashPage({ isSigningIn = false }: SplashPageProps) {
             transition={{ duration: 0.7, delay: 0.1, ease: [0.4, 0, 0.2, 1] }}
             className="text-center"
           >
-            <h1 className="text-[clamp(2.5rem,8vw,5.5rem)] font-bold leading-[1.05] tracking-tighter text-white">
+            <h1 className="text-[clamp(2.5rem,8dvw,5.5rem)] font-bold leading-[1.05] tracking-tighter text-white">
               Design your
               <br />
               <span className="bg-gradient-to-b from-[#FFF2C2] via-[#D4AF37] to-[#4A3B17] bg-clip-text text-transparent">
