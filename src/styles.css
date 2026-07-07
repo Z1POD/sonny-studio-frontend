@@ -129,6 +129,8 @@
   --sidebar-ring: oklch(0.78 0.13 84);
 
   --toast-offset: 48px;
+  --tg-safe-area-top: 0px;
+  --tg-safe-area-bottom: 0px;
 }
 
 .dark {
@@ -246,4 +248,8 @@
 
 .animate-brand-loader {
   animation: brand-loader 1.2s infinite ease-in-out;
+}
+
+button {
+  cursor: pointer;
 }

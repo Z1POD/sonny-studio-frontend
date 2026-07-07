@@ -1,14 +1,49 @@
 /**
  * src/shared/hooks/use-telegram.ts
  *
- * Changes:
- *  - shareToStory signature updated to match Telegram WebApp API.
- *    Before: shareToStory(mediaUrl, text, widgetLink)
- *    After:  shareToStory(mediaUrl, params: { text?, widget_link?: { url, name } })
- *  - All existing exports preserved (isTelegram, isFullscreen, etc.)
+ * Telegram Mini App integration utilities.
+ *
+ * Merged from two versions of this hook:
+ *  - Base: the version with the updated `shareToStory(mediaUrl, params)` signature,
+ *    granular haptics (impactOccurred/notificationOccurred/selectionChanged),
+ *    safeAreaInset/contentSafeAreaInset, and MainButton.setParams.
+ *  - Folded in from the older version: sendData, switchInlineQuery, isVersionAtLeast,
+ *    real Bot API 7.7+ fullscreen support (requestFullscreen/exitFullscreen +
+ *    `fullscreenChanged` event), isReady state, callback-based showAlert/showConfirm,
+ *    and the standalone getTelegramWebApp()/isTelegramMiniApp() utilities.
+ *
+ * Notable fixes made while merging (see inline comments):
+ *  1. `isFullscreen` was previously derived from `tg.isExpanded`, which is the wrong
+ *     property — `isExpanded` (viewport expansion) and `isFullscreen` (Bot API 7.7+
+ *     true fullscreen mode) are distinct concepts in the Telegram WebApp API. This
+ *     now tracks the real `isFullscreen` flag and stays in sync via the
+ *     `fullscreenChanged` event, matching the older hook's behavior. `isExpanded` is
+ *     still exposed separately, unchanged.
+ *  2. `showConfirm` in the base version was typed as if `tg.showConfirm` returned a
+ *     Promise directly, but the real WebApp API takes a callback. It's now wrapped
+ *     as a Promise around the callback, so the hook's public signature (returns
+ *     Promise<boolean>) is unchanged but the underlying call is now correct.
+ *  3. The `enableVerticalSwipes`/`disableVerticalSwipes` JSDoc in the base version
+ *     had backwards @deprecated tags (each pointed at the other as the replacement).
+ *     Both are real Bot API 7.7+ methods — neither is deprecated — so the tags were
+ *     removed.
+ *  4. `StoryWidgetLink.name` is now optional (`name?: string`), matching the actual
+ *     Telegram API and the older hook, instead of being required.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+
+// Types for Telegram WebApp
+
+interface StoryWidgetLink {
+  url: string;
+  name?: string;
+}
+
+interface StoryShareParams {
+  text?: string;
+  widget_link?: StoryWidgetLink;
+}
 
 interface TelegramWebApp {
   initDataUnsafe?: {
@@ -30,32 +65,29 @@ interface TelegramWebApp {
   close: () => void;
   enableClosingConfirmation: () => void;
   disableClosingConfirmation: () => void;
+  isClosingConfirmationEnabled?: boolean;
   setHeaderColor: (color: string) => void;
   setBackgroundColor: (color: string) => void;
+  headerColor?: string;
+  backgroundColor?: string;
   HapticFeedback?: {
     impactOccurred: (style: "light" | "medium" | "heavy" | "rigid" | "soft") => void;
     notificationOccurred: (type: "error" | "success" | "warning") => void;
     selectionChanged: () => void;
   };
-  shareToStory?: (
-    mediaUrl: string,
-    params?: {
-      text?: string;
-      widget_link?: {
-        url: string;
-        name: string;
-      };
-    }
-  ) => void;
+  shareToStory?: (mediaUrl: string, params?: StoryShareParams) => void;
   openTelegramLink: (url: string) => void;
-  openLink: (url: string) => void;
+  openLink: (url: string, options?: { try_instant_view?: boolean }) => void;
+  sendData: (data: string) => void;
+  switchInlineQuery: (query: string, chooseChatTypes?: string[]) => void;
   showPopup: (params: {
     title?: string;
     message: string;
     buttons?: Array<{ id?: string; type?: string; text: string }>;
   }) => void;
-  showAlert: (message: string) => void;
-  showConfirm: (message: string) => Promise<boolean>;
+  showAlert: (message: string, callback?: () => void) => void;
+  showConfirm: (message: string, callback?: (confirmed: boolean) => void) => void;
+  isVersionAtLeast: (version: string) => boolean;
   MainButton: {
     text: string;
     color: string;
@@ -114,11 +146,14 @@ interface TelegramWebApp {
     left: number;
     right: number;
   };
-  onEvent: (eventType: string, callback: () => void) => void;
-  offEvent: (eventType: string, callback: () => void) => void;
-  /** @deprecated Bot API 7.0+ — use disableVerticalSwipes() instead */
+  onEvent: (eventType: string, callback: (...args: any[]) => void) => void;
+  offEvent: (eventType: string, callback: (...args: any[]) => void) => void;
+  /** Bot API 7.7+ — true fullscreen mode (distinct from `isExpanded`) */
+  isFullscreen?: boolean;
+  requestFullscreen?: () => void;
+  exitFullscreen?: () => void;
+  /** Bot API 7.7+ — prevent/allow swipe-down-to-close */
   enableVerticalSwipes?: () => void;
-  /** @deprecated Bot API 7.0+ — use enableVerticalSwipes() instead */
   disableVerticalSwipes?: () => void;
 }
 
@@ -128,17 +163,27 @@ interface TelegramWindow extends Window {
   };
 }
 
+// Hook
+
 export function useTelegram() {
   const [tg, setTg] = useState<TelegramWebApp | null>(null);
+  const [isReady, setIsReady] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const telegram = (window as unknown as TelegramWindow).Telegram?.WebApp;
-      if (telegram) {
-        setTg(telegram);
-        telegram.ready();
-      }
-    }
+    if (typeof window === "undefined") return;
+    const telegram = (window as unknown as TelegramWindow).Telegram?.WebApp;
+    if (!telegram) return;
+
+    setTg(telegram);
+    telegram.ready();
+    setIsReady(true);
+
+    // Bot API 7.7+ fullscreen state, kept in sync with the native event.
+    setIsFullscreen(!!telegram.isFullscreen);
+    const onFullscreenChanged = () => setIsFullscreen(!!telegram.isFullscreen);
+    telegram.onEvent?.("fullscreenChanged", onFullscreenChanged);
+    return () => telegram.offEvent?.("fullscreenChanged", onFullscreenChanged);
   }, []);
 
   /**
@@ -154,11 +199,6 @@ export function useTelegram() {
     return hasInitData || hasInitDataString;
   }, []);
 
-  /** TRUE when the Mini App is in expanded/fullscreen mode */
-  const isFullscreen = useMemo(() => {
-    return !!tg?.isExpanded;
-  }, [tg]);
-
   const isShareToStoryAvailable = useCallback(() => {
     return !!tg?.shareToStory;
   }, [tg]);
@@ -167,19 +207,10 @@ export function useTelegram() {
    * Opens the native Telegram story editor.
    *
    * @param mediaUrl - HTTPS URL of the media (image/video)
-   * @param params - StoryShareParams: { text?, widget_link?: { url, name } }
-   *
-   * Breaking change: This now accepts a single params object as the second argument
-   * instead of separate text and widgetLink arguments.
+   * @param params - StoryShareParams: { text?, widget_link?: { url, name? } }
    */
   const shareToStory = useCallback(
-    (
-      mediaUrl: string,
-      params?: {
-        text?: string;
-        widget_link?: { url: string; name: string };
-      }
-    ) => {
+    (mediaUrl: string, params?: StoryShareParams) => {
       if (!tg?.shareToStory) {
         console.warn("shareToStory not available");
         return;
@@ -226,8 +257,8 @@ export function useTelegram() {
   );
 
   const openLink = useCallback(
-    (url: string) => {
-      tg?.openLink?.(url);
+    (url: string, options?: { try_instant_view?: boolean }) => {
+      tg?.openLink?.(url, options);
     },
     [tg]
   );
@@ -240,15 +271,21 @@ export function useTelegram() {
   );
 
   const showAlert = useCallback(
-    (message: string) => {
-      tg?.showAlert?.(message);
+    (message: string, callback?: () => void) => {
+      tg?.showAlert?.(message, callback);
     },
     [tg]
   );
 
   const showConfirm = useCallback(
-    (message: string) => {
-      return tg?.showConfirm?.(message) ?? Promise.resolve(false);
+    (message: string): Promise<boolean> => {
+      return new Promise((resolve) => {
+        if (!tg?.showConfirm) {
+          resolve(false);
+          return;
+        }
+        tg.showConfirm(message, (confirmed) => resolve(confirmed));
+      });
     },
     [tg]
   );
@@ -287,18 +324,51 @@ export function useTelegram() {
     [tg]
   );
 
-  /** Disable vertical swipe-to-close gesture (Bot API 7.0+) */
+  /** Enter true fullscreen mode (Bot API 7.7+). */
+  const requestFullscreen = useCallback(() => {
+    tg?.requestFullscreen?.();
+  }, [tg]);
+
+  /** Exit true fullscreen mode (Bot API 7.7+). */
+  const exitFullscreen = useCallback(() => {
+    tg?.exitFullscreen?.();
+  }, [tg]);
+
+  /** Disable vertical swipe-to-close gesture (Bot API 7.7+). Safe to call on older versions. */
   const disableVerticalSwipes = useCallback(() => {
     tg?.disableVerticalSwipes?.();
   }, [tg]);
 
-  /** Re-enable vertical swipe-to-close gesture (Bot API 7.0+) */
+  /** Re-enable vertical swipe-to-close gesture (Bot API 7.7+). */
   const enableVerticalSwipes = useCallback(() => {
     tg?.enableVerticalSwipes?.();
   }, [tg]);
 
+  /** Send data back to the bot (triggers the `web_app_data` update). */
+  const sendData = useCallback(
+    (data: string) => {
+      tg?.sendData?.(data);
+    },
+    [tg]
+  );
+
+  const switchInlineQuery = useCallback(
+    (query: string, chooseChatTypes?: string[]) => {
+      tg?.switchInlineQuery?.(query, chooseChatTypes);
+    },
+    [tg]
+  );
+
+  const isVersionAtLeast = useCallback(
+    (version: string) => {
+      return tg?.isVersionAtLeast?.(version) ?? false;
+    },
+    [tg]
+  );
+
   return {
     tg,
+    isReady,
     isTelegram,
     isFullscreen,
     isShareToStoryAvailable,
@@ -319,8 +389,13 @@ export function useTelegram() {
     disableClosingConfirmation,
     setHeaderColor,
     setBackgroundColor,
+    requestFullscreen,
+    exitFullscreen,
     disableVerticalSwipes,
     enableVerticalSwipes,
+    sendData,
+    switchInlineQuery,
+    isVersionAtLeast,
     themeParams: tg?.themeParams,
     platform: tg?.platform,
     version: tg?.version,
@@ -330,7 +405,26 @@ export function useTelegram() {
     viewportStableHeight: tg?.viewportStableHeight,
     safeAreaInset: tg?.safeAreaInset,
     contentSafeAreaInset: tg?.contentSafeAreaInset,
+    headerColor: tg?.headerColor,
+    backgroundColor: tg?.backgroundColor,
+    isClosingConfirmationEnabled: tg?.isClosingConfirmationEnabled,
     MainButton: tg?.MainButton,
     BackButton: tg?.BackButton,
   };
+}
+
+// Standalone utilities
+// Useful outside React components (e.g. in plain event handlers or utils files).
+
+export function getTelegramWebApp(): TelegramWebApp | null {
+  if (typeof window === "undefined") return null;
+  return (window as unknown as TelegramWindow).Telegram?.WebApp ?? null;
+}
+
+export function isTelegramMiniApp(): boolean {
+  const tg = getTelegramWebApp();
+  if (!tg) return false;
+  const hasInitData = !!tg.initData && tg.initData.length > 0;
+  const hasInitDataUser = !!tg.initDataUnsafe?.user;
+  return hasInitData || hasInitDataUser;
 }
