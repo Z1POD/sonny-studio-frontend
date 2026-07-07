@@ -9,6 +9,7 @@ import {
   Palette,
   Moon,
   PenLine,
+  LayoutGrid,
   ShoppingBag,
   Store as StoreIcon,
   Sun,
@@ -23,7 +24,7 @@ import { UserMenu } from "./UserMenu";
 const NAV = [
   { to: "/marketplace", label: "Market", icon: StoreIcon },
   { to: "/catalog", label: "Customize", icon: Palette },
-  { to: "/designs", label: "Designs", icon: PenLine },
+  { to: "/designs", label: "Designs", icon: LayoutGrid },
 ] as const;
 
 

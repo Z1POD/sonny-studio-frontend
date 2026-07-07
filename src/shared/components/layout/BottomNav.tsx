@@ -2,7 +2,7 @@
 "use client";
 
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutGrid, PenLine, ShoppingBag, Store as StoreIcon, User as UserIcon } from "lucide-react";
+import { LayoutGrid, PenLine, Palette, ShoppingBag, Store as StoreIcon, User as UserIcon } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store";
 import { useCart } from "@/features/market/store";
 import { cn } from "@/lib/utils";
@@ -13,8 +13,8 @@ import { UserMenu } from "./UserMenu";
 // remaining two of the five HIG-recommended tab slots.
 const TABS = [
   { to: "/marketplace", label: "Market", icon: StoreIcon },
-  { to: "/catalog", label: "Customize", icon: LayoutGrid },
-  { to: "/designs", label: "Designs", icon: PenLine },
+  { to: "/catalog", label: "Customize", icon: Palette },
+  { to: "/designs", label: "Designs", icon: LayoutGrid },
 ] as const;
 
 export function BottomNav() {
