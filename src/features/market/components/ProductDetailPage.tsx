@@ -1,21 +1,5 @@
 // src/features/market/components/ProductDetailPage.tsx
-//
-// Marketplace product detail. Image-first (thumbnail/mockups, up to 85vh)
-// rather than the 3D-canvas-first layout used for in-studio custom designs —
-// per request, this is a finished, ready-to-buy piece, not a live configurator.
-//
-// A "3D view" toggle sits at the top-right of the hero, opposite the
-// "Limited" badge — shown only when the product has a rigged GLB
-// (`viewer_3d.model_url`). It renders the real `ApparelCanvas` viewer:
-// drag-to-rotate / pinch-or-scroll-to-zoom via OrbitControls, a loading
-// overlay while the model streams in, and a floating color picker (bottom
-// of the canvas) once it's loaded. The photo hero also supports swipe
-// (via framer-motion drag) between mockup images, not just the dot/
-// thumbnail navigation.
-//
-// Data is fetched directly with `useQuery` (no route loader/prefetch) to
-// match the CatalogPage pattern. "Add to bag" uses the marketplace's own
-// cart store (`../store`).
+
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
@@ -202,8 +186,6 @@ function ProductDetailContent({
                 </span>
                 )}
 
-                {/* 3D / photo toggle — top-right corner of the hero. Only offered
-                    when the product actually has a rigged 3D model. */}
                 {has3D && (
                 <button
                 onClick={() => setIs3D((v) => !v)}
@@ -323,9 +305,6 @@ function ProductDetailContent({
                 </section>
                 )}
 
-                {/* Price + add-to-bag CTA. Fixed to the viewport bottom on
-                    mobile; on md+ it drops into normal flow right here,
-                    below the color/size/thumbnail sections above. */}
                 <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface px-4 pb-[max(env(safe-area-inset-bottom),1rem)] pt-3 backdrop-blur md:static md:z-auto md:mt-8 md:rounded-2xl md:border md:px-6 md:py-5 md:pb-5 md:backdrop-blur-none">
                     <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
                         <div>
@@ -338,7 +317,7 @@ function ProductDetailContent({
                             onClick={onAdd}
                             disabled={!color || isAdded}
                             className={`flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl font-semibold transition-all duration-300 active:scale-[0.98] disabled:opacity-50 md:flex-none md:px-8 ${
-                                isAdded ? "bg-green-600 text-white" : "bg-gold text-gold-foreground"
+                                isAdded ? "bg-[#083b32]/80 text-white" : "bg-gold text-gold-foreground"
                             }`}
                         >
                             {isAdded ? (
