@@ -14,7 +14,6 @@ import {
   Check,
   Palette,
   ChevronRight,
-  PackageCheck,
 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -182,7 +181,6 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
   const [markupInput, setMarkupInput] = useState("0");
   const [isLimited, setIsLimited] = useState(false);
   const [maxQty, setMaxQty] = useState(100);
-  const [isProductionReady, setIsProductionReady] = useState(false);
   const [enabledIds, setEnabledIds] = useState<Set<string>>(new Set());
   const [tab, setTab] = useState<Tab>("info");
   const [dirty, setDirty] = useState(false);
@@ -200,7 +198,6 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
     setMarkupInput(String(rounded));
     setIsLimited(product.is_limited_edition);
     setMaxQty(product.max_quantity ?? 100);
-    setIsProductionReady((product as any).production_ready ?? false);
     setEnabledIds(new Set((product.enabled_variant ?? []).map((v) => v.id)));
   }, [product]);
 
@@ -248,8 +245,6 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
         enabled_variants: [...enabledIds],
         is_limited_edition: isLimited,
         max_quantity: isLimited ? maxQty : null,
-        // production_ready forwarded if backend supports it
-        ...({ production_ready: isProductionReady } as any),
       });
     },
     onSuccess: () => {
@@ -274,13 +269,12 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
   };
 
   const handleEditInStudio = () => {
-    if (!product?.snapshot) return;
     onClose();
     navigate({
       to: "/studio",
       state: {
-        apparelId: (product.snapshot as any)?.productId ?? product.base_apparel?.id,
-        restoreSnapshot: product.snapshot,
+        productId,
+        apparelId: product?.base_apparel?.id,
       } as any,
     });
   };
@@ -465,26 +459,10 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
                             />
                           </div>
                         )}
-
-                        {/* Production ready */}
-                        <div className="flex items-center justify-between rounded-xl border border-border/60 bg-surface-elevated/40 p-3">
-                          <div className="flex items-center gap-2">
-                            <PackageCheck className="h-4 w-4 text-muted-foreground" />
-                            <div>
-                              <p className="text-sm font-medium">Production ready</p>
-                              <p className="text-xs text-muted-foreground">Approve for fulfillment</p>
-                            </div>
-                          </div>
-                          <Switch
-                            checked={isProductionReady}
-                            onCheckedChange={(v) => { setIsProductionReady(v); setDirty(true); }}
-                            disabled={!isDraft}
-                          />
-                        </div>
                       </div>
 
                       {/* Edit in Studio */}
-                      {isDraft && product.snapshot && (
+                      {product.snapshot && (
                         <div className="rounded-xl border border-border/40 bg-surface-elevated/30 p-3">
                           <p className="text-xs font-medium">3D Mockup</p>
                           <p className="mt-0.5 text-[11px] text-muted-foreground">
@@ -495,8 +473,6 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
                             size="sm"
                             className="mt-2 h-8 rounded-full text-xs"
                             onClick={handleEditInStudio}
-                            disabled
-                            title="Editing 3D mockup not allowed"
                           >
                             <Palette className="mr-1.5 h-3.5 w-3.5" />
                             Edit in Studio

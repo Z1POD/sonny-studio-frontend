@@ -131,10 +131,11 @@ function buildApparelProductFromDetail(detail: any): ApparelProduct {
 interface DesignDetailSheetProps {
   design: ProductListItem | null;
   onClose: () => void;
+  onEdit: (d: ProductListItem) => void;
   onMutated: () => void;
 }
 
-export function DesignDetailSheet({ design, onClose, onMutated }: DesignDetailSheetProps) {
+export function DesignDetailSheet({ design, onClose, onEdit, onMutated }: DesignDetailSheetProps) {
   const queryClient = useQueryClient();
   const navigate    = useNavigate();
   const [confirm, ConfirmModal] = useConfirm();
@@ -209,16 +210,10 @@ export function DesignDetailSheet({ design, onClose, onMutated }: DesignDetailSh
     }
   };
 
-  //    Studio navigation                                                        
-  const handleEditInStudio = () => {
+  //    Edit entry point — same modal used everywhere else                       
+  const handleEdit = () => {
     onClose();
-    navigate({
-      to: "/studio",
-      state: {
-        productId: design!.id,
-        apparelId: detail?.base_apparel?.id,
-      },
-    });
+    onEdit(design!);
   };
 
   const handle3DCanvas = () => {
@@ -480,7 +475,7 @@ export function DesignDetailSheet({ design, onClose, onMutated }: DesignDetailSh
                       <Button
                         variant="outline"
                         className="gap-2 text-sm"
-                        onClick={handleEditInStudio}
+                        onClick={handleEdit}
                       >
                         <Pencil className="h-4 w-4" />
                         Edit Design

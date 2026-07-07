@@ -1,3 +1,4 @@
+// src/features/designs/components/UserDesignsPage.tsx
 import { useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { AnimatePresence } from "framer-motion";
@@ -11,6 +12,7 @@ import { DesignCard } from "./DesignCard";
 import { EmptyDesigns } from "./EmptyDesigns";
 import { BrandLoader } from "@/components/ui/loader";
 import { AlertCircle, Plus } from "lucide-react";
+import { EditProductModal } from "@/features/store/components/EditProductModal";
 
 const FILTER_TABS = [
   { label: "All", value: "" },
@@ -23,6 +25,7 @@ export function UserDesignsPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("");
   const [selectedDesign, setSelectedDesign] = useState<ProductListItem | null>(null);
+  const [editDesignId, setEditDesignId] = useState<string | null>(null);
 
   const {
     data,
@@ -98,6 +101,7 @@ export function UserDesignsPage() {
                   key={design.id}
                   design={design}
                   onOpenDetail={setSelectedDesign}
+                  onOpenEdit={(d) => setEditDesignId(d.id)}
                   onMutated={() => refetch()}
                 />
               ))}
@@ -130,11 +134,24 @@ export function UserDesignsPage() {
       <DesignDetailSheet
         design={selectedDesign}
         onClose={() => setSelectedDesign(null)}
+        onEdit={(d) => { setSelectedDesign(null); setEditDesignId(d.id); }}
         onMutated={() => refetch()}
       />
 
       {/* Checkout overlay */}
       <CheckOut />
+
+      {/* Edit product modal — details, pricing, variants, and a way into Studio */}
+      {editDesignId && (
+        <EditProductModal
+          productId={editDesignId}
+          onClose={() => setEditDesignId(null)}
+          onSaved={() => {
+            setEditDesignId(null);
+            refetch();
+          }}
+        />
+      )}
     </div>
   );
 }

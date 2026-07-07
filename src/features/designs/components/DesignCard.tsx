@@ -1,3 +1,5 @@
+// src/features/designs/components/DesignCard.tsx
+
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -15,10 +17,11 @@ import { DesignLightbox } from "./DesignLightbox";
 interface DesignCardProps {
   design: ProductListItem;
   onOpenDetail: (d: ProductListItem) => void;
+  onOpenEdit: (d: ProductListItem) => void;
   onMutated: () => void;
 }
 
-export function DesignCard({ design, onOpenDetail, onMutated }: DesignCardProps) {
+export function DesignCard({ design, onOpenDetail, onOpenEdit, onMutated }: DesignCardProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [confirm, ConfirmModal] = useConfirm();
@@ -47,10 +50,7 @@ export function DesignCard({ design, onOpenDetail, onMutated }: DesignCardProps)
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate({
-      to: "/studio",
-      state: { productId: design.id },
-    });
+    onOpenEdit(design);
   };
 
   const handle3D = (e: React.MouseEvent) => {
@@ -87,11 +87,8 @@ export function DesignCard({ design, onOpenDetail, onMutated }: DesignCardProps)
           )}
 
           <div className="absolute right-2.5 top-2.5 flex flex-col gap-1.5 opacity-100 md:opacity-0 md:transition-opacity md:group-hover:opacity-100">
-            <QuickBtn onClick={handleEdit} title="Edit in Studio">
+            <QuickBtn onClick={handleEdit} title="Edit">
               <Pencil className="h-3 w-3" />
-            </QuickBtn>
-            <QuickBtn onClick={handle3D} title="3D Canvas">
-              <Box className="h-3 w-3" />
             </QuickBtn>
             <QuickBtn onClick={(e) => { e.stopPropagation(); onOpenDetail(design); }} title="Order">
               <ShoppingCart className="h-3 w-3" />

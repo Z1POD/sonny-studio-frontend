@@ -128,7 +128,7 @@ export function Header({ variant = "full" }: HeaderProps) {
           </button>
 
           <div className="flex items-center gap-1.5">
-            {isMinimal && <ThemeToggle />}
+            <ThemeToggle />
 
             <button
               aria-label="Open cart"
