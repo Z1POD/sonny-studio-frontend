@@ -2,13 +2,15 @@
 @source "../src";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+/* 👇 Correct Tailwind v4 dark selector */
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* ============================================================
-   Sonny Studio — Apple-inspired dark design system
+   Sonny Studio — Apple-inspired design system
    ============================================================ */
 
 @theme inline {
+  /* --- Radii Mapping --- */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -16,6 +18,7 @@
   --radius-2xl: 28px;
   --radius-pill: 9999px;
 
+  /* --- Core Layout Variables --- */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
@@ -40,6 +43,8 @@
   --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  
+  /* --- Sidebar Mappings --- */
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -49,31 +54,96 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Display",
-    "Helvetica Neue", Inter, sans-serif;
+  /* --- Typography --- */
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Inter, sans-serif;
   --font-mono: "SF Mono", "JetBrains Mono", "Fira Code", monospace;
-
-  --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-
-  --shadow-elevated: 0 12px 40px -8px oklch(0 0 0 / 0.55);
-  --shadow-glow: 0 0 32px -4px oklch(0.66 0.18 254 / 0.45);
-
-  --color-gold: var(--gold);
-  --color-gold-soft: var(--gold-soft);
-  --color-gold-foreground: var(--gold-foreground);
-  --color-surface: var(--surface);
-  --color-surface-elevated: var(--surface-elevated);
-
   --font-display: "SF Pro Display", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-sans: "SF Pro Text", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  --shadow-glass: 0 1px 0 0 oklch(1 0 0 / 0.05) inset, 0 20px 60px -20px oklch(0 0 0 / 0.5);
+  /* --- Easing --- */
+  --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* --- Premium Brand Details --- */
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-gold-foreground: var(--gold-foreground);
+
+  /* --- Shadows --- */
+  --shadow-elevated: 0 12px 40px -8px var(--shadow-color-elevated);
+  --shadow-glow: 0 0 32px -4px var(--shadow-color-glow);
+  --shadow-glass: 0 1px 0 0 oklch(1 0 0 / 0.05) inset, 0 20px 60px -20px var(--shadow-color-glass);
   --shadow-gold: 0 8px 30px -8px oklch(0.78 0.13 84 / 0.4);
 }
 
+/* ============================================================
+   🎨 LIGHT THEME PRIMITIVES
+   ============================================================ */
 :root {
-  /* --background: #083b32; */
+  color-scheme: light;
+  
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0.13 0 0);
+
+  --surface: oklch(0.96 0 0);
+  --surface-elevated: oklch(0.93 0 0);
+  --surface-overlay: oklch(0.89 0 0);
+
+  --card: oklch(0.96 0 0);
+  --card-foreground: oklch(0.13 0 0);
+  --popover: oklch(0.94 0 0);
+  --popover-foreground: oklch(0.13 0 0);
+
+  --primary: oklch(0% 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+
+  --secondary: oklch(0.92 0 0);
+  --secondary-foreground: oklch(0.13 0 0);
+
+  --muted: oklch(0.92 0 0);
+  --muted-foreground: oklch(0.45 0 0);
+
+  --accent: oklch(0.88 0 0);
+  --accent-foreground: oklch(0.13 0 0);
+
+  --destructive: oklch(0.60 0.20 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.65 0.15 152);
+
+  --border: oklch(0 0 0 / 0.09);
+  --border-strong: oklch(0 0 0 / 0.16);
+  --input: oklch(0 0 0 / 0.06);
+  --ring: oklch(0.20 0 0 / 0.5);
+
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.13 0 0);
+  --sidebar-primary: oklch(0% 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.92 0 0);
+  --sidebar-accent-foreground: oklch(0.13 0 0);
+  --sidebar-border: oklch(0 0 0 / 0.09);
+  --sidebar-ring: oklch(0.20 0 0 / 0.5);
+
+  --gold: oklch(0.72 0.11 84);
+  --gold-soft: oklch(0.85 0.06 84);
+  --gold-foreground: oklch(0.985 0 0);
+
+  /* Shadow Primitives for Light Mode */
+  --shadow-color-elevated: oklch(0 0 0 / 0.08);
+  --shadow-color-glow: oklch(0 0 0 / 0.04);
+  --shadow-color-glass: oklch(0 0 0 / 0.06);
+
+  --toast-offset: 48px;
+  --tg-safe-area-top: 0px;
+  --tg-safe-area-bottom: 0px;
+}
+
+/* ============================================================
+   🌙 DARK THEME PRIMITIVES (Sonny Studio Signature)
+   ============================================================ */
+.dark {
+  color-scheme: dark;
+
   --background: oklch(0.13 0.005 270);
   --foreground: oklch(0.97 0.005 270);
 
@@ -86,13 +156,9 @@
   --popover: oklch(0.19 0.007 270);
   --popover-foreground: oklch(0.97 0.005 270);
 
-  /* --primary: oklch(0.68 0.18 254); */
-  /* --primary-foreground: oklch(0.99 0 0); */
   --primary: oklch(100% 0.00011 271.152);
   --primary-foreground: oklch(0% 0 0);
 
-  /* --secondary: oklch(0.22 0.008 270);
-  --secondary-foreground: oklch(0.97 0.005 270); */
   --secondary: oklch(0% 0 0);
   --secondary-foreground: oklch(0.97 0.005 270);
 
@@ -104,7 +170,6 @@
 
   --destructive: oklch(0.65 0.22 25);
   --destructive-foreground: oklch(0.99 0 0);
-  --success: oklch(0.72 0.17 152);
 
   --border: oklch(1 0 0 / 0.09);
   --border-strong: oklch(1 0 0 / 0.16);
@@ -120,58 +185,19 @@
   --sidebar-border: oklch(1 0 0 / 0.09);
   --sidebar-ring: oklch(0.68 0.18 254 / 0.55);
 
-  --ring: oklch(0.78 0.13 84);
-
   --gold: oklch(0.78 0.13 84);
   --gold-soft: oklch(0.85 0.08 84);
   --gold-foreground: oklch(0.145 0 0);
-  --sidebar-ring: oklch(0.78 0.13 84);
 
-  --toast-offset: 48px;
-  --tg-safe-area-top: 0px;
-  --tg-safe-area-bottom: 0px;
+  /* Shadow Primitives for Dark Mode */
+  --shadow-color-elevated: oklch(0 0 0 / 0.55);
+  --shadow-color-glow: oklch(0.66 0.18 254 / 0.45);
+  --shadow-color-glass: oklch(0 0 0 / 0.5);
 }
 
-.dark {
-  --background: oklch(0 0 0);
-  --foreground: oklch(0.985 0 0);
-  --surface: oklch(0.08 0 0);
-  --surface-elevated: oklch(0.13 0 0);
-
-  --card: oklch(0.08 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.08 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0 0 0);
-  --secondary: oklch(0.15 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.16 0 0);
-  --muted-foreground: oklch(0.68 0 0);
-  --accent: oklch(0.16 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.65 0.22 27);
-  --destructive-foreground: oklch(0.99 0 0);
-
-  --border: oklch(1 0 0 / 0.08);
-  --input: oklch(1 0 0 / 0.1);
-  --ring: oklch(0.78 0.13 84);
-
-  --gold: oklch(0.82 0.13 84);
-  --gold-soft: oklch(0.72 0.11 84);
-  --gold-foreground: oklch(0 0 0);
-
-  --sidebar: oklch(0.05 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.985 0 0);
-  --sidebar-primary-foreground: oklch(0 0 0);
-  --sidebar-accent: oklch(0.15 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 0.08);
-  --sidebar-ring: oklch(0.78 0.13 84);
-}
-
+/* ============================================================
+   LAYERS & UTILITIES
+   ============================================================ */
 @layer base {
   * {
     border-color: var(--color-border);
@@ -195,13 +221,13 @@
 
 @layer utilities {
   .glass {
-    background: color-mix(in oklab, var(--surface) 70%, transparent);
+    background: color-mix(in oklab, var(--color-surface) 70%, transparent);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
   }
 
   .glass-strong {
-    background: color-mix(in oklab, var(--surface-elevated) 85%, transparent);
+    background: color-mix(in oklab, var(--color-surface-elevated) 85%, transparent);
     backdrop-filter: blur(24px) saturate(180%);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
   }
@@ -214,7 +240,6 @@
   }
 }
 
-
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -223,7 +248,6 @@
   display: none;
 }
 
-/* Active scale for touch */
 .tap-highlight-transparent {
   -webkit-tap-highlight-color: transparent;
 }
@@ -232,13 +256,11 @@
   top: var(--toast-offset, 24px) !important;
 }
 
-
 @keyframes brand-loader {
   0%, 80%, 100% {
     transform: scale(0.65);
     opacity: .35;
   }
-
   40% {
     transform: scale(1);
     opacity: 1;
