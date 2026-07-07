@@ -98,7 +98,7 @@ export function StudioWorkspace() {
 
   return (
     <>
-      <div className="relative h-[calc(100dvh-0rem)] w-full overflow-hidden bg-background md:h-[calc(100dvh-3.5rem)]">
+      <div className="relative h-[calc(100dvh-0rem)] w-full overflow-hidden bg-background">
         <CanvasDrop onUploaded={handleArtworkSelect}>
           <StudioCanvas ref={canvasRef} />
         </CanvasDrop>
