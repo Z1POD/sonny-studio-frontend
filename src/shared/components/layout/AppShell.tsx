@@ -68,8 +68,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     root.style.setProperty("--tg-safe-area-bottom", `${bottom}px`);
   }, [isFullscreen, safeAreaInset, contentSafeAreaInset]);
 
-
-  const applySafeAreaTop = isTelegram && isFullscreen && !isStudio;
+  const applySafeAreaTop = isTelegram && isFullscreen && !isStudio && !isProductDetail;
 
   return (
     <div
