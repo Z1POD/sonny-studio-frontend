@@ -362,7 +362,7 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
               </div>
 
               {/* Scrollable body */}
-              <div className="flex-1 overflow-y-auto px-5 py-4">
+              <div className="flex-1 overflow-y-auto px-5 py-4 no-scrollbar">
                 <AnimatePresence mode="wait">
                   {tab === "info" && (
                     <motion.div

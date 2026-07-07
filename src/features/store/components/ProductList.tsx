@@ -258,7 +258,7 @@ export function ProductListModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* List */}
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="flex-1 overflow-y-auto px-5 py-4 no-scrollbar">
           {isLoading ? (
             <div className="flex h-32 items-center justify-center">
               <BrandLoader size="md" />

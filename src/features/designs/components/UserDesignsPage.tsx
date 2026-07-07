@@ -72,7 +72,7 @@ export function UserDesignsPage() {
       </div>
 
       {/* Grid */}
-      <div className="flex-1 overflow-y-auto px-1 md:px-4 py-4">
+      <div className="flex-1 overflow-y-auto px-1 md:px-4 py-4 no-scrollbar">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <BrandLoader />

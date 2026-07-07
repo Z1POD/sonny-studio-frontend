@@ -52,7 +52,7 @@ export function SheetRoot() {
                 )}
               </div>
             )}
-            <div className="max-h-[80dvh] overflow-y-auto px-6 py-5">
+            <div className="max-h-[80dvh] overflow-y-auto px-6 py-5 no-scrollbar">
               {s.content}
             </div>
           </motion.div>

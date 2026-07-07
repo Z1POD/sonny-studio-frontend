@@ -433,7 +433,7 @@ function RulePanel({
                     No coupons yet — generate some to share with your audience.
                   </p>
                 ) : (
-                  <div className="space-y-1.5 max-h-44 overflow-y-auto pr-0.5">
+                  <div className="space-y-1.5 max-h-44 overflow-y-auto pr-0.5 no-scrollbar">
                     {coupons.data.data.map((coupon) => (
                       <CouponRow key={coupon.id} coupon={coupon} />
                     ))}
