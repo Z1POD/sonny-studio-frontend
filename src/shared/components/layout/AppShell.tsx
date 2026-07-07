@@ -74,7 +74,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div
       className={cn(
         "flex min-h-dvh flex-col bg-background",
-        applySafeAreaTop && "pt-[var(--tg-safe-area-top)]"
+        applySafeAreaTop && "pt-[var(--tg-safe-area-top)] md:pt-0"
       )}
     >
       <Header variant={isMinimal ? "minimal" : "full"} />
