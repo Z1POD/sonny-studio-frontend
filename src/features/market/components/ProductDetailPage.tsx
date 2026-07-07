@@ -133,7 +133,7 @@ function ProductDetailContent({
                     {/* Floating color picker — only once the model has fully loaded */}
                     {!viewerLoading && product.variants.colors.length > 1 && (
                     <div className="absolute inset-x-0 bottom-4 flex justify-center">
-                        <div className="flex items-center gap-2 rounded-full border border-white/20 bg-background/80 px-3 py-2 shadow-lg backdrop-blur">
+                        <div className="flex items-center gap-2 rounded-full border border-white/20 bg-background/60 px-3 py-2 shadow-lg backdrop-blur-2xl">
                         {product.variants.colors.map((v) => (
                             <button
                             key={v.name}
