@@ -85,7 +85,7 @@ export function MarketplacePage() {
                   href="#shop-all"
                   className="inline-flex h-12 items-center rounded-full border border-border bg-surface px-6 text-sm font-medium hover:border-gold"
                 >
-                  Explor
+                  Explore
                 </a>
               </div>
             </div>
