@@ -108,7 +108,7 @@ function ProductDetailContent({
 
   return (
     <div className="relative pb-28 md:pb-0">
-        <div className="mx-auto grid max-w-7xl gap-6 px-1 md:px-4 pb:4 md:grid-cols-[1.2fr_1fr] md:gap-12 md:px-8 md:pt-4 md:mt-12">
+        <div className="mx-auto grid max-w-7xl gap-6 px-1 md:px-4 pb:4 md:grid-cols-[1.2fr_1fr] md:gap-12 md:px-8 pt-8 md:pt-4 md:mt-12">
             {/* Fullscreen thumbnail hero — up to 85vh per spec */}
             <div className="relative h-[85dvh] max-h-[900px] w-full overflow-hidden bg-surface md:mx-auto md:max-w-5xl rounded-2xl md:rounded-[2rem] md:border md:border-border">
                 {is3D && has3D && product.viewer_3d ? (
