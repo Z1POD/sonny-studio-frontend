@@ -33,6 +33,19 @@ export function setStoredToken(token: string | null) {
   else window.localStorage.removeItem(TOKEN_KEY);
 }
 
+/**
+ * Lazily reads window.Telegram.WebApp.initData without importing the
+ * `useTelegram()` hook (this is a plain module, not a component). Kept
+ * local to avoid a shared/api -> shared/hooks dependency for one field.
+ */
+function getTelegramInitData(): string | null {
+  if (typeof window === "undefined") return null;
+  const initData = (window as unknown as {
+    Telegram?: { WebApp?: { initData?: string } };
+  }).Telegram?.WebApp?.initData;
+  return initData || null;
+}
+
 type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 
 interface RequestOptions {
@@ -70,6 +83,11 @@ async function request<T>(
     ...(!isFormData && { "Content-Type": "application/json" }),
     ...extraHeaders,
   };
+
+  const telegramInitData = getTelegramInitData();
+  if (telegramInitData) {
+    headers["X-Telegram-Init-Data"] = telegramInitData;
+  }
 
   if (auth) {
     const token = getStoredToken();

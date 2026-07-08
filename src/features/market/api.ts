@@ -1,17 +1,5 @@
 // src/features/market/api.ts
-//
-// Marketplace API wrappers, using the real Sonny client (@/shared/api/client).
-//
-// This file also owns the full single-product shape (`ProductDetail`,
-// `ColorVariant`, `CartItem`, etc.) — there's no external `@/types/api` in
-// this project, so everything the detail page and cart store need is
-// defined here rather than assumed, keeping the market feature
-// self-contained.
-//
-// `Viewer3D` / `ViewerPrintArea` were added to back the marketplace's 3D
-// product viewer (see `./components/viewer`). Shape matches the
-// `viewer_3d` block the backend returns on `ProductDetail` (snake_case,
-// per-print-area baked-in `decal`).
+
 
 import { api } from "@/shared/api/client";
 import type {
@@ -227,6 +215,8 @@ export interface ProductDetail {
   available_quantity: number | null;
   tags: string[];
   created_at: string;
+  /** Present only when a valid `code` was passed to the detail request. */
+  applied_coupon?: string;
   user_context?: {
     is_in_wishlist: boolean;
     has_purchased: boolean;
@@ -255,6 +245,21 @@ export interface CartItem {
   store: ProductStoreSummary;
 }
 
+/**
+ * Query params the backend reads directly off the `/market/p/<slug>/`
+ * request itself — `code` affects the response (applied_coupon /
+ * pricing), `ref`/`utm_*` are read by TrafficService purely for view
+ * attribution. Both need to travel on the actual API call, not just sit
+ * in the page's browser URL.
+ */
+export interface ProductDetailParams {
+  code?: string;
+  ref?: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+}
+
 export const marketApi = {
   getHomepage: () => api.get<Envelope<Homepage>>("/market/").then((r) => r.data),
 
@@ -270,8 +275,10 @@ export const marketApi = {
       .get<Envelope<string[]>>("/market/search/suggestions/", { params: { q } })
       .then((r) => r.data),
 
-  getProduct: (slug: string) =>
-    api.get<Envelope<ProductDetail>>(`/market/p/${slug}/`).then((r) => r.data),
+  getProduct: (slug: string, params: ProductDetailParams = {}) =>
+    api
+      .get<Envelope<ProductDetail>>(`/market/p/${slug}/`, { params })
+      .then((r) => r.data),
 
   getStore: (slug: string) =>
     api.get<Envelope<StoreDetail>>(`/market/stores/${slug}/`).then((r) => r.data),

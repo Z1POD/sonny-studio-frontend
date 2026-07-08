@@ -11,15 +11,23 @@ import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { useCart } from "../store";
 import { formatPrice } from "@/lib/format";
-import type { ProductDetail } from "../api";
+import type { ProductDetail, ProductDetailParams } from "../api";
 import { productQuery } from "../queries";
 import { ProductCard } from "./ProductCard";
 import { ApparelCanvas } from "./viewer/ApparelCanvas";
 import { BrandLoader } from "@/components/ui/loader";
 import { CanvasErrorBoundary } from "@/features/studio/components/CanvasErrorBoundary";
 
-export function ProductDetailPage({ slug }: { slug: string }) {
-  const { data: product, isLoading, isError } = useQuery(productQuery(slug));
+export function ProductDetailPage({
+  slug,
+  attribution,
+}: {
+  slug: string;
+  /** Coupon code + ref/UTM lifted off the URL by the route — forwarded
+   *  straight through to the API call, see productSearch.ts. */
+  attribution?: ProductDetailParams;
+}) {
+  const { data: product, isLoading, isError } = useQuery(productQuery(slug, attribution));
   const addToCart = useCart((s) => s.add);
   const openCart = useCart((s) => s.openDrawer);
 

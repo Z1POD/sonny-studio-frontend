@@ -3,6 +3,7 @@ import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import { notFound } from "@tanstack/react-router";
 import { ApiError } from "@/shared/api/client";
 import { marketApi } from "./api";
+import type { ProductDetailParams } from "./api";
 import type { ProductListParams } from "./types";
 
 export const marketKeys = {
@@ -10,7 +11,8 @@ export const marketKeys = {
   homepage: () => [...marketKeys.all, "homepage"] as const,
   products: (params: Omit<ProductListParams, "page"> = {}) =>
     [...marketKeys.all, "products", params] as const,
-  product: (slug: string) => [...marketKeys.all, "product", slug] as const,
+  product: (slug: string, params: ProductDetailParams = {}) =>
+    [...marketKeys.all, "product", slug, params] as const,
   store: (slug: string) => [...marketKeys.all, "store", slug] as const,
   category: (slug: string) => [...marketKeys.all, "category", slug] as const,
 };
@@ -35,11 +37,11 @@ export const productsInfiniteQuery = (params: Omit<ProductListParams, "page"> = 
     staleTime: 30_000,
   });
 
-export const productQuery = (slug: string) => ({
-  queryKey: marketKeys.product(slug),
+export const productQuery = (slug: string, params: ProductDetailParams = {}) => ({
+  queryKey: marketKeys.product(slug, params),
   queryFn: async () => {
     try {
-      return await marketApi.getProduct(slug);
+      return await marketApi.getProduct(slug, params);
     } catch (e) {
       const code =
         e instanceof ApiError
