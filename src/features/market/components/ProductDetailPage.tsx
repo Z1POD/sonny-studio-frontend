@@ -383,7 +383,7 @@ function ProductDetailsTable({ product }: { product: ProductDetail }) {
   if (rows.length === 0 && product.tags.length === 0) return null;
 
   return (
-    <section className="mt-8 px-2 max-w-2xl border-t border-border pt-8">
+    <section className="mx-auto mt-8 px-2 max-w-2xl border-t border-border pt-8">
       <p className="mb-4 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Details</p>
       {rows.length > 0 && (
         <div className="rounded-2xl border border-border bg-surface/40">

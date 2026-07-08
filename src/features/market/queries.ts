@@ -39,6 +39,7 @@ export const productsInfiniteQuery = (params: Omit<ProductListParams, "page"> = 
 
 export const productQuery = (slug: string, params: ProductDetailParams = {}) => ({
   queryKey: marketKeys.product(slug, params),
+  staleTime: 30_000,
   queryFn: async () => {
     try {
       return await marketApi.getProduct(slug, params);
