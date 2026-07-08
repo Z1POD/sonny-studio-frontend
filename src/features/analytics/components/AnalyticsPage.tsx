@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { analyticsSummaryQuery } from "../queries";
 import type { AnalyticsRange, AnalyticsSummary, RevenueSeries } from "../api";
 
-//    Range selector                                                          
+// Range selector
 
 const RANGES: { id: AnalyticsRange; label: string }[] = [
   { id: "7d", label: "7 days" },
@@ -30,7 +30,7 @@ const RANGES: { id: AnalyticsRange; label: string }[] = [
   { id: "90d", label: "90 days" },
 ];
 
-//    Helpers                                                                 
+// Helpers
 
 function formatCurrency(value: number, symbol: string) {
   const format = (n: number) => parseFloat(n.toFixed(2));
@@ -59,7 +59,7 @@ function formatRelative(iso: string) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-//    Delta badge                                                             
+// Delta badge
 
 function Delta({ value }: { value: number | null | undefined }) {
   if (value == null) return null;
@@ -87,7 +87,7 @@ function Delta({ value }: { value: number | null | undefined }) {
   );
 }
 
-//    KPI stat card                                                           
+// KPI stat card
 
 function StatCard({
   icon: Icon,
@@ -135,7 +135,7 @@ function StatCard({
   );
 }
 
-//    Revenue chart                                                           
+// Revenue chart
 
 function RevenueChart({ series, loading }: { series: RevenueSeries[]; loading: boolean }) {
   const [hovered, setHovered] = useState<number | null>(null);
@@ -263,7 +263,7 @@ function RevenueChart({ series, loading }: { series: RevenueSeries[]; loading: b
   );
 }
 
-//    Order status badge                                                      
+// Order status badge
 
 const STATUS_STYLE: Record<string, string> = {
   pending:    "bg-amber-500/10 text-amber-400",
@@ -287,7 +287,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-//    Section shell                                                           
+// Section shell
 
 function Section({ title, subtitle, children, className = "" }: {
   title: string;
@@ -306,7 +306,7 @@ function Section({ title, subtitle, children, className = "" }: {
   );
 }
 
-//    Main page                                                               
+// Main page
 
 export function AnalyticsPage() {
   const [range, setRange] = useState<AnalyticsRange>("30d");
@@ -487,7 +487,7 @@ export function AnalyticsPage() {
         className="mt-4 grid gap-4 lg:grid-cols-3"
       >
         {/* Order status breakdown */}
-        <Section title="Order status" subtitle="All orders this period">
+        <Section title="Order status" subtitle="All orders this period" className="max-h-[50dvh] overflow-y-auto no-scrollbar">
           {isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -519,7 +519,7 @@ export function AnalyticsPage() {
         </Section>
 
         {/* Recent orders */}
-        <Section title="Recent orders" subtitle="Latest activity" className="lg:col-span-2">
+        <Section title="Recent orders" subtitle="Latest activity" className="lg:col-span-2 max-h-[50dvh] overflow-y-auto no-scrollbar">
           {isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (

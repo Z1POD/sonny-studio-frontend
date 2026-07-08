@@ -2,7 +2,7 @@
 "use client";
 
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutGrid, PenLine, Palette, ShoppingBag, Store as StoreIcon, User as UserIcon } from "lucide-react";
+import { LayoutGrid, Palette, ShoppingBag, Store as StoreIcon, User as UserIcon } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store";
 import { useCart } from "@/features/market/store";
 import { cn } from "@/lib/utils";

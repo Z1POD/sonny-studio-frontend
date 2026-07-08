@@ -28,8 +28,8 @@ import { BrandLoader } from "@/components/ui/loader";
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pending",
   confirmed: "Confirmed",
-  processing: "Processing",
-  printing: "Printing",
+  processing: "Processing...",
+  printing: "Printing...",
   shipped: "Shipped",
   delivered: "Delivered",
   cancelled: "Cancelled",
@@ -44,7 +44,8 @@ const PAYMENT_LABELS: Record<string, string> = {
 
 function statusColor(status: string) {
   switch (status) {
-    case "delivered": return "text-green-500";
+    case "confirmed": return "text-emerald-500";
+    case "delivered": return "text-blue-300";
     case "cancelled": return "text-destructive";
     case "shipped": return "text-blue-500";
     case "pending": return "text-muted-foreground";

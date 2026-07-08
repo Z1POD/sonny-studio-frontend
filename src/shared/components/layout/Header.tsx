@@ -8,7 +8,6 @@ import {
   ChevronUp,
   Palette,
   Moon,
-  PenLine,
   LayoutGrid,
   ShoppingBag,
   Store as StoreIcon,

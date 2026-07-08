@@ -11,7 +11,7 @@ import { CheckOut } from "@/features/checkout/components/CheckOut";
 import { DesignCard } from "./DesignCard";
 import { EmptyDesigns } from "./EmptyDesigns";
 import { BrandLoader } from "@/components/ui/loader";
-import { AlertCircle, Plus } from "lucide-react";
+import { AlertCircle, Loader2, Plus } from "lucide-react";
 import { EditProductModal } from "@/features/store/components/EditProductModal";
 
 const FILTER_TABS = [
@@ -119,7 +119,7 @@ export function UserDesignsPage() {
             >
               {isFetchingNextPage ? (
                 <>
-                  <BrandLoader size="sm" className="mr-2" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Loading...
                 </>
               ) : (

@@ -58,7 +58,7 @@ export function ProductCard({ product, size = "default", page }: Props) {
             </div>
           )}
         </div>
-        <div className="absolute left-4 top-4 flex flex-col gap-2">
+        <div className="absolute left-3 top-3 flex flex-col gap-2">
           {product.is_limited_edition && (
             <span className="rounded-full bg-gold px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-gold-foreground">
               Limited

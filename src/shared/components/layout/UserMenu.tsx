@@ -20,13 +20,8 @@ import { cn } from "@/lib/utils";
 // Always shown, for every signed-in user.
 const ACCOUNT_NAV = [{ to: "/orders", label: "Orders", icon: Receipt }] as const;
 
-// Creator-only — only once the user's store is verified. Wallet/Analytics
-// are also reachable from the Store dashboard itself, so this is a
-// convenience shortcut, not the only path to them.
 const RESTRICTED_NAV = [
   { to: "/store", label: "My Store", icon: Building2 },
-//   { to: "/analytics", label: "Analytics", icon: BarChart3 },
-//   { to: "/wallet", label: "Wallet", icon: WalletIcon },
 ] as const;
 
 interface UserMenuProps {
@@ -127,9 +122,6 @@ export function UserMenu({ anchor = "header", className, children }: UserMenuPro
                   </Link>
                 ))}
             </div>
-
-            {/* Not selling yet? Surface the path — designs made in Studio can
-                be published to the marketplace with a markup. */}
             {!hasVerifiedStore && (
               <Link
                 to="/store"

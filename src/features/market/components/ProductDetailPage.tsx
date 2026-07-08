@@ -16,6 +16,7 @@ import { productQuery } from "../queries";
 import { ProductCard } from "./ProductCard";
 import { ApparelCanvas } from "./viewer/ApparelCanvas";
 import { BrandLoader } from "@/components/ui/loader";
+import { CanvasErrorBoundary } from "@/features/studio/components/CanvasErrorBoundary";
 
 export function ProductDetailPage({ slug }: { slug: string }) {
   const { data: product, isLoading, isError } = useQuery(productQuery(slug));
@@ -112,43 +113,45 @@ function ProductDetailContent({
             {/* Fullscreen thumbnail hero — up to 85vh per spec */}
             <div className="relative h-[85dvh] max-h-[900px] w-full overflow-hidden bg-surface md:mx-auto md:max-w-5xl rounded-2xl md:rounded-[2rem] md:border md:border-border">
                 {is3D && has3D && product.viewer_3d ? (
-                <div className="relative h-full w-full">
-                    <ApparelCanvas
-                    color={color ?? product.variants.colors[0]}
-                    viewer={product.viewer_3d}
-                    onLoadingChange={(loading) => setViewerLoading(loading)}
-                    onError={() => {
-                        setIs3D(false);
-                        toast.error("showing photos instead");
-                    }}
-                    />
+                  <CanvasErrorBoundary>
+                    <div className="relative h-full w-full">
+                        <ApparelCanvas
+                        color={color ?? product.variants.colors[0]}
+                        viewer={product.viewer_3d}
+                        onLoadingChange={(loading) => setViewerLoading(loading)}
+                        onError={() => {
+                            setIs3D(false);
+                            toast.error("showing photos instead");
+                        }}
+                        />
 
-                    {viewerLoading && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/60 backdrop-blur-sm">
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                        <p className="text-xs text-muted-foreground">Loading 3D preview…</p>
-                    </div>
-                    )}
-
-                    {/* Floating color picker — only once the model has fully loaded */}
-                    {!viewerLoading && product.variants.colors.length > 1 && (
-                    <div className="absolute inset-x-0 bottom-4 flex justify-center">
-                        <div className="flex items-center gap-2 rounded-full border border-white/20 bg-background/60 px-3 py-2 shadow-lg backdrop-blur-2xl">
-                        {product.variants.colors.map((v) => (
-                            <button
-                            key={v.name}
-                            title={v.name}
-                            onClick={() => onPickColor(v.name)}
-                            className={`h-7 w-7 rounded-full border-2 transition-transform hover:scale-110 ${
-                                colorName === v.name ? "border-foreground scale-110" : "border-white/40"
-                            }`}
-                            style={{ background: v.hex }}
-                            />
-                        ))}
+                        {viewerLoading && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/60 backdrop-blur-sm">
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                            <p className="text-xs text-muted-foreground">Loading 3D preview…</p>
                         </div>
+                        )}
+
+                        {/* Floating color picker — only once the model has fully loaded */}
+                        {!viewerLoading && product.variants.colors.length > 1 && (
+                        <div className="absolute inset-x-0 bottom-4 flex justify-center">
+                            <div className="flex items-center gap-2 rounded-full border border-white/20 bg-background/60 px-3 py-2 shadow-lg backdrop-blur-2xl">
+                            {product.variants.colors.map((v) => (
+                                <button
+                                key={v.name}
+                                title={v.name}
+                                onClick={() => onPickColor(v.name)}
+                                className={`h-7 w-7 rounded-full border-2 transition-transform hover:scale-110 ${
+                                    colorName === v.name ? "border-foreground scale-110" : "border-white/40"
+                                }`}
+                                style={{ background: v.hex }}
+                                />
+                            ))}
+                            </div>
+                        </div>
+                        )}
                     </div>
-                    )}
-                </div>
+                  </CanvasErrorBoundary>
                 ) : (
                 <div className="relative h-full w-full overflow-hidden">
                     <AnimatePresence initial={false} custom={imageDirection} mode="popLayout">
@@ -189,7 +192,7 @@ function ProductDetailContent({
                 {has3D && (
                 <button
                 onClick={() => setIs3D((v) => !v)}
-                className="absolute right-4 bottom-4 z-51 inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-[11px] font-medium text-foreground backdrop-blur transition hover:border-gold"
+                className="absolute right-4 bottom-4 inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-[11px] font-medium text-foreground backdrop-blur transition hover:border-gold"
                 >
                 {is3D ? (
                     <>
@@ -290,7 +293,7 @@ function ProductDetailContent({
                 </section>
                 )}
 
-                {!is3D && gallery.length > 1 && (
+                {gallery.length > 1 && (
                 <section className="mt-6">
                     <p className="mb-3 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Gallery</p>
                     <div className="grid grid-cols-3 gap-2">
@@ -372,7 +375,7 @@ function ProductDetailsTable({ product }: { product: ProductDetail }) {
   if (rows.length === 0 && product.tags.length === 0) return null;
 
   return (
-    <section className="mt-8 mx-auto max-w-[90dvw] border-t border-border pt-8">
+    <section className="mt-8 px-2 max-w-2xl border-t border-border pt-8">
       <p className="mb-4 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Details</p>
       {rows.length > 0 && (
         <div className="rounded-2xl border border-border bg-surface/40">
