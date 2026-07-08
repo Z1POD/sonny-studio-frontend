@@ -24,9 +24,7 @@ export function useTelegramAutoLogin({
   const { tg, isTelegram } = useTelegram();
 
   const [tgLoading, setTgLoading] = useState(false);
-  // `checked` flips true once we've resolved whether we're in Telegram and
-  // (if so) finished the sign-in attempt — callers use this to avoid
-  // flashing the wrong UI while the environment check settles.
+
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {

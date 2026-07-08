@@ -14,7 +14,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const router = useRouter();
   const isStudio = location.pathname.startsWith("/studio");
-  const isProductDetail = location.pathname.startsWith("/product/");
+  const isProductDetail = location.pathname.startsWith("/product/") || location.pathname.startsWith("/p/");
   const isMinimal = isStudio || isProductDetail;
 
   const {
