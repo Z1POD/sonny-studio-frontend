@@ -1,20 +1,11 @@
 // src/features/auth/hooks/useTelegramAutoLogin.ts
 
-/**
- * Auto-signs the user in when the app is running inside the Telegram Mini
- * App, using the initData Telegram injects on load.
- *
- * IMPORTANT: this is written against the actual `useTelegram()` hook shape
- * (`tg`, `isTelegram`) as uploaded in use-telegram.ts. The original
- * LoginCard.tsx referenced `isReady` / `isInTelegramMiniApp()` / `webApp`,
- * none of which that hook exposes — those were dead/mismatched props. If
- * your real use-telegram.ts differs from the uploaded one, adjust the two
- * destructured fields below accordingly.
- */
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useTelegram } from "@/shared/hooks/use-telegram";
+import { parseStartParam } from "@/lib/telegram-start-param";
 import { authApi } from "../api";
 import { useAuthStore } from "../store";
 
@@ -57,7 +48,14 @@ export function useTelegramAutoLogin({
       .loginTelegram(initData)
       .then((data) => {
         setToken(data.token, data.user);
-        navigate({ to: redirectTo });
+
+        // A product deep link takes priority over the default redirect.
+        const target = parseStartParam(tg?.initDataUnsafe?.start_param);
+        if (target?.type === "product") {
+          navigate({ to: "/p/$slug", params: { slug: target.id } });
+        } else {
+          navigate({ to: redirectTo });
+        }
       })
       .catch((err: Error) => {
         toast.error(err.message || "Auto sign-in failed");
