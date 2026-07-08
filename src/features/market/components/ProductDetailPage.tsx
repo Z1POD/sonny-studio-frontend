@@ -121,7 +121,7 @@ function ProductDetailContent({
                         onLoadingChange={(loading) => setViewerLoading(loading)}
                         onError={() => {
                             setIs3D(false);
-                            toast.error("showing photos instead");
+                            toast.error("showing image");
                         }}
                         />
 
@@ -196,7 +196,7 @@ function ProductDetailContent({
                 >
                 {is3D ? (
                     <>
-                    <ImageIcon className="h-3.5 w-3.5" /> Photo
+                    <ImageIcon className="h-3.5 w-3.5" /> Image
                     </>
                 ) : (
                     <>

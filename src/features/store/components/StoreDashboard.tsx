@@ -15,7 +15,7 @@ import { Link } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowUpRight, ImageIcon, Shirt, Plus, Sparkles,
-  Store as StoreIcon, Wallet as WalletIcon,
+  Store as StoreIcon, Wallet as WalletIcon, BarChart3,
   Share2, Pencil, Check, Globe, Archive, Trash2,
   Loader2,
 } from "lucide-react";
@@ -234,6 +234,10 @@ export function StoreDashboard() {
   const stats = useQuery(storeStatsQuery());
   const wallet = useQuery(walletQuery());
   const products = useQuery(storeProductsQuery({ page: 1, page_size: 8 }));
+  // Dashboard grid only ever shows published products — filtered server-side
+  const publishedProducts = useQuery(
+    storeProductsQuery({ page: 1, page_size: 8, status: "published" }),
+  );
   const qc = useQueryClient();
 
   const [editTarget, setEditTarget] = useState<ProductListItem | null>(null);
@@ -242,9 +246,11 @@ export function StoreDashboard() {
     qc.invalidateQueries({ queryKey: storeProductKeys.lists() });
     qc.invalidateQueries({ queryKey: ["store-stats"] });
     products.refetch();
+    publishedProducts.refetch();
   };
 
   const productList = products.data?.results ?? [];
+  const publishedList = publishedProducts.data?.results ?? [];
 
   return (
     <div className="mx-auto w-full max-w-6xl px-2 pb-24 pt-6 sm:px-8">
@@ -287,32 +293,47 @@ export function StoreDashboard() {
         </div>
       </motion.section>
 
-      {/* Wallet + Suggested next step */}
+      {/* Wallet + Analytics + Suggested next step */}
       <section className="mt-6 grid gap-4 lg:grid-cols-3">
-        {/* Wallet tile — unchanged */}
-        <div className="rounded-3xl border border-border bg-surface p-6 lg:col-span-1">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <WalletIcon className="h-4 w-4" /> Wallet
+        <div className="flex flex-col gap-4 lg:col-span-1">
+          {/* Wallet tile — unchanged */}
+          <div className="rounded-3xl border border-border bg-surface p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <WalletIcon className="h-4 w-4" /> Wallet
+              </div>
+              <Link to="/wallet" className="inline-flex items-center text-xs font-medium text-primary hover:underline">
+                Details <ArrowUpRight className="ml-1 h-3 w-3" />
+              </Link>
             </div>
-            <Link to="/wallet" className="inline-flex items-center text-xs font-medium text-primary hover:underline">
-              Details <ArrowUpRight className="ml-1 h-3 w-3" />
-            </Link>
-          </div>
-          <div className="mt-4">
-            <div className="text-3xl font-semibold tracking-tight">
-              {wallet.data?.data
-                ? `${wallet.data.data.currency.symbol} ${wallet.data.data.available}`
-                : "—"}
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              Pending <span className="text-foreground">
+            <div className="mt-4">
+              <div className="text-3xl font-semibold tracking-tight">
                 {wallet.data?.data
-                  ? `${wallet.data.data.currency.symbol}${wallet.data.data.pending}`
-                  : "0.00"}
-              </span>
+                  ? `${wallet.data.data.currency.symbol} ${wallet.data.data.available}`
+                  : "—"}
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                Pending <span className="text-foreground">
+                  {wallet.data?.data
+                    ? `${wallet.data.data.currency.symbol}${wallet.data.data.pending}`
+                    : "0.00"}
+                </span>
+              </div>
             </div>
           </div>
+
+          {/* Analytics link — same pattern as the Wallet tile */}
+          <Link
+            to="/analytics"
+            className="flex items-center justify-between rounded-3xl border border-border bg-surface p-6 transition hover:border-border-strong"
+          >
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <BarChart3 className="h-4 w-4" /> Analytics
+            </div>
+            <span className="inline-flex items-center text-xs font-medium text-primary">
+              View <ArrowUpRight className="ml-1 h-3 w-3" />
+            </span>
+          </Link>
         </div>
 
         {/* Dynamic suggestion card — adapts to user state */}
@@ -329,26 +350,33 @@ export function StoreDashboard() {
           <ProductListSheet />
         </div>
 
-        {products.isLoading ? (
+        {publishedProducts.isLoading ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="aspect-square animate-pulse rounded-2xl bg-surface" />
             ))}
           </div>
-        ) : productList.length === 0 ? (
+        ) : publishedList.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-border bg-surface/60 p-10 text-center">
             <div className="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-overlay text-muted-foreground">
-              <ImageIcon className="h-5 w-5" />
+              <Globe className="h-5 w-5" />
             </div>
-            <h3 className="text-base font-semibold">No products yet</h3>
-            <p className="mt-1 text-sm text-muted-foreground">Create your first design to start selling.</p>
-            <Button asChild className="mt-4 rounded-full">
-              <Link to="/studio"><Plus className="mr-2 h-4 w-4" /> Create design</Link>
-            </Button>
+            <h3 className="text-base font-semibold">No published products yet</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Publish one of your designs or customize something new to start selling.
+            </p>
+            <div className="mt-4 flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
+              <Button asChild variant="outline" className="rounded-full">
+                <Link to="/designs"><Sparkles className="mr-2 h-4 w-4" /> Publish from designs</Link>
+              </Button>
+              <Button asChild className="rounded-full">
+                <Link to="/catalog"><Plus className="mr-2 h-4 w-4" /> Customize new</Link>
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-0 sm:gap-3 sm:grid-cols-3 lg:grid-cols-4 rounded-2xl overflow-hidden">
-            {productList.map((p) => (
+            {publishedList.map((p) => (
               <ProductCard key={p.id} p={p} onEdit={setEditTarget} onMutated={refresh} />
             ))}
           </div>
