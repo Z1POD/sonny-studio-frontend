@@ -99,7 +99,7 @@ export function UserMenu({ anchor = "header", className, children }: UserMenuPro
                 </p>
             </div>
 
-            <ThemeToggle />
+            <ThemeToggle className="bg-muted/60" />
           </div>
 
             <div className="border-b border-border/40 py-1.5">

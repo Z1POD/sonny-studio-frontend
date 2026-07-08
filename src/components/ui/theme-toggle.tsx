@@ -19,7 +19,7 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
           : "Switch to dark mode"
       }
       className={cn(
-        "grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition-colors bg-muted/60 hover:bg-muted hover:text-foreground",
+        "grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
         className
       )}
     >
