@@ -6,9 +6,13 @@
  *  - composeStoryText() generates dynamic CTA lines based on product flags
  *  - shareToStory now passes full StoryShareParams with text + widget_link
  *  - Updated useTelegram hook signature: shareToStory(mediaUrl, params)
+ *  - **NEW**: Strict 4:5 aspect ratio cropping for both preview and Telegram Story
+ *    - Cloudinary URLs are transformed with c_fill,ar_4:5 for server-side cropping
+ *    - Canvas-based center-crop fallback for non-Cloudinary images
+ *    - Preview uses object-cover with overflow-hidden for true 4:5 framing
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send,
@@ -70,6 +74,150 @@ export interface ShareTarget {
   flags?: ProductStoryFlags;
 }
 
+// ============================================================================
+// Image Cropping Utilities
+// ============================================================================
+
+/**
+ * Checks if a URL is a Cloudinary-hosted image.
+ */
+function isCloudinaryUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname.includes("cloudinary.com") || parsed.hostname.includes("res.cloudinary.com");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Transforms a Cloudinary URL to enforce 4:5 aspect ratio cropping.
+ * 
+ * Cloudinary URL format: .../image/upload/v1234567890/folder/image.jpg
+ * We insert the crop transformation after `/upload/`.
+ * 
+ * c_fill: crop to fill the dimensions
+ * ar_4:5: aspect ratio 4:5
+ * g_auto: smart gravity (auto-detect focal point)
+ */
+function getCloudinaryCroppedUrl(url: string): string {
+  if (!isCloudinaryUrl(url)) return url;
+
+  // Insert crop transformation after `/upload/`
+  const uploadMarker = "/image/upload/";
+  const idx = url.indexOf(uploadMarker);
+  if (idx === -1) return url;
+
+  const before = url.slice(0, idx + uploadMarker.length);
+  const after = url.slice(idx + uploadMarker.length);
+
+  // c_fill: crop to fill, ar_4:5: aspect ratio, g_auto: smart gravity
+  // We also add f_auto,q_auto for optimal format/quality
+  const transform = "c_fill,ar_4:5,g_auto,f_auto,q_auto/";
+
+  return `${before}${transform}${after}`;
+}
+
+/**
+ * Crops an image to 4:5 aspect ratio using HTML5 Canvas.
+ * Performs a center-crop to maintain visual focus.
+ * 
+ * @param imageUrl - Source image URL
+ * @returns Promise resolving to a Blob URL of the cropped image
+ */
+async function canvasCropTo4x5(imageUrl: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("Failed to get canvas context"));
+        return;
+      }
+
+      const imgWidth = img.naturalWidth;
+      const imgHeight = img.naturalHeight;
+      const imgAspect = imgWidth / imgHeight;
+      const targetAspect = 4 / 5; // 0.8
+
+      let cropWidth: number;
+      let cropHeight: number;
+      let cropX: number;
+      let cropY: number;
+
+      if (imgAspect > targetAspect) {
+        // Image is wider than 4:5 — crop width to match height
+        cropHeight = imgHeight;
+        cropWidth = cropHeight * targetAspect;
+        cropX = (imgWidth - cropWidth) / 2; // center horizontally
+        cropY = 0;
+      } else {
+        // Image is taller than 4:5 (or exact) — crop height to match width
+        cropWidth = imgWidth;
+        cropHeight = cropWidth / targetAspect;
+        cropX = 0;
+        cropY = (imgHeight - cropHeight) / 2; // center vertically
+      }
+
+      // Set canvas dimensions to the cropped size
+      canvas.width = cropWidth;
+      canvas.height = cropHeight;
+
+      // Draw the cropped region
+      ctx.drawImage(
+        img,
+        cropX, cropY, cropWidth, cropHeight, // source
+        0, 0, cropWidth, cropHeight          // destination
+      );
+
+      // Convert to blob and create object URL
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error("Canvas toBlob returned null"));
+            return;
+          }
+          const blobUrl = URL.createObjectURL(blob);
+          resolve(blobUrl);
+        },
+        "image/jpeg",
+        0.92 // quality
+      );
+    };
+
+    img.onerror = () => {
+      reject(new Error(`Failed to load image: ${imageUrl}`));
+    };
+
+    img.src = imageUrl;
+  });
+}
+
+/**
+ * Gets a 4:5 cropped version of an image URL.
+ * 
+ * Strategy:
+ * 1. If Cloudinary: use URL transformation (fast, server-side)
+ * 2. Otherwise: use canvas cropping (client-side fallback)
+ * 
+ * @param imageUrl - Original image URL
+ * @returns Promise resolving to the cropped image URL
+ */
+async function getCroppedImageUrl(imageUrl: string | undefined): Promise<string | undefined> {
+  if (!imageUrl) return undefined;
+
+  // Try Cloudinary transformation first
+  if (isCloudinaryUrl(imageUrl)) {
+    return getCloudinaryCroppedUrl(imageUrl);
+  }
+
+  // Fallback to canvas cropping
+  return canvasCropTo4x5(imageUrl);
+}
+
 // Story Text Composer
 
 /**
@@ -77,7 +225,7 @@ export interface ShareTarget {
  * Generates 2-3 dynamic CTA lines based on active flags.
  */
 function composeStoryText(target: ShareTarget): string {
-  const { id, title, price, currencySymbol, flags, url } = target;
+  const { id, title, price, currencySymbol, flags } = target;
   const sym = currencySymbol || "";
   const priceLine = price ? `${sym}${price}` : null;
 
@@ -322,6 +470,42 @@ function MenuRow({
   );
 }
 
+// ============================================================================
+// 4:5 Image Preview Component
+// ============================================================================
+
+/**
+ * Renders an image strictly cropped to 4:5 aspect ratio.
+ * Uses object-cover with center positioning for a true center-crop.
+ */
+function StoryImagePreview({ imageUrl, title }: { imageUrl: string; title: string }) {
+  return (
+    <div className="relative mx-4 mt-3 mb-1 overflow-hidden rounded-2xl bg-surface-overlay">
+      {/* blurred backdrop */}
+      <div
+        className="absolute inset-0 scale-110 blur-xl opacity-60"
+        style={{ 
+          backgroundImage: `url(${imageUrl})`, 
+          backgroundSize: "cover", 
+          backgroundPosition: "center" 
+        }}
+        aria-hidden
+      />
+      {/* Strict 4:5 container with center-crop */}
+      <div 
+        className="relative z-10 mx-auto overflow-hidden"
+        style={{ aspectRatio: "4/5", maxHeight: "38dvh" }}
+      >
+        <img
+          src={imageUrl}
+          alt={title}
+          className="h-full w-full object-cover object-center"
+        />
+      </div>
+    </div>
+  );
+}
+
 // ShareDrawerContent
 
 interface ShareDrawerContentProps {
@@ -332,10 +516,41 @@ interface ShareDrawerContentProps {
 export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps) {
   const [copied, setCopied] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [croppedImageUrl, setCroppedImageUrl] = useState<string | undefined>(target.imageUrl);
+  const [isCropping, setIsCropping] = useState(false);
   const { isTelegram, isShareToStoryAvailable, shareToStory, hapticFeedback } =
     useTelegram();
 
   const inTelegram = isTelegram && isShareToStoryAvailable();
+
+  // Revoke blob URLs on unmount to prevent memory leaks
+  const blobUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    // Generate cropped preview on mount
+    if (target.imageUrl) {
+      setIsCropping(true);
+      getCroppedImageUrl(target.imageUrl)
+        .then((url) => {
+          if (url && url.startsWith("blob:")) {
+            blobUrlRef.current = url;
+          }
+          setCroppedImageUrl(url);
+        })
+        .catch((err) => {
+          console.warn("Failed to crop preview image:", err);
+          setCroppedImageUrl(target.imageUrl);
+        })
+        .finally(() => setIsCropping(false));
+    }
+
+    return () => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+    };
+  }, [target.imageUrl]);
 
   const handlePublishAndShare = useCallback(async () => {
     if (!target.productId) { toast.error("Product ID not available"); return; }
@@ -346,6 +561,14 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
 
       if (inTelegram && target.imageUrl) {
         hapticFeedback("success");
+
+        // Get the 4:5 cropped image for the story
+        const storyImageUrl = await getCroppedImageUrl(target.imageUrl);
+
+        if (!storyImageUrl) {
+          toast.error("Failed to prepare image for story");
+          return;
+        }
 
         // Compose rich story text with product name, price, CTA
         const storyText = composeStoryText(target);
@@ -359,7 +582,7 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
           },
         };
 
-        shareToStory(target.imageUrl, storyParams);
+        shareToStory(storyImageUrl, storyParams);
         toast.info("Story editor opened.");
       }
     } catch (err: any) {
@@ -386,21 +609,15 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
 
   return (
     <div className="flex flex-col overflow-hidden">
-      {/* Product preview */}
-      {target.imageUrl && (
-        <div className="relative mx-4 mt-3 mb-1 overflow-hidden rounded-2xl bg-surface-overlay">
-          {/* blurred backdrop */}
-          <div
-            className="absolute inset-0 scale-110 blur-xl opacity-60"
-            style={{ backgroundImage: `url(${target.imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}
-            aria-hidden
-          />
-          <img
-            src={target.imageUrl}
-            alt={target.title}
-            className="relative z-10 mx-auto block max-h-[38dvh] w-auto object-contain"
-            style={{ aspectRatio: "4/5" }}
-          />
+      {/* Product preview — strictly 4:5 cropped */}
+      {croppedImageUrl && (
+        <StoryImagePreview imageUrl={croppedImageUrl} title={target.title} />
+      )}
+
+      {/* Loading state for cropping */}
+      {isCropping && (
+        <div className="mx-4 mt-3 mb-1 flex items-center justify-center rounded-2xl bg-surface-overlay" style={{ aspectRatio: "4/5", maxHeight: "38dvh" }}>
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       )}
 
@@ -417,7 +634,7 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
         <div className="px-4 pb-3">
           <Button
             onClick={handlePublishAndShare}
-            disabled={isPublishing}
+            disabled={isPublishing || isCropping}
             className="w-full h-[50px] rounded-2xl text-[15px] font-semibold gap-2"
           >
             {isPublishing ? (

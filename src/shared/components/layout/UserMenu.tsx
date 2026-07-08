@@ -16,6 +16,7 @@ import { useAuthStore } from "@/features/auth/store";
 import { useTelegram } from "@/shared/hooks/use-telegram";
 import { useHasVerifiedStore } from "@/shared/hooks/use-store-access";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 // Always shown, for every signed-in user.
 const ACCOUNT_NAV = [{ to: "/orders", label: "Orders", icon: Receipt }] as const;
@@ -88,12 +89,18 @@ export function UserMenu({ anchor = "header", className, children }: UserMenuPro
               anchor === "tab" ? "bottom-full right-0 mb-2" : "right-0 top-10",
             )}
           >
-            <div className="border-b border-border/40 px-4 py-3">
-              <p className="text-sm font-medium leading-tight">{user.display_name ?? "—"}</p>
-              <p className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+          <div className="flex items-start justify-between border-b border-border/40 px-4 py-3">
+            <div className="min-w-0">
+                <p className="truncate text-sm font-medium leading-tight">
+                {user.display_name ?? "—"}
+                </p>
+                <p className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
                 {user.role ?? "guest"}
-              </p>
+                </p>
             </div>
+
+            <ThemeToggle />
+          </div>
 
             <div className="border-b border-border/40 py-1.5">
               {ACCOUNT_NAV.map(({ to, label, icon: Icon }) => (

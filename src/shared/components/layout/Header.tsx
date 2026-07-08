@@ -19,6 +19,7 @@ import { useCart } from "@/features/market/store";
 import { useTheme } from "@/shared/stores/theme-store";
 import { cn } from "@/lib/utils";
 import { UserMenu } from "./UserMenu";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const NAV = [
   { to: "/marketplace", label: "Market", icon: StoreIcon },
@@ -27,20 +28,6 @@ const NAV = [
 ] as const;
 
 
-function ThemeToggle() {
-  const mode = useTheme((s) => s.mode);
-  const toggle = useTheme((s) => s.toggle);
-
-  return (
-    <button
-      onClick={toggle}
-      aria-label={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-      className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-    >
-      {mode === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-    </button>
-  );
-}
 
 interface HeaderProps {
   variant?: "full" | "minimal";
@@ -128,7 +115,7 @@ export function Header({ variant = "full" }: HeaderProps) {
           </button>
 
           <div className="flex items-center gap-1.5">
-            <ThemeToggle />
+            {isMinimal ? <ThemeToggle /> : ""}
 
             <button
               aria-label="Open cart"
