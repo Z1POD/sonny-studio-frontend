@@ -1,19 +1,16 @@
 /**
  * src/shared/components/ShareDrawer.tsx
  *
- * Changes:
- *  - ShareTarget now accepts price + currencySymbol + flags for Telegram Story
- *  - composeStoryText() generates dynamic CTA lines based on product flags
- *  - shareToStory now passes full StoryShareParams with text + widget_link
- *  - Updated useTelegram hook signature: shareToStory(mediaUrl, params)
- *  - **NEW**: Strict 4:5 aspect ratio cropping for both preview and Telegram Story
- *    - Cloudinary URLs are transformed with c_fill,ar_4:5 for server-side cropping
- *    - Canvas-based center-crop fallback for non-Cloudinary images
- *    - Preview uses object-cover with overflow-hidden for true 4:5 framing
+ * Social sharing drawer with Telegram Story support.
+ *
+ * Preview image is displayed in a strict 4:5 CSS container (object-cover center-crop).
+ * Telegram Story receives a high-quality 4:5 cropped image via:
+ *   - Cloudinary URL transformation (server-side, preferred)
+ *   - Canvas center-crop fallback (client-side)
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Send,
   Instagram,
@@ -25,14 +22,6 @@ import {
   Check,
   Loader2,
   Share2,
-  Tag,
-  Clock,
-  Gem,
-  TrendingUp,
-  Zap,
-  PackageCheck,
-  Percent,
-  Flame,
   CircleFadingPlus,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -40,21 +29,18 @@ import { Button } from "@/components/ui/button";
 import { useOverlayStore } from "@/shared/stores/overlay-store";
 import { useTelegram } from "@/shared/hooks/use-telegram";
 import { storeProductApi } from "@/features/store/api";
+import { getStoryImageUrl } from "@/lib/image-crop";
 
+// 
 // Types
+// 
 
 export interface ProductStoryFlags {
-  /** Has active discount / coupon */
   hasDiscount?: boolean;
-  /** Is a limited edition drop */
   isLimited?: boolean;
-  /** Low stock warning */
   lowStock?: boolean;
-  /** Is a best-seller / trending */
   isTrending?: boolean;
-  /** Custom print / personalized */
   isCustom?: boolean;
-  /** Production ready / premium quality badge */
   isPremium?: boolean;
 }
 
@@ -64,229 +50,49 @@ export interface ShareTarget {
   url: string;
   imageUrl?: string;
   productId?: string;
-  /** If true, auto-publishes the product before sharing */
   shouldPublish?: boolean;
-  /** Product price for Telegram Story text */
   price?: string;
-  /** Currency symbol (e.g. "ETB", "$") */
   currencySymbol?: string;
-  /** Product flags to drive dynamic CTA generation */
   flags?: ProductStoryFlags;
 }
 
-// ============================================================================
-// Image Cropping Utilities
-// ============================================================================
-
-/**
- * Checks if a URL is a Cloudinary-hosted image.
- */
-function isCloudinaryUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return parsed.hostname.includes("cloudinary.com") || parsed.hostname.includes("res.cloudinary.com");
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Transforms a Cloudinary URL to enforce 4:5 aspect ratio cropping.
- * 
- * Cloudinary URL format: .../image/upload/v1234567890/folder/image.jpg
- * We insert the crop transformation after `/upload/`.
- * 
- * c_fill: crop to fill the dimensions
- * ar_4:5: aspect ratio 4:5
- * g_auto: smart gravity (auto-detect focal point)
- */
-function getCloudinaryCroppedUrl(url: string): string {
-  if (!isCloudinaryUrl(url)) return url;
-
-  // Insert crop transformation after `/upload/`
-  const uploadMarker = "/image/upload/";
-  const idx = url.indexOf(uploadMarker);
-  if (idx === -1) return url;
-
-  const before = url.slice(0, idx + uploadMarker.length);
-  const after = url.slice(idx + uploadMarker.length);
-
-  // c_fill: crop to fill, ar_4:5: aspect ratio, g_auto: smart gravity
-  // We also add f_auto,q_auto for optimal format/quality
-  const transform = "c_fill,ar_4:5,g_auto,f_auto,q_auto/";
-
-  return `${before}${transform}${after}`;
-}
-
-/**
- * Crops an image to 4:5 aspect ratio using HTML5 Canvas.
- * Performs a center-crop to maintain visual focus.
- * 
- * @param imageUrl - Source image URL
- * @returns Promise resolving to a Blob URL of the cropped image
- */
-async function canvasCropTo4x5(imageUrl: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("Failed to get canvas context"));
-        return;
-      }
-
-      const imgWidth = img.naturalWidth;
-      const imgHeight = img.naturalHeight;
-      const imgAspect = imgWidth / imgHeight;
-      const targetAspect = 4 / 5; // 0.8
-
-      let cropWidth: number;
-      let cropHeight: number;
-      let cropX: number;
-      let cropY: number;
-
-      if (imgAspect > targetAspect) {
-        // Image is wider than 4:5 — crop width to match height
-        cropHeight = imgHeight;
-        cropWidth = cropHeight * targetAspect;
-        cropX = (imgWidth - cropWidth) / 2; // center horizontally
-        cropY = 0;
-      } else {
-        // Image is taller than 4:5 (or exact) — crop height to match width
-        cropWidth = imgWidth;
-        cropHeight = cropWidth / targetAspect;
-        cropX = 0;
-        cropY = (imgHeight - cropHeight) / 2; // center vertically
-      }
-
-      // Set canvas dimensions to the cropped size
-      canvas.width = cropWidth;
-      canvas.height = cropHeight;
-
-      // Draw the cropped region
-      ctx.drawImage(
-        img,
-        cropX, cropY, cropWidth, cropHeight, // source
-        0, 0, cropWidth, cropHeight          // destination
-      );
-
-      // Convert to blob and create object URL
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            reject(new Error("Canvas toBlob returned null"));
-            return;
-          }
-          const blobUrl = URL.createObjectURL(blob);
-          resolve(blobUrl);
-        },
-        "image/jpeg",
-        0.92 // quality
-      );
-    };
-
-    img.onerror = () => {
-      reject(new Error(`Failed to load image: ${imageUrl}`));
-    };
-
-    img.src = imageUrl;
-  });
-}
-
-/**
- * Gets a 4:5 cropped version of an image URL.
- * 
- * Strategy:
- * 1. If Cloudinary: use URL transformation (fast, server-side)
- * 2. Otherwise: use canvas cropping (client-side fallback)
- * 
- * @param imageUrl - Original image URL
- * @returns Promise resolving to the cropped image URL
- */
-async function getCroppedImageUrl(imageUrl: string | undefined): Promise<string | undefined> {
-  if (!imageUrl) return undefined;
-
-  // Try Cloudinary transformation first
-  if (isCloudinaryUrl(imageUrl)) {
-    return getCloudinaryCroppedUrl(imageUrl);
-  }
-
-  // Fallback to canvas cropping
-  return canvasCropTo4x5(imageUrl);
-}
-
+// 
 // Story Text Composer
+// 
 
-/**
- * Composes a clean, engaging Telegram Story caption from product data.
- * Generates 2-3 dynamic CTA lines based on active flags.
- */
 function composeStoryText(target: ShareTarget): string {
   const { id, title, price, currencySymbol, flags } = target;
   const sym = currencySymbol || "";
   const priceLine = price ? `${sym}${price}` : null;
 
-  // Build dynamic CTA lines based on flags (priority-ordered)
   const ctas: string[] = [];
 
-  if (flags?.isLimited) {
-    ctas.push("🔥 Limited drop — grab yours before it sells out!");
-  }
-  if (flags?.lowStock) {
-    ctas.push("⚡ Only a few left in stock!");
-  }
-  if (flags?.hasDiscount) {
-    ctas.push("🏷️ Discount active — tap to claim!");
-  }
-  if (flags?.isTrending) {
-    ctas.push("📈 Trending now — join the hype!");
-  }
-  if (flags?.isCustom) {
-    ctas.push("✨ Custom designed — made just for you.");
-  }
-  if (flags?.isPremium) {
-    ctas.push("Production-ready quality guaranteed.");
-  }
+  if (flags?.isLimited) ctas.push("🔥 Limited drop — grab yours before it sells out!");
+  if (flags?.lowStock) ctas.push("⚡ Only a few left in stock!");
+  if (flags?.hasDiscount) ctas.push("🏷️ Discount active — tap to claim!");
+  if (flags?.isTrending) ctas.push("📈 Trending now — join the hype!");
+  if (flags?.isCustom) ctas.push("✨ Custom designed — made just for you.");
+  if (flags?.isPremium) ctas.push("Production-ready quality guaranteed.");
 
-  // Fallback CTAs if no flags matched
-  if (ctas.length === 0) {
-    ctas.push("👆 Tap the link to shop now!");
-  }
+  if (ctas.length === 0) ctas.push("👆 Tap the link to shop now!");
 
-  // Compose final text — clean, no excessive emojis, scannable
   const lines: string[] = [];
+  if (title) lines.push(title);
+  if (priceLine) lines.push(`💰 ${priceLine}`);
+  lines.push(...ctas.slice(0, 2));
 
-  if (title) {
-    lines.push(title);
-  }
-
-  if (priceLine) {
-    lines.push(`💰 ${priceLine}`);
-  }
-
-  // Add 1-2 best CTAs (keep it concise for stories)
-  const selectedCt = ctas.slice(0, 2);
-  lines.push(...selectedCt);
-
-  // Always include the raw URL in the caption (non-premium users may not see the widget button)
   if (id) {
     const miniAppHandle = import.meta.env.VITE_MINIAPP_HANDLE;
-    const url = `https://t.me/${miniAppHandle}?startapp=p_${id}`;
-    lines.push(`🔗 ${url}`);
+    lines.push(`🔗 https://t.me/${miniAppHandle}?startapp=p_${id}`);
   }
-
-  // Final CTA line pointing to the button for premium users who get the widget
-  // lines.push("👇 Tap the button below");
 
   return lines.join("\n");
 }
 
-// Icon wrappers
+// 
+// Icon Wrappers
+// 
 
-/** TikTok SVG (not in lucide) */
 function TikTokIcon({ size = 20 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
@@ -295,7 +101,6 @@ function TikTokIcon({ size = 20 }: { size?: number }) {
   );
 }
 
-/** WhatsApp SVG */
 function WhatsAppIcon({ size = 20 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
@@ -304,7 +109,9 @@ function WhatsAppIcon({ size = 20 }: { size?: number }) {
   );
 }
 
-// Social button configs
+// 
+// Social Buttons Config
+// 
 
 interface SocialBtn {
   id: string;
@@ -393,7 +200,9 @@ const SOCIAL_BUTTONS: SocialBtn[] = [
   },
 ];
 
-// SocialIcon
+// 
+// Sub-Components
+// 
 
 function SocialIcon({ btn, url, title, onDone }: {
   btn: SocialBtn;
@@ -416,11 +225,7 @@ function SocialIcon({ btn, url, title, onDone }: {
     >
       <div
         className="flex h-8 w-8 items-center justify-center rounded-[14px] text-white shadow-sm"
-        style={
-          isGradient
-            ? { background: btn.bg }
-            : { backgroundColor: btn.bg }
-        }
+        style={isGradient ? { background: btn.bg } : { backgroundColor: btn.bg }}
       >
         {btn.icon}
       </div>
@@ -430,8 +235,6 @@ function SocialIcon({ btn, url, title, onDone }: {
     </motion.button>
   );
 }
-
-// MenuRow
 
 function MenuRow({
   icon,
@@ -470,13 +273,10 @@ function MenuRow({
   );
 }
 
-// ============================================================================
-// 4:5 Image Preview Component
-// ============================================================================
-
 /**
- * Renders an image strictly cropped to 4:5 aspect ratio.
- * Uses object-cover with center positioning for a true center-crop.
+ * Product image preview cropped to strict 4:5 via CSS.
+ * Uses object-cover + object-center for a visual center-crop.
+ * No actual image processing — the source image stays untouched.
  */
 function StoryImagePreview({ imageUrl, title }: { imageUrl: string; title: string }) {
   return (
@@ -484,18 +284,15 @@ function StoryImagePreview({ imageUrl, title }: { imageUrl: string; title: strin
       {/* blurred backdrop */}
       <div
         className="absolute inset-0 scale-110 blur-xl opacity-60"
-        style={{ 
-          backgroundImage: `url(${imageUrl})`, 
-          backgroundSize: "cover", 
-          backgroundPosition: "center" 
+        style={{
+          backgroundImage: `url(${imageUrl})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
         }}
         aria-hidden
       />
-      {/* Strict 4:5 container with center-crop */}
-      <div 
-        className="relative z-10 mx-auto overflow-hidden"
-        style={{ aspectRatio: "4/5", maxHeight: "38dvh" }}
-      >
+      {/* Strict 4:5 container with CSS center-crop */}
+      <div className="relative z-10 mx-auto overflow-hidden" style={{ aspectRatio: "4/5", maxHeight: "38dvh" }}>
         <img
           src={imageUrl}
           alt={title}
@@ -506,7 +303,9 @@ function StoryImagePreview({ imageUrl, title }: { imageUrl: string; title: strin
   );
 }
 
+// 
 // ShareDrawerContent
+// 
 
 interface ShareDrawerContentProps {
   target: ShareTarget;
@@ -516,73 +315,58 @@ interface ShareDrawerContentProps {
 export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps) {
   const [copied, setCopied] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
-  const [croppedImageUrl, setCroppedImageUrl] = useState<string | undefined>(target.imageUrl);
-  const [isCropping, setIsCropping] = useState(false);
   const { isTelegram, isShareToStoryAvailable, shareToStory, hapticFeedback } =
     useTelegram();
 
   const inTelegram = isTelegram && isShareToStoryAvailable();
 
-  // Revoke blob URLs on unmount to prevent memory leaks
-  const blobUrlRef = useRef<string | null>(null);
+  // Track blob URLs for cleanup
+  const blobUrlsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    // Generate cropped preview on mount
-    if (target.imageUrl) {
-      setIsCropping(true);
-      getCroppedImageUrl(target.imageUrl)
-        .then((url) => {
-          if (url && url.startsWith("blob:")) {
-            blobUrlRef.current = url;
-          }
-          setCroppedImageUrl(url);
-        })
-        .catch((err) => {
-          console.warn("Failed to crop preview image:", err);
-          setCroppedImageUrl(target.imageUrl);
-        })
-        .finally(() => setIsCropping(false));
-    }
-
     return () => {
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = null;
-      }
+      // Revoke all blob URLs on unmount to prevent memory leaks
+      blobUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+      blobUrlsRef.current.clear();
     };
-  }, [target.imageUrl]);
+  }, []);
 
   const handlePublishAndShare = useCallback(async () => {
-    if (!target.productId) { toast.error("Product ID not available"); return; }
+    if (!target.productId) {
+      toast.error("Product ID not available");
+      return;
+    }
+    if (!target.imageUrl) {
+      toast.error("Product image not available");
+      return;
+    }
+
     setIsPublishing(true);
     try {
       await storeProductApi.publish(target.productId);
       toast.success("Published!");
 
-      if (inTelegram && target.imageUrl) {
+      if (inTelegram) {
         hapticFeedback("success");
 
-        // Get the 4:5 cropped image for the story
-        const storyImageUrl = await getCroppedImageUrl(target.imageUrl);
+        // Get high-quality 4:5 cropped image for the story
+        const storyImageUrl = await getStoryImageUrl(target.imageUrl);
 
-        if (!storyImageUrl) {
-          toast.error("Failed to prepare image for story");
-          return;
+        // Track blob URLs for cleanup
+        if (storyImageUrl.startsWith("blob:")) {
+          blobUrlsRef.current.add(storyImageUrl);
         }
 
-        // Compose rich story text with product name, price, CTA
         const storyText = composeStoryText(target);
 
-        // Build proper StoryShareParams
-        const storyParams = {
+        shareToStory(storyImageUrl, {
           text: storyText,
           widget_link: {
             url: target.url,
             name: "View Product",
           },
-        };
+        });
 
-        shareToStory(storyImageUrl, storyParams);
         toast.info("Story editor opened.");
       }
     } catch (err: any) {
@@ -609,16 +393,9 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
 
   return (
     <div className="flex flex-col overflow-hidden">
-      {/* Product preview — strictly 4:5 cropped */}
-      {croppedImageUrl && (
-        <StoryImagePreview imageUrl={croppedImageUrl} title={target.title} />
-      )}
-
-      {/* Loading state for cropping */}
-      {isCropping && (
-        <div className="mx-4 mt-3 mb-1 flex items-center justify-center rounded-2xl bg-surface-overlay" style={{ aspectRatio: "4/5", maxHeight: "38dvh" }}>
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
+      {/* Product preview — CSS-only 4:5 crop */}
+      {target.imageUrl && (
+        <StoryImagePreview imageUrl={target.imageUrl} title={target.title} />
       )}
 
       {/* Title + URL */}
@@ -629,12 +406,12 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
         <p className="mt-0.5 text-[12px] text-muted-foreground truncate">{target.url}</p>
       </div>
 
-      {/* Telegram Story CTA (inside Telegram Mini App) */}
+      {/* Telegram Story CTA */}
       {inTelegram && (
         <div className="px-4 pb-3">
           <Button
             onClick={handlePublishAndShare}
-            disabled={isPublishing || isCropping}
+            disabled={isPublishing}
             className="w-full h-[50px] rounded-2xl text-[15px] font-semibold gap-2"
           >
             {isPublishing ? (
@@ -647,11 +424,10 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
         </div>
       )}
 
-      {/* Social icon row (non-Telegram / always shown outside TG) */}
+      {/* Social icon row (outside Telegram) */}
       {!inTelegram && (
         <div className="px-5 pb-4">
           <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-hide">
-            {/* Native share (first slot, if available) */}
             {typeof navigator !== "undefined" && "share" in navigator && (
               <motion.button
                 whileTap={{ scale: 0.88 }}
@@ -667,7 +443,6 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
               </motion.button>
             )}
 
-            {/* Copy link */}
             <motion.button
               whileTap={{ scale: 0.88 }}
               onClick={copyLink}
@@ -685,7 +460,6 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
               </span>
             </motion.button>
 
-            {/* Social channels */}
             {SOCIAL_BUTTONS.map((btn) => (
               <SocialIcon
                 key={btn.id}
@@ -699,7 +473,7 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
         </div>
       )}
 
-      {/* Action menu card */}
+      {/* Action menu */}
       <div className="mx-4 mb-8 overflow-hidden rounded-2xl bg-surface-elevated border border-border/40">
         <MenuRow
           icon={<Link2 className="h-4 w-4" />}
@@ -718,7 +492,9 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
   );
 }
 
-// Hook
+// 
+// Hook & Trigger
+// 
 
 export function useShareDrawer() {
   const openSheet = useOverlayStore((s) => s.openSheet);
@@ -743,8 +519,6 @@ export function useShareDrawer() {
 
   return { openShareDrawer };
 }
-
-// Standalone trigger
 
 interface ShareDrawerTriggerProps {
   children: React.ReactNode;
