@@ -12,7 +12,7 @@ import {
 } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { Loader2, Search, Sparkles } from "lucide-react";
+import { Loader2, Search, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { homepageQuery, productsInfiniteQuery } from "../queries";
 import { ProductCard } from "./ProductCard";
@@ -100,6 +100,9 @@ export function MarketplacePage() {
   // card "drops" in from (see cardDropStyle below).
   const slideDirectionRef = useRef<"next" | "prev">("next");
 
+  // Swipe gesture hint visibility — shown on page start until user swipes.
+  const [showSwipeHint, setShowSwipeHint] = useState(true);
+
   const goToNextSlide = () => {
     slideDirectionRef.current = "next";
     setActiveIndex((i) =>
@@ -127,7 +130,11 @@ export function MarketplacePage() {
   const handleDragMove = (clientX: number) => {
     if (dragStartX.current === null) return;
     dragDeltaX.current = clientX - dragStartX.current;
-    if (Math.abs(dragDeltaX.current) > 10) isSwiping.current = true;
+    if (Math.abs(dragDeltaX.current) > 10) {
+      isSwiping.current = true;
+      // Hide the swipe hint as soon as the user starts dragging.
+      setShowSwipeHint(false);
+    }
   };
   const handleDragEnd = () => {
     if (dragStartX.current === null) return;
@@ -259,6 +266,39 @@ export function MarketplacePage() {
                     </p>
                   </div>
                 </Link>
+
+                {/* Swipe gesture hint — minimal, Apple HIG-inspired. Shown only
+                    when multiple slides exist and the user hasn't started swiping yet. */}
+                {hasMultipleSlides && showSwipeHint && (
+                  <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-between px-3">
+                    <style>{`
+                      @keyframes swipeHintFade {
+                        0%, 100% { opacity: 0; }
+                        15%, 85% { opacity: 1; }
+                      }
+                      @keyframes swipeHintSlideLeft {
+                        0%, 100% { transform: translateX(0); }
+                        50% { transform: translateX(-6px); }
+                      }
+                      @keyframes swipeHintSlideRight {
+                        0%, 100% { transform: translateX(0); }
+                        50% { transform: translateX(6px); }
+                      }
+                    `}</style>
+                    <div
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-background/60 backdrop-blur-sm"
+                      style={{ animation: "swipeHintFade 4s ease-in-out both, swipeHintSlideLeft 2s ease-in-out 0.5s 2" }}
+                    >
+                      <ChevronLeft className="h-4 w-4 text-foreground/70" />
+                    </div>
+                    <div
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-background/60 backdrop-blur-sm"
+                      style={{ animation: "swipeHintFade 4s ease-in-out both, swipeHintSlideRight 2s ease-in-out 0.5s 2" }}
+                    >
+                      <ChevronRight className="h-4 w-4 text-foreground/70" />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
