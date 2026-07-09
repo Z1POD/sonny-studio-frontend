@@ -18,10 +18,9 @@ import { homepageQuery, productsInfiniteQuery } from "../queries";
 import { ProductCard } from "./ProductCard";
 import type { ProductListItem, ProductListParams } from "../types";
 
-/** Minimum horizontal drag distance (px) before a touch/mouse move counts as
- *  a swipe rather than a tap — also used to suppress the Link's click/nav
- *  after a swipe. */
-const SWIPE_THRESHOLD = 50;
+const SWIPE_THRESHOLD = 80;
+
+const SPRING_DURATION = 300;
 
 type MarketSearch = {
   q?: string;
@@ -31,8 +30,6 @@ type MarketSearch = {
 };
 
 export function MarketplacePage() {
-  // The route itself does no search validation — it's read here, generically,
-  // right where it's used.
   const search = useSearch({ strict: false }) as MarketSearch;
   const navigate = useNavigate();
 
@@ -60,10 +57,6 @@ export function MarketplacePage() {
 
   const heroCollection = homepage?.hero[0];
 
-  // Hero carousel: featured collection products, then trending, then new
-  // arrivals, then whatever's already loaded in the "shop all" grid below
-  // (first 20) — deduped, in that priority order. Swiping cycles through
-  // this pool and wraps back to the start instead of fetching anything new.
   const carouselProducts: ProductListItem[] = useMemo(() => {
     const pools = [
       heroCollection?.products ?? [],
@@ -86,8 +79,6 @@ export function MarketplacePage() {
 
   const [activeIndex, setActiveIndex] = useState(0);
 
-  // Keep the active slide valid whenever the pool changes size (e.g. once
-  // homepage/product data finishes loading).
   useEffect(() => {
     if (carouselProducts.length === 0) return;
     setActiveIndex((i) => ((i % carouselProducts.length) + carouselProducts.length) % carouselProducts.length);
@@ -96,19 +87,19 @@ export function MarketplacePage() {
   const featured = carouselProducts.length > 0 ? carouselProducts[activeIndex] : undefined;
   const hasMultipleSlides = carouselProducts.length > 1;
 
-  // Which way the last slide change went — drives the direction the next
-  // card "drops" in from (see cardDropStyle below).
   const slideDirectionRef = useRef<"next" | "prev">("next");
 
-  // Swipe gesture hint visibility — shown on page start until user swipes.
   const [showSwipeHint, setShowSwipeHint] = useState(true);
 
-  // Track image loading state for the hero card to show a skeleton while
-  // the next product image is fetching.
   const [heroImageLoaded, setHeroImageLoaded] = useState(false);
 
-  // Reset loading state whenever the featured product changes so the
-  // skeleton shows while the new image loads.
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartX = useRef<number | null>(null);
+  const dragDeltaX = useRef(0);
+  const isSwiping = useRef(false);
+  const cardRef = useRef<HTMLAnchorElement>(null);
+
   useEffect(() => {
     setHeroImageLoaded(false);
   }, [featured?.id]);
@@ -126,30 +117,40 @@ export function MarketplacePage() {
     );
   };
 
-  // Swipe handling (touch + mouse drag) — shared refs so both input types
-  // drive the same next/prev logic without adding any visible UI.
-  const dragStartX = useRef<number | null>(null);
-  const dragDeltaX = useRef(0);
-  const isSwiping = useRef(false);
-
   const handleDragStart = (clientX: number) => {
     dragStartX.current = clientX;
     dragDeltaX.current = 0;
     isSwiping.current = false;
+    setIsDragging(true);
+    setDragOffset(0);
   };
+
   const handleDragMove = (clientX: number) => {
     if (dragStartX.current === null) return;
-    dragDeltaX.current = clientX - dragStartX.current;
-    if (Math.abs(dragDeltaX.current) > 10) {
+    const delta = clientX - dragStartX.current;
+    dragDeltaX.current = delta;
+
+    if (Math.abs(delta) > 6) {
       isSwiping.current = true;
-      // Hide the swipe hint as soon as the user starts dragging.
       setShowSwipeHint(false);
     }
+
+    const resistance = 0.55;
+    setDragOffset(delta * resistance);
   };
+
   const handleDragEnd = () => {
     if (dragStartX.current === null) return;
-    if (dragDeltaX.current <= -SWIPE_THRESHOLD) goToNextSlide();
-    else if (dragDeltaX.current >= SWIPE_THRESHOLD) goToPrevSlide();
+    setIsDragging(false);
+
+    const delta = dragDeltaX.current;
+    if (delta <= -SWIPE_THRESHOLD) {
+      goToNextSlide();
+    } else if (delta >= SWIPE_THRESHOLD) {
+      goToPrevSlide();
+    }
+
+    setDragOffset(0);
     dragStartX.current = null;
     dragDeltaX.current = 0;
   };
@@ -167,7 +168,6 @@ export function MarketplacePage() {
       if (dragStartX.current !== null) handleDragEnd();
     },
     onClick: (e: ReactMouseEvent) => {
-      // A swipe shouldn't also trigger navigation to the product page.
       if (isSwiping.current) {
         e.preventDefault();
         isSwiping.current = false;
@@ -175,14 +175,24 @@ export function MarketplacePage() {
     },
   };
 
-  // Plays every time `featured` changes (the Link below is keyed by
-  // `featured.id`, so a fresh mount = a fresh animation run) — the new card
-  // drops/pops in from the direction it was swiped from.
   const cardDropStyle = {
     animation: "heroCardDropIn 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both",
     "--drop-x": slideDirectionRef.current === "prev" ? "-28px" : "28px",
     "--drop-rotate": slideDirectionRef.current === "prev" ? "-3deg" : "3deg",
   } as CSSProperties;
+
+  const swipeTransformStyle: CSSProperties = isDragging
+    ? {
+        transform: `translateX(${dragOffset}px) rotate(${dragOffset * 0.02}deg) scale(${1 - Math.abs(dragOffset) * 0.0003})`,
+        transition: "none",
+        cursor: "grabbing",
+      }
+    : dragOffset !== 0
+      ? {
+          transform: "translateX(0px) rotate(0deg) scale(1)",
+          transition: `transform ${SPRING_DURATION}ms cubic-bezier(0.34, 1.56, 0.64, 1)`,
+        }
+      : cardDropStyle;
 
   return (
     <div>
@@ -227,10 +237,7 @@ export function MarketplacePage() {
             </div>
 
             {featured && (
-              <div className="relative">
-                {/* Keyframe for the per-slide "drop in" card animation — hoisted
-                    here (a sibling of the swapped-out Link below) so it's
-                    defined once and isn't recreated on every slide change. */}
+              <div className="relative select-none">
                 <style>{`
                   @keyframes heroCardDropIn {
                     0% {
@@ -250,11 +257,12 @@ export function MarketplacePage() {
                 `}</style>
 
                 <Link
+                  ref={cardRef}
                   key={featured.id}
                   to="/product/$slug"
                   params={{ slug: featured.slug }}
                   className="relative block aspect-square w-full overflow-hidden rounded-[2rem] border border-border bg-surface apple-shadow md:aspect-[4/5]"
-                  style={cardDropStyle}
+                  style={swipeTransformStyle}
                   {...heroImageInteractionProps}
                 >
                   {/* Skeleton placeholder shown while the next image is loading. */}
@@ -283,9 +291,6 @@ export function MarketplacePage() {
                   </div>
                 </Link>
 
-                {/* Swipe gesture hint — minimal, Apple HIG-inspired. Shown only
-                    when multiple slides exist and the user hasn't started swiping yet.
-                    Uses a touch-hand visual instead of chevrons. */}
                 {hasMultipleSlides && showSwipeHint && (
                   <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
                     <style>{`
@@ -295,26 +300,29 @@ export function MarketplacePage() {
                       }
                       @keyframes swipeHandGesture {
                         0% { transform: translateX(0) scale(1); }
-                        25% { transform: translateX(-18px) scale(0.95); }
+                        25% { transform: translateX(-22px) scale(0.95); }
                         50% { transform: translateX(0) scale(1); }
-                        75% { transform: translateX(18px) scale(0.95); }
+                        75% { transform: translateX(22px) scale(0.95); }
                         100% { transform: translateX(0) scale(1); }
                       }
                     `}</style>
                     <div
-                      className="flex flex-col items-center gap-2 rounded-2xl bg-background/70 px-5 py-3 backdrop-blur-md"
-                      style={{ animation: "swipeHintFade 5s ease-in-out both" }}
+                      className="flex flex-col h-[94%] w-[94%] items-center justify-center gap-2 rounded-2xl px-6 py-3 backdrop-blur-md"
+                      style={{
+                        backgroundColor: "rgba(8, 59, 50, 0.5)",
+                        animation: "swipeHintFade 5s ease-in-out both",
+                      }}
                     >
                       <svg
-                        width="28"
-                        height="28"
+                        width="32"
+                        height="32"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="1.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className="text-foreground/60"
+                        className="text-white/90"
                         style={{ animation: "swipeHandGesture 2.4s ease-in-out 0.3s 2" }}
                       >
                         <path d="M8 11V7a4 4 0 0 1 8 0v4" />
@@ -322,7 +330,7 @@ export function MarketplacePage() {
                         <path d="M8 15v-1.5a2.5 2.5 0 0 1 5 0V15" />
                         <path d="M8 11h8v6a4 4 0 0 1-8 0v-6Z" />
                       </svg>
-                      <span className="text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground">
+                      <span className="text-[10px] font-medium uppercase tracking-[0.15em] text-gold/80">
                         Swipe
                       </span>
                     </div>
