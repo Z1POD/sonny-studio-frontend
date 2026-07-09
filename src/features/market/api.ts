@@ -128,6 +128,10 @@ export interface PrintAreaUvConfig {
   world_bounds?: PrintAreaWorldBounds;
   transform_limits?: PrintAreaTransformLimits;
   uv_bounds?: { min_u: number; min_v: number; max_u: number; max_v: number };
+  /** "cylindrical" = render via real surface UV instead of a box-projected
+   *  decal — set this for bottle/mug/curved-body print zones. Defaults to
+   *  "flat" (current behavior) when omitted. */
+  surface_type?: "flat" | "cylindrical";
 }
 
 export interface ViewerPrintArea {

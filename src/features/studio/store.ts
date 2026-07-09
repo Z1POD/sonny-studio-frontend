@@ -51,6 +51,15 @@ export interface PrintArea {
   sortOrder?: number;
   currency?: { code: string; symbol: string };
   methods: PrintMethod[];              // ← replaces pricingTiers
+  /**
+   * "cylindrical" = render this zone's decal via real surface UV (cropped
+   * cylindrical projection), instead of drei's box-projected <Decal>.
+   * Box projection stretches badly toward a decal's edges on small-radius
+   * curved surfaces (bottles, mugs) — see CylindricalDecal.tsx. Defaults
+   * to "flat" (current box-decal behavior) when omitted, so existing
+   * garment placements are unaffected.
+   */
+  surfaceType?: "flat" | "cylindrical";
   uvBounds?: {
     minU: number; minV: number; maxU: number; maxV: number;
   };

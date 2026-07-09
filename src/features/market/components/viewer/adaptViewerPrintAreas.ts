@@ -1,6 +1,5 @@
 // src/features/market/components/viewer/adaptViewerPrintAreas.ts
 
-
 import type { PrintArea, ArtworkState } from "@/features/studio/store";
 import type { Viewer3D, ViewerPrintArea } from "../../api";
 
@@ -16,17 +15,11 @@ export function adaptViewerPrintAreas(printAreas: ViewerPrintArea[] = []): Print
     const uvB = uv.uv_bounds;
 
     return {
-      // The marketplace API has no per-zone `id`, only `area_key` — reuse
-      // it as the id so it can key `artworks`/`layerOrder` the same way
-      // Studio's real `PrintArea.id` does.
       id: p.area_key,
       areaKey: p.area_key,
       name: p.name,
       placement: normalizePlacement(p.placement),
       meshName: p.mesh_name ?? "",
-      // Interaction-only flags — irrelevant in read-only mode (editable
-      // handles never mount regardless, since selectedPrintAreaId is
-      // always null here), kept false/1 for a conservative default.
       allowScaling: false,
       allowRotation: false,
       maxLayers: 1,
@@ -40,6 +33,7 @@ export function adaptViewerPrintAreas(printAreas: ViewerPrintArea[] = []): Print
       worldBounds: wB
         ? { center: wB.center, halfExtents: wB.half_extents, rotation: wB.rotation ?? [0, 0, 0] }
         : undefined,
+      surfaceType: uv.surface_type ?? "flat",
       transformLimits: tL
         ? {
             minScale: tL.min_scale,
@@ -54,8 +48,6 @@ export function adaptViewerPrintAreas(printAreas: ViewerPrintArea[] = []): Print
   });
 }
 
-/** Keyed by `area_key` (== the `id` produced by adaptViewerPrintAreas above)
- *  so MeshNode/DecalLayer can look decals up by zone id exactly like Studio does. */
 export function adaptViewerArtworks(printAreas: ViewerPrintArea[] = []): Record<string, ArtworkState> {
   const artworks: Record<string, ArtworkState> = {};
   for (const p of printAreas) {

@@ -148,6 +148,65 @@ export function getZoneTransformBounds(zone: PrintArea): ZoneTransformBounds {
   };
 }
 
+export interface CylindricalZoneWindow {
+  /** Radians, measured the same way CylindricalDecal/WrapOverlayMesh do:
+   *  atan2(x - meshCenterX, z - meshCenterZ). */
+  centerAngle: number;
+  halfAngle: number;
+  centerY: number;
+  /** World units (metres). */
+  halfHeight: number;
+  meshCenterX: number;
+  meshCenterZ: number;
+}
+
+export function computeCylindricalZoneWindow(
+  zone: PrintArea,
+  meshNode: THREE.Mesh,
+): CylindricalZoneWindow | null {
+  const box = new THREE.Box3().setFromObject(meshNode);
+  const meshCenter = new THREE.Vector3();
+  box.getCenter(meshCenter);
+  const meshSize = new THREE.Vector3();
+  box.getSize(meshSize);
+
+  let centre: THREE.Vector3;
+  if (zone.worldBounds?.center) {
+    centre = new THREE.Vector3(...zone.worldBounds.center);
+  } else if (zone.cameraFocus?.target) {
+    centre = new THREE.Vector3(...zone.cameraFocus.target);
+  } else {
+    centre = computeCentreFromMesh(zone.placement, meshNode);
+  }
+
+  const centerAngle = Math.atan2(centre.x - meshCenter.x, centre.z - meshCenter.z);
+  const centerY = centre.y;
+
+  const zoneWidthM = Math.max((zone.widthCm ?? 10) * CM, 1e-4);
+  const zoneHeightM = Math.max((zone.heightCm ?? 10) * CM, 1e-4);
+  const halfHeight = zoneHeightM / 2;
+
+  // Sample local radius only from vertices near this zone's height band.
+  const position = meshNode.geometry.attributes.position;
+  const bandHalfHeight = halfHeight * 1.5;
+  let radiusSum = 0;
+  let radiusCount = 0;
+  for (let i = 0; i < position.count; i++) {
+    const y = position.getY(i);
+    if (Math.abs(y - centerY) > bandHalfHeight) continue;
+    const x = position.getX(i) - meshCenter.x;
+    const z = position.getZ(i) - meshCenter.z;
+    radiusSum += Math.sqrt(x * x + z * z);
+    radiusCount++;
+  }
+  const fallbackRadius = Math.max(meshSize.x, meshSize.z) / 4;
+  const radius = radiusCount > 0 ? radiusSum / radiusCount : fallbackRadius;
+
+  const halfAngle = Math.max(zoneWidthM / 2 / Math.max(radius, 1e-4), 0.01);
+
+  return { centerAngle, halfAngle, centerY, halfHeight, meshCenterX: meshCenter.x, meshCenterZ: meshCenter.z };
+}
+
 export function useDecalTransform(
   zone: PrintArea,
   artwork: ArtworkState | undefined,

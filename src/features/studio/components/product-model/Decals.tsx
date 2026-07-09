@@ -18,6 +18,7 @@ import {
   CORNER_SIGN,
   type Corner,
 } from "../../hooks/useDecalCornerResize";
+import { CylindricalDecal } from "./CylindricalDecal";
 
 // DecalMaterial
 
@@ -90,7 +91,7 @@ const CORNERS: Corner[] = ["tl", "tr", "bl", "br"];
 const PIN_HIT_RADIUS = 0.018;
 const PIN_OUTER_RADIUS = 0.013;
 const PIN_INNER_RADIUS = 0.0042;
-const PIN_LOCAL_Z = 0.013; 
+const PIN_LOCAL_Z = 0.013; // lifted slightly toward the camera along the decal's own normal
 
 interface CornerHandleProps {
   corner: Corner;
@@ -180,7 +181,6 @@ function DecalCornerHandles({
   );
 }
 
-
 interface DecalRotateGizmoProps {
   zone: PrintArea;
   transform: DecalTransform;
@@ -260,8 +260,6 @@ interface SingleDecalLayerProps {
   transformMode: TransformMode;
   onSelect: (zoneId: string) => void;
   onTransformChange: (patch: Partial<ArtworkState>) => void;
-  /** false = read-only preview (marketplace): no click-to-select, no drag,
-   *  no corner/rotate handles, no outline. Defaults to true (Studio). */
   editable?: boolean;
 }
 
@@ -382,8 +380,24 @@ export function DecalLayer({
     texture.needsUpdate = true;
   }, [texture]);
 
-  if (!texture) return null;
   if (zone.placement === "wrap") return null;
+
+  if (zone.surfaceType === "cylindrical") {
+
+    return (
+      <CylindricalDecal
+        zone={zone}
+        artwork={artwork}
+        meshNode={meshNode}
+        stackIndex={stackIndex}
+        isActive={isActive}
+        onSelect={onSelect}
+        editable={editable}
+      />
+    );
+  }
+
+  if (!texture) return null;
 
   return (
     <SingleDecalLayer

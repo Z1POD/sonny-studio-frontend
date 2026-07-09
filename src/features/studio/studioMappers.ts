@@ -1,12 +1,4 @@
 // src/features/studio/studioMappers.ts
-//
-// Pure data-transformation utilities for the Studio feature.
-// Nothing here touches React or the DOM — safe to unit-test in isolation.
-//
-// Exports:
-//   mapEditorConfigToApparelProduct  — /apparels/{id}/editor-config/ → ApparelProduct
-//   mapSavedProductToApparelProduct  — /store/products/{id}/         → ApparelProduct
-//   hydrateStudioFromSavedDesign     — restores artwork state into the studio store
 
 import type { PrintArea, ApparelProduct } from "./store";
 import { useStudioStore } from "./store";
@@ -57,6 +49,7 @@ export function mapEditorConfigToApparelProduct(rawData: any): ApparelProduct {
       worldBounds: wB
         ? { center: wB.center, halfExtents: wB.half_extents, rotation: wB.rotation }
         : undefined,
+      surfaceType: uv.surface_type ?? "flat",
       transformLimits: tL
         ? {
             minScale: tL.min_scale, maxScale: tL.max_scale,
@@ -202,6 +195,7 @@ export function mapSavedProductToApparelProduct(detail: any): ApparelProduct {
             rotation:    pa.uv_config.world_bounds.rotation,
           }
         : undefined,
+      surfaceType: pa.uv_config?.surface_type ?? "flat",
     };
   });
 
