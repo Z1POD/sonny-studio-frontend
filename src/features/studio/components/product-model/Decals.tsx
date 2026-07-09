@@ -85,17 +85,12 @@ function DecalOutline({ transform }: { transform: DecalTransform }) {
   );
 }
 
-// DecalCornerHandles
-// Four draggable pins, one per corner, rendered in the decal's own local
-// plane (same position/rotation as the outline). Each pin is its own hit
-// target with a fixed generous radius — independent of the artwork's own
-// size — so tiny artwork is just as easy to grab as large artwork.
 
 const CORNERS: Corner[] = ["tl", "tr", "bl", "br"];
 const PIN_HIT_RADIUS = 0.018;
 const PIN_OUTER_RADIUS = 0.013;
 const PIN_INNER_RADIUS = 0.0042;
-const PIN_LOCAL_Z = 0.013; // lifted slightly toward the camera along the decal's own normal
+const PIN_LOCAL_Z = 0.013; 
 
 interface CornerHandleProps {
   corner: Corner;
@@ -185,10 +180,6 @@ function DecalCornerHandles({
   );
 }
 
-// DecalRotateGizmo
-// Move and resize both happen via direct pointer interaction on the decal
-// itself (interior drag + corner pins) — this gizmo is only for rotation,
-// which still needs its own dedicated handle.
 
 interface DecalRotateGizmoProps {
   zone: PrintArea;
@@ -269,6 +260,9 @@ interface SingleDecalLayerProps {
   transformMode: TransformMode;
   onSelect: (zoneId: string) => void;
   onTransformChange: (patch: Partial<ArtworkState>) => void;
+  /** false = read-only preview (marketplace): no click-to-select, no drag,
+   *  no corner/rotate handles, no outline. Defaults to true (Studio). */
+  editable?: boolean;
 }
 
 function SingleDecalLayer({
@@ -281,6 +275,7 @@ function SingleDecalLayer({
   transformMode,
   onSelect,
   onTransformChange,
+  editable = true,
 }: SingleDecalLayerProps) {
   const transform = useDecalTransform(zone, artwork, meshNode);
   const bounds = useMemo(() => getZoneTransformBounds(zone), [zone]);
@@ -288,15 +283,10 @@ function SingleDecalLayer({
 
   if (!transform) return null;
 
-  // Interior drag → move, always live directly on the artwork. Rotation is
-  // still an explicit, exclusive mode (it needs its own dedicated handle),
-  // so the rotate gizmo only shows up when transformMode is "rotate", and
-  // move + the corner resize pins step aside while it's up so nothing
-  // fights over the same pointer.
-  const showRotateGizmo = isActive && transformMode === "rotate";
-  const showCornerHandles = isActive && !showRotateGizmo && zone.allowScaling;
+  const showRotateGizmo = editable && isActive && transformMode === "rotate";
+  const showCornerHandles = editable && isActive && !showRotateGizmo && zone.allowScaling;
 
-  const moveProps = showRotateGizmo
+  const moveProps = !editable || showRotateGizmo
     ? {}
     : {
         onPointerDown: moveHandlers.onPointerDown,
@@ -313,20 +303,24 @@ function SingleDecalLayer({
         rotation={transform.rotation}
         scale={transform.scale}
         renderOrder={stackIndex + 1}
-        onClick={(e: any) => {
-          e.stopPropagation();
-          onSelect(zone.id);
-        }}
+        onClick={
+          editable
+            ? (e: any) => {
+                e.stopPropagation();
+                onSelect(zone.id);
+              }
+            : undefined
+        }
         {...moveProps}
       >
         <DecalMaterial
           texture={texture}
           polygonOffsetFactor={-4 - stackIndex}
-          selected={isActive}
+          selected={editable && isActive}
         />
       </Decal>
 
-      {isActive && (
+      {editable && isActive && (
         <>
           <DecalOutline transform={transform} />
           {showCornerHandles && (
@@ -363,6 +357,8 @@ interface DecalLayerProps {
   transformMode: TransformMode;
   onSelect: (zoneId: string) => void;
   onTransformChange: (patch: Partial<ArtworkState>) => void;
+  /** false = read-only preview (marketplace). Defaults to true (Studio). */
+  editable?: boolean;
 }
 
 export function DecalLayer({
@@ -374,6 +370,7 @@ export function DecalLayer({
   transformMode,
   onSelect,
   onTransformChange,
+  editable = true,
 }: DecalLayerProps) {
   const texture = useTexture(artwork.decalUrl || "");
 
@@ -399,6 +396,7 @@ export function DecalLayer({
       transformMode={transformMode}
       onSelect={onSelect}
       onTransformChange={onTransformChange}
+      editable={editable}
     />
   );
 }

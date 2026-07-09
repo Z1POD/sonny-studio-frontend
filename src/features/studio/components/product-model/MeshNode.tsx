@@ -22,8 +22,11 @@ interface MeshNodeProps {
     roughness: number;
     metalness: number;
   };
-  onSelectPrintArea: (id: string | null) => void;
-  onSetArtwork: (zoneId: string, patch: Partial<ArtworkState>) => void;
+  onSelectPrintArea?: (id: string | null) => void;
+  onSetArtwork?: (zoneId: string, patch: Partial<ArtworkState>) => void;
+  /** false = read-only preview (marketplace): no selection, no drag/resize/
+   *  rotate handles on any decal. Defaults to true (Studio). */
+  editable?: boolean;
 }
 
 function zoneTargetsMesh(zone: PrintArea, meshName: string): boolean {
@@ -42,8 +45,9 @@ export function MeshNode({
   selectedColor,
   colorableMeshes,
   materialConfig,
-  onSelectPrintArea,
-  onSetArtwork,
+  onSelectPrintArea = () => {},
+  onSetArtwork = () => {},
+  editable = true,
 }: MeshNodeProps) {
   const material = useBuiltMaterial({
     node,
@@ -67,10 +71,14 @@ export function MeshNode({
         receiveShadow
         geometry={node.geometry}
         material={material}
-        onClick={(e: any) => {
-          e.stopPropagation();
-          onSelectPrintArea(null);
-        }}
+        onClick={
+          editable
+            ? (e: any) => {
+                e.stopPropagation();
+                onSelectPrintArea(null);
+              }
+            : undefined
+        }
       >
         {zonesForMesh.map((zone, stackIndex) => {
           const art = artworks[zone.id];
@@ -88,6 +96,7 @@ export function MeshNode({
               onTransformChange={(patch) =>
                 onSetArtwork(zone.id, { ...art, ...patch })
               }
+              editable={editable}
             />
           );
         })}

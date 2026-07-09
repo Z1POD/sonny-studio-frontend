@@ -69,6 +69,7 @@
 
   /* --- Shadows --- */
   --shadow-elevated: 0 12px 40px -8px var(--shadow-color-elevated);
+  --shadow-floating: 0 12px 40px -8px oklch(0 0 0 / 0.55);
   --shadow-glow: 0 0 32px -4px var(--shadow-color-glow);
   --shadow-glass: 0 1px 0 0 oklch(1 0 0 / 0.05) inset, 0 20px 60px -20px var(--shadow-color-glass);
   --shadow-gold: 0 8px 30px -8px oklch(0.78 0.13 84 / 0.4);

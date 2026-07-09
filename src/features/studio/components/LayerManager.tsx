@@ -72,7 +72,7 @@ export function LayerManager({ open, onClose }: LayerManagerProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+            className="fixed inset-0 z-40 bg-black/40"
           />
 
           {/* Drawer */}
@@ -81,7 +81,7 @@ export function LayerManager({ open, onClose }: LayerManagerProps) {
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed inset-x-0 bottom-0 z-50 max-h-[65%] rounded-t-3xl backdrop-blur-xl border-t border-border shadow-2xl shadow-elevated"
+            className="fixed inset-x-0 bottom-0 z-50 max-h-[65%] rounded-t-3xl backdrop-blur-xl border-t border-border shadow-2xl shadow-floating"
           >
             {/* Handle */}
             <div className="flex justify-center pt-3 pb-1">

@@ -1,10 +1,5 @@
 // src/features/studio/components/StudioWorkspace.tsx
-//
-// Pure layout + orchestration shell.
-//
-// Data mapping   → studioMappers.ts
-// Init / hydrate → hooks/useStudioInit.ts
-// Save / checkout → hooks/useStudioCheckout.ts
+
 
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
@@ -28,6 +23,8 @@ export function StudioWorkspace() {
   const canvasRef = useRef<StudioCanvasHandle>(null);
   const [mounted, setMounted]                       = useState(false);
   const [artworkLibraryOpen, setArtworkLibraryOpen] = useState(false);
+  const [canvasError, setCanvasError]               = useState(false);
+  const [modelLoading, setModelLoading]              = useState(true);
 
   useEffect(() => setMounted(true), []);
   const { enableClosingConfirmation, disableClosingConfirmation } = useTelegram();
@@ -100,26 +97,60 @@ export function StudioWorkspace() {
     <>
       <div className="relative h-[calc(100dvh-0rem)] w-full overflow-hidden bg-background">
         <CanvasDrop onUploaded={handleArtworkSelect}>
-          <StudioCanvas ref={canvasRef} />
+          <StudioCanvas
+            ref={canvasRef}
+            onError={() => setCanvasError(true)}
+            onLoadingChange={(loading) => setModelLoading(loading)}
+          />
         </CanvasDrop>
 
-        <ArtworkLibrary
-          onSelect={handleArtworkSelect}
-          isOpen={artworkLibraryOpen}
-          onClose={() => setArtworkLibraryOpen(false)}
-        />
+        {!canvasError && (
+          <>
+            <ArtworkLibrary
+              onSelect={handleArtworkSelect}
+              isOpen={artworkLibraryOpen}
+              onClose={() => setArtworkLibraryOpen(false)}
+            />
 
-        <StudioControls
-          onSave={handleContinueToCheckout}
-          isSaving={isCapturing}
-          onContinue={handleContinueToCheckout}
-          onToggleArtworkLibrary={() => setArtworkLibraryOpen((v) => !v)}
-          artworkLibraryOpen={artworkLibraryOpen}
-        />
+            <div
+              aria-hidden={modelLoading}
+              className={
+                modelLoading
+                  ? "pointer-events-none opacity-40 transition-opacity"
+                  : "transition-opacity"
+              }
+            >
+              <StudioControls
+                onSave={handleContinueToCheckout}
+                isSaving={isCapturing}
+                onContinue={handleContinueToCheckout}
+                onToggleArtworkLibrary={() => setArtworkLibraryOpen((v) => !v)}
+                artworkLibraryOpen={artworkLibraryOpen}
+              />
+            </div>
 
-        <div className="pointer-events-none hidden md:flex absolute bottom-1 left-4 z-10 rounded-full border border-border/60 bg-surface/70 px-3 py-1 text-xs text-muted-foreground backdrop-blur-md">
-          Drag to rotate · scroll to zoom · drop artwork to upload
-        </div>
+            <div className="pointer-events-none hidden md:flex absolute bottom-1 left-4 z-10 rounded-full border border-border/60 bg-surface/70 px-3 py-1 text-xs text-muted-foreground backdrop-blur-md">
+              Drag to rotate · scroll to zoom · drop artwork to upload
+            </div>
+          </>
+        )}
+
+        {canvasError && (
+          <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 bg-background/95 px-6 text-center backdrop-blur-xl">
+            <p className="text-sm font-medium text-foreground">
+              Unable to load 3D preview.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Something went wrong while rendering this product. Please go back and try again.
+            </p>
+            <Button asChild className="mt-2 rounded-full">
+              <Link to="/designs">
+                <Shirt className="mr-2 h-4 w-4" />
+                Go home
+              </Link>
+            </Button>
+          </div>
+        )}
       </div>
 
       <CheckOut mockupUrls={capturedMockups} />

@@ -1,12 +1,4 @@
-/**
- * StudioBottomNav.tsx — v5
- *
- * Apple HIG-inspired minimal bottom navigation.
- * - Home/exit button navigates to /designs
- * - Price bar slides out when artwork is applied
- * - Pill-style active states, SF-style icon+label layout
- * - Grouped by structural and functional hierarchies
- */
+// src/features/studio/components/StudioBottomNav
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -34,7 +26,6 @@ interface StudioBottomNavProps {
   artworkLibraryOpen?: boolean;
 }
 
-// Global/Structural navigation items (excluding Design & Move for explicit layout placement)
 const PRE_SPLIT_NAV_ITEMS: {
   id: NonNullable<StudioPanelId>;
   icon: React.ReactNode;
@@ -86,8 +77,7 @@ export function StudioBottomNav({
         transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
         className="pointer-events-auto fixed inset-x-0 bottom-4 z-20 flex justify-center px-3"
       >
-        <div className="flex w-full max-w-sm flex-col rounded-2xl border border-border/60 shadow-2xl backdrop-blur-xl p-1.5 shadow-elevated">
-          {/* Price / Continue bar */}
+        <div className="flex w-full max-w-sm flex-col rounded-2xl border border-border shadow-2xl backdrop-blur-xl p-1.5 shadow-floating">
           <AnimatePresence>
             {showContinueToCheckoutBar && (
               <motion.div
@@ -128,7 +118,6 @@ export function StudioBottomNav({
           {/* Main Nav Bar */}
           <div className="flex items-center rounded-2xl border border-border/50 bg-background/80 px-2 py-1.5 backdrop-blur-xl shadow-lg gap-0.5">
 
-            {/* 1. Info Button */}
             <NavButton
               icon={<Info className="h-[18px] w-[18px]" />}
               label="Info"
@@ -136,7 +125,6 @@ export function StudioBottomNav({
               onClick={() => onTogglePanel(activePanel === "info" ? null : "info")}
             />
 
-            {/* 2. Design Button (Now next to Info) */}
             <NavButton
               icon={<ImagePlus className="h-[18px] w-[18px]" />}
               label="Design"
@@ -145,7 +133,6 @@ export function StudioBottomNav({
               onClick={() => onToggleArtworkLibrary?.()}
             />
 
-            {/* 3. Remaining Panel Items (Color, Zone) */}
             {PRE_SPLIT_NAV_ITEMS.filter(item => item.id !== "info").map((item) => (
               <NavButton
                 key={item.id}
@@ -159,7 +146,6 @@ export function StudioBottomNav({
             {/* Divider */}
             <div className="mx-1 h-5 w-px shrink-0 rounded-full bg-border/60" />
 
-            {/* 4. Layers Drawer Button */}
             <NavButton
               icon={<Layers className="h-[18px] w-[18px]" />}
               label="Layers"
@@ -167,7 +153,6 @@ export function StudioBottomNav({
               onClick={() => setLayerManagerOpen(true)}
             />
 
-            {/* 5. Move / Nudge Button (Now next to Layers after split) */}
             <NavButton
               icon={<Move className="h-[18px] w-[18px]" />}
               label="Nudge"

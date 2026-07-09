@@ -11,6 +11,7 @@ import React, {
 import { Canvas } from "@react-three/fiber";
 import { ContactShadows, Environment, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
+import { Loader2 } from "lucide-react";
 
 import { useStudioStore } from "../store";
 import { ProductModel } from "./ProductModel";
@@ -33,14 +34,20 @@ export interface StudioCanvasHandle {
   captureAllShots: (shots: ShotConfig[]) => Promise<ShotConfig[]>;
 }
 
-export const StudioCanvas = forwardRef<StudioCanvasHandle>(
-  function StudioCanvas(_, ref) {
+interface StudioCanvasProps {
+  /** Fired once when the canvas/model crashes and the error boundary trips. */
+  onError?: (error: unknown) => void;
+  /** Fired whenever the model loading state changes, with 0-100 progress. */
+  onLoadingChange?: (loading: boolean, progress: number) => void;
+}
+
+export const StudioCanvas = forwardRef<StudioCanvasHandle, StudioCanvasProps>(
+  function StudioCanvas({ onError, onLoadingChange }, ref) {
     const store = useStudioStore();
     const product = store.product;
     const captureApiRef = useRef<CaptureAPI | null>(null);
 
     const [modelLoading, setModelLoading] = useState(true);
-    const [modelProgress, setModelProgress] = useState(0);
 
     useImperativeHandle(ref, () => ({
       capture: () => captureApiRef.current?.capture() ?? null,
@@ -74,21 +81,13 @@ export const StudioCanvas = forwardRef<StudioCanvasHandle>(
     const shadows = render.contactShadows;
 
     return (
-      <CanvasErrorBoundary>
+      <CanvasErrorBoundary onError={onError}>
         <div className="relative h-full w-full">
           {modelLoading && (
             <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/50 backdrop-blur-md">
-              <div className="w-48 space-y-3 text-center">
+              <div className="flex flex-col items-center gap-3 text-center">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 <p className="text-sm font-medium">Loading model...</p>
-                <div className="h-1.5 overflow-hidden rounded-full bg-white/20">
-                  <div
-                    className="h-full bg-primary transition-all"
-                    style={{ width: `${modelProgress}%` }}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {Math.round(modelProgress)}%
-                </p>
               </div>
             </div>
           )}
@@ -119,7 +118,7 @@ export const StudioCanvas = forwardRef<StudioCanvasHandle>(
               <ProgressReporter
                 onLoadingChange={(loading, progress) => {
                   setModelLoading(loading);
-                  setModelProgress(progress);
+                  onLoadingChange?.(loading, progress);
                 }}
               />
               <Environment preset={product.environment} />
