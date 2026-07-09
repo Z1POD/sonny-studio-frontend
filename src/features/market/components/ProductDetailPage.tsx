@@ -3,7 +3,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Box, Check, Eye, Image as ImageIcon, Loader2, ShoppingBag, Star } from "lucide-react";
@@ -128,6 +128,7 @@ function ProductDetailContent({
     setIsAdded(true);
     setTimeout(() => setIsAdded(false), 2000);
   };
+  const navigate = useNavigate();
 
   return (
     <div className="relative pb-28 md:pb-0">
@@ -368,7 +369,15 @@ function ProductDetailContent({
 
       {product.related_products.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 pb-8 pt-10 md:px-8">
-          <h2 className="mb-5 text-xl font-semibold tracking-tight">You might also like</h2>
+          <div className="flex flex-row justify-between">
+              <h2 className="mb-5 text-xl font-semibold tracking-tight">You might also like</h2>
+              <button
+                  onClick={() => navigate({ to: "/marketplace/#shop-all" })}
+                  className="inline-flex h-8 items-center rounded-full border border-border bg-surface px-2 text-sm font-medium hover:border-gold"
+              >
+                  See more
+              </button>
+          </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 md:gap-4">
             {product.related_products.map((p) => (
               <ProductCard key={p.id} product={p} />
