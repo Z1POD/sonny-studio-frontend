@@ -1,6 +1,5 @@
 // src/features/checkout/components/StepReview.tsx
 
-
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
@@ -76,7 +75,6 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
       setIsEditingCoupon(true);
       setCouponDraft(couponCode);
     }
-    
   }, [fieldErrors.coupon]);
 
   const applyCouponDraft = () => {
@@ -102,6 +100,7 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
       return cartItems.map((line) => ({
         key: `${line.productId}:${line.colorName}:${line.size}`,
         title: line.title,
+        thumbnailUrl: line.thumbnailUrl,
         colorHex: line.colorHex,
         colorName: line.colorName,
         size: line.size,
@@ -110,7 +109,7 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
       }));
     }
     const items: Array<{
-      key: string; title: string; colorHex: string; colorName: string;
+      key: string; title: string; thumbnailUrl?: string; colorHex: string; colorName: string;
       size: string; quantity: number; lineTotal: number;
     }> = [];
     for (const sel of selectedVariants.values()) {
@@ -119,6 +118,7 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
         items.push({
           key: variant.id,
           title: productName,
+          thumbnailUrl: undefined,
           colorHex: variant.color.hex,
           colorName: variant.color.name,
           size: variant.size,
@@ -187,13 +187,11 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
       const backendErrors = getFieldErrorsFromApiError(e);
 
       if (backendErrors.coupon) {
-      
         setFieldErrors({ ...fieldErrors, coupon: backendErrors.coupon });
         setIsEditingCoupon(true);
         setCouponDraft(couponCode);
         toast.error(backendErrors.coupon);
       } else if (Object.keys(backendErrors).length > 0) {
-    
         setFieldErrors(backendErrors);
         toast.error(e?.message ?? "Please review your shipping details");
         goBack();
@@ -274,10 +272,18 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
           {selectedItems.map((item) => (
             <div key={item.key} className="flex items-center justify-between py-2 border-t border-border/40 first:border-t-0">
               <div className="flex items-center gap-3">
-                <span
-                  className="h-6 w-6 rounded-full border border-border/40"
-                  style={{ backgroundColor: item.colorHex }}
-                />
+                {item.thumbnailUrl ? (
+                  <img
+                    src={item.thumbnailUrl}
+                    alt={item.title}
+                    className="h-10 w-10 flex-shrink-0 rounded-lg border border-border/40 object-cover"
+                  />
+                ) : (
+                  <span
+                    className="h-6 w-6 flex-shrink-0 rounded-full border border-border/40"
+                    style={{ backgroundColor: item.colorHex }}
+                  />
+                )}
                 <div>
                   <p className="text-sm font-medium">{item.title}</p>
                   <p className="text-[11px] text-muted-foreground">

@@ -109,7 +109,11 @@ function ProductDetailContent({
     addToCart(product, color, size, 1);
     toast.success("Added to bag", {
       description: `${product.title} · ${color.name} · ${size}`,
-      action: { label: "View", onClick: () => openCart() },
+      action: {
+        label: "View",
+        onClick: openCart,
+      },
+      duration: Infinity,
     });
     setIsAdded(true);
     setTimeout(() => setIsAdded(false), 2000);

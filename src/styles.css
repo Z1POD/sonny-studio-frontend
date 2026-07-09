@@ -5,9 +5,7 @@
 /* 👇 Correct Tailwind v4 dark selector */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* ============================================================
-   Sonny Studio — Apple-inspired design system
-   ============================================================ */
+/* Sonny Studio — Apple-inspired design system */
 
 @theme inline {
   /* --- Radii Mapping --- */
@@ -76,9 +74,7 @@
   --shadow-gold: 0 8px 30px -8px oklch(0.78 0.13 84 / 0.4);
 }
 
-/* ============================================================
-   🎨 LIGHT THEME PRIMITIVES
-   ============================================================ */
+/* LIGHT THEME PRIMITIVES */
 :root {
   color-scheme: light;
   
@@ -138,9 +134,7 @@
   --tg-safe-area-bottom: 0px;
 }
 
-/* ============================================================
-   🌙 DARK THEME PRIMITIVES (Sonny Studio Signature)
-   ============================================================ */
+/* DARK THEME PRIMITIVES (Sonny Studio Signature) */
 .dark {
   color-scheme: dark;
 
@@ -195,9 +189,7 @@
   --shadow-color-glass: oklch(0 0 0 / 0.5);
 }
 
-/* ============================================================
-   LAYERS & UTILITIES
-   ============================================================ */
+/* LAYERS & UTILITIES */
 @layer base {
   * {
     border-color: var(--color-border);

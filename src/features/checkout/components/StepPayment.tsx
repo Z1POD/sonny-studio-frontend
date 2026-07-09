@@ -153,11 +153,11 @@ export function StepPayment() {
       await orderApi.cancel(order.id, "User cancelled from payment step");
       toast.success("Order cancelled");
       reset();
-      navigate({ to: "/designs" });
+      navigate({ to: "/marketplace" });
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to cancel order");
       reset();
-      navigate({ to: "/designs" });
+      navigate({ to: "/marketplace" });
     } finally {
       setIsCanceling(false);
     }
