@@ -116,7 +116,7 @@ function ProductDetailContent({
         duration: Infinity,
         classNames: {
             toast:
-            "!border-gold/20 !bg-surface",
+            "!border-gold/20 !bg-surface/80 backdrop-blur-xl",
             title:
             "!text-gold",
             description:

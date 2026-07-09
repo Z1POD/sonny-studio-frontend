@@ -9,22 +9,28 @@ import { authApi } from "../api";
 import { useAuthStore } from "../store";
 
 export function useTelegramLaunch() {
-  const { tg, isTelegram } = useTelegram();
+  const { tg } = useTelegram();
   const navigate = useNavigate();
   const setToken = useAuthStore((s) => s.setToken);
   const handled = useRef(false);
 
   useEffect(() => {
-    if (!isTelegram || handled.current) return;
+    if (handled.current) return;
+    // Wait for the real WebApp object — this is what start_param/initData
+    // actually live on. Non-Telegram browsers leave `tg` null forever,
+    // so this simply never fires there, harmlessly.
+    if (!tg) return;
     handled.current = true;
 
     // 1. Resolve the deep link immediately — no auth wait.
-    const target = parseStartParam(tg?.initDataUnsafe?.start_param);
+    const target = parseStartParam(tg.initDataUnsafe?.start_param);
     if (target?.type === "product") {
       navigate({ to: "/p/$slug", params: { slug: target.id }, replace: true });
     }
 
-    const initData = tg?.initData;
+    // 2. Silently authenticate in the background, in parallel — purely
+    //    for personalization. Skip if a token's already stored.
+    const initData = tg.initData;
     if (initData && !getStoredToken()) {
       authApi
         .loginTelegram(initData)
@@ -34,5 +40,5 @@ export function useTelegramLaunch() {
           // useTelegramAutoLogin retries and surfaces a real error there.
         });
     }
-  }, [isTelegram, tg, navigate, setToken]);
+  }, [tg, navigate, setToken]);
 }

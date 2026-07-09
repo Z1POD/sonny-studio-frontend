@@ -90,7 +90,7 @@ export function PanelShell({
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 24 }}
           transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-          className="pointer-events-auto absolute right-4 top-4 z-20 w-[320px] max-w-[90dvw]"
+          className="pointer-events-auto absolute right-4 top-4 z-20 w-[320px] max-w-[90dvw] md:top-[var(--tg-safe-area-top,0px)]"
         >
           <div className="glass-light overflow-hidden rounded-2xl border border-border/60 shadow-elevated backdrop-blur-xl">
             <div className="flex items-center justify-between border-b border-border/40 px-5 py-3">
