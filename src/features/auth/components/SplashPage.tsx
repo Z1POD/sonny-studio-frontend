@@ -89,12 +89,6 @@ export function SplashPage({ isSigningIn = false }: SplashPageProps) {
             </div>
             <span className="text-[15px] font-semibold tracking-tight">Sonny</span>
           </div>
-          <button
-            onClick={() => setLoginOpen(true)}
-            className="text-[13px] font-medium text-white/60 transition hover:text-white"
-          >
-            Log in
-          </button>
         </motion.header>
 
         {/* Hero */}
