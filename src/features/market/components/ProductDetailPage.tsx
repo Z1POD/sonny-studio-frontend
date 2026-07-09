@@ -108,12 +108,22 @@ function ProductDetailContent({
     if (!color) return;
     addToCart(product, color, size, 1);
     toast.success("Added to bag", {
-      description: `${product.title} · ${color.name} · ${size}`,
-      action: {
-        label: "View",
-        onClick: openCart,
-      },
-      duration: Infinity,
+        description: `${product.title} · ${color.name} · ${size}`,
+        action: {
+            label: "View",
+            onClick: openCart,
+        },
+        duration: Infinity,
+        classNames: {
+            toast:
+            "!border-gold/20 !bg-surface",
+            title:
+            "!text-gold",
+            description:
+            "!text-muted-foreground",
+            actionButton:
+            "!bg-gold !text-gold-foreground",
+        },
     });
     setIsAdded(true);
     setTimeout(() => setIsAdded(false), 2000);
