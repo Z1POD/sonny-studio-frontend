@@ -12,7 +12,7 @@ import {
 } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Loader2, Search, Sparkles } from "lucide-react";
+import { Loader2, Search, Sparkles } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { homepageQuery, productsInfiniteQuery } from "../queries";
 import { ProductCard } from "./ProductCard";
@@ -22,13 +22,6 @@ import type { ProductListItem, ProductListParams } from "../types";
  *  a swipe rather than a tap — also used to suppress the Link's click/nav
  *  after a swipe. */
 const SWIPE_THRESHOLD = 50;
-
-/** Shown once per session (persisted in sessionStorage) to teach people the
- *  hero image swipes — reappears on a fresh visit, but won't nag someone
- *  who's already seen it while they keep browsing. */
-const HERO_SWIPE_HINT_KEY = "market-hero-swipe-hint-dismissed";
-const HERO_SWIPE_HINT_DURATION_MS = 3000;
-const HERO_SWIPE_HINT_TRANSITION_MS = 300;
 
 type MarketSearch = {
   q?: string;
@@ -107,38 +100,6 @@ export function MarketplacePage() {
   // card "drops" in from (see cardDropStyle below).
   const slideDirectionRef = useRef<"next" | "prev">("next");
 
-  // One-time "this is swipeable" hint. `hintMounted` controls DOM presence,
-  // `hintVisible` controls the opacity/scale so it can fade in and back out
-  // smoothly instead of popping in/out abruptly.
-  const [hintMounted, setHintMounted] = useState(false);
-  const [hintVisible, setHintVisible] = useState(false);
-  const hintUnmountTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const dismissSwipeHint = () => {
-    setHintVisible(false);
-    if (hintUnmountTimer.current) clearTimeout(hintUnmountTimer.current);
-    hintUnmountTimer.current = setTimeout(() => setHintMounted(false), HERO_SWIPE_HINT_TRANSITION_MS);
-    if (typeof window !== "undefined") {
-      window.sessionStorage.setItem(HERO_SWIPE_HINT_KEY, "1");
-    }
-  };
-
-  useEffect(() => {
-    if (!hasMultipleSlides) return;
-    if (typeof window === "undefined") return;
-    if (window.sessionStorage.getItem(HERO_SWIPE_HINT_KEY)) return;
-
-    setHintMounted(true);
-    const showFrame = requestAnimationFrame(() => setHintVisible(true));
-    const autoHide = setTimeout(dismissSwipeHint, HERO_SWIPE_HINT_DURATION_MS);
-    return () => {
-      cancelAnimationFrame(showFrame);
-      clearTimeout(autoHide);
-      if (hintUnmountTimer.current) clearTimeout(hintUnmountTimer.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasMultipleSlides]);
-
   const goToNextSlide = () => {
     slideDirectionRef.current = "next";
     setActiveIndex((i) =>
@@ -162,7 +123,6 @@ export function MarketplacePage() {
     dragStartX.current = clientX;
     dragDeltaX.current = 0;
     isSwiping.current = false;
-    dismissSwipeHint();
   };
   const handleDragMove = (clientX: number) => {
     if (dragStartX.current === null) return;
@@ -251,15 +211,10 @@ export function MarketplacePage() {
 
             {featured && (
               <div className="relative">
-                {/* Keyframes shared by the hint's swipe-track dot and the
-                    per-slide "drop in" card animation — hoisted here (a
-                    sibling of the swapped-out Link below) so it's defined
-                    once and isn't recreated on every slide change. */}
+                {/* Keyframe for the per-slide "drop in" card animation — hoisted
+                    here (a sibling of the swapped-out Link below) so it's
+                    defined once and isn't recreated on every slide change. */}
                 <style>{`
-                  @keyframes heroSwipeTrack {
-                    0%, 100% { transform: translateX(0); }
-                    50% { transform: translateX(32px); }
-                  }
                   @keyframes heroCardDropIn {
                     0% {
                       opacity: 0;
@@ -291,41 +246,6 @@ export function MarketplacePage() {
                     className="h-full w-full object-cover"
                     draggable={false}
                   />
-
-
-                  {/* One-time swipe gesture hint — teaches the interaction, then fades for good */}
-                  {hasMultipleSlides && hintMounted && (
-                    <div
-                      className={`pointer-events-none absolute inset-0 flex items-center justify-center bg-background/10 backdrop-blur-[1px] transition-all duration-300 ${
-                        hintVisible ? "opacity-100" : "opacity-0"
-                      }`}
-                    >
-                      <div
-                        className={`flex flex-col items-center gap-3 transition-all duration-300 ${
-                          hintVisible ? "scale-100" : "scale-90"
-                        }`}
-                      >
-                        {/* soft glow behind the pill */}
-                        <div className="absolute h-20 w-20 animate-pulse rounded-full bg-gold/25 blur-2xl" />
-
-                        {/* mini swipe-track demo */}
-                        <div className="relative h-1.5 w-16 overflow-hidden rounded-full bg-background/40">
-                          <span
-                            className="absolute inset-y-0 left-0 w-6 rounded-full bg-gradient-to-r from-gold to-amber-200 shadow-[0_0_10px_2px_rgba(212,175,55,0.55)]"
-                            style={{ animation: "heroSwipeTrack 1.4s ease-in-out infinite" }}
-                          />
-                        </div>
-
-                        <div className="relative flex items-center gap-1.5 rounded-full bg-gradient-to-r from-foreground to-foreground/90 px-4 py-2 shadow-lg ring-1 ring-gold/50">
-                          <ChevronLeft className="h-3.5 w-3.5 text-background/60" />
-                          <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-background">
-                            Swipe to explore
-                          </span>
-                          <ChevronRight className="h-3.5 w-3.5 text-background/60" />
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
                   <div className="absolute bottom-2 left-4 right-4 flex items-end justify-between rounded-2xl border border-border bg-background/70 px-4 py-3 backdrop-blur">
                     <div>
