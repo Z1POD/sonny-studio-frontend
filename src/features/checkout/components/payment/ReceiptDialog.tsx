@@ -78,7 +78,7 @@ export function ReceiptDialog({
 
         <div className="space-y-4 py-1">
           <div className="space-y-1.5">
-            <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground/80">
+            <Label className="text-[11px] uppercase tracking-[0.14em] text-foreground/80">
               {refLabel}
             </Label>
             <Input
@@ -107,7 +107,7 @@ export function ReceiptDialog({
 
           {requiresAccountNumber && (
             <div className="space-y-1.5">
-              <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground/80">
+              <Label className="text-[11px] uppercase tracking-[0.14em] text-foreground/80">
                 {payerAccountLabel}
               </Label>
               <Input
