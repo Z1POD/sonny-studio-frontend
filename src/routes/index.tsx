@@ -1,5 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { getStoredToken } from "@/shared/api/client";
+import { useTelegram } from "@/shared/hooks/use-telegram";
 import { SplashPage } from "@/features/auth/components/SplashPage";
 
 export const Route = createFileRoute("/")({
@@ -20,5 +22,12 @@ export const Route = createFileRoute("/")({
 });
 
 function IndexPage() {
-  return <SplashPage />;
+  const { isTelegram } = useTelegram();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  return <SplashPage isTelegramLaunching={mounted && isTelegram} />;
 }

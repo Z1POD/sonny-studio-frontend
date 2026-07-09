@@ -28,26 +28,40 @@ export function useTelegramLaunch() {
     if (!tg) return;
     handled.current = true;
 
-    // 1. Resolve the deep link immediately — no auth wait.
+    const initData = tg.initData;
+    const signIn = () => {
+      if (!initData || getStoredToken()) return Promise.resolve();
+      return authApi.loginTelegram(initData).then((data) => {
+        setToken(data.token, data.user);
+      });
+    };
+
     const target = parseStartParam(tg.initDataUnsafe?.start_param);
+
     if (target?.type === "product") {
+      // Speed matters — navigate now, sign in quietly in parallel.
       navigate({ to: "/p/$slug", params: { slug: target.id }, replace: true });
-    } else if (pathnameRef.current === "/") {
-      // Plain Telegram launch, no deep link — skip the marketing splash.
-      navigate({ to: "/marketplace", replace: true });
+      signIn().catch(() => {
+        // Silent by design — /login's useTelegramAutoLogin retries and
+        // surfaces a real error if the user lands there directly.
+      });
+      return;
     }
 
-    // 2. Silently authenticate in the background, in parallel — purely
-    //    for personalization. Skip if a token's already stored.
-    const initData = tg.initData;
-    if (initData && !getStoredToken()) {
-      authApi
-        .loginTelegram(initData)
-        .then((data) => setToken(data.token, data.user))
-        .catch(() => {
-          // Silent by design. If the user ends up on /login directly,
-          // useTelegramAutoLogin retries and surfaces a real error there.
+    if (pathnameRef.current === "/") {
+      // Plain launch, no deep link — wait for sign-in to settle before
+      // leaving "/". index.tsx hides the CTAs for the whole time we're
+      // in Telegram, so there's no flash of "Get Started" here either way.
+      signIn()
+        .catch(() => {})
+        .finally(() => {
+          navigate({ to: "/marketplace", replace: true });
         });
+      return;
     }
+
+    // Landed somewhere else entirely (e.g. deep-linked to a route that
+    // isn't the product flow) — sign in quietly, nothing to redirect.
+    signIn().catch(() => {});
   }, [tg, navigate, setToken]);
 }

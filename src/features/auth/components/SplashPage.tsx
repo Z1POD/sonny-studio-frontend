@@ -3,12 +3,13 @@
 "use client";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Loader2, ArrowRight, Shirt, Palette, ShoppingBag, Sparkles, ShoppingCart } from "lucide-react";
+import { ArrowRight, Shirt, Palette, ShoppingBag, Sparkles, ShoppingCart } from "lucide-react";
+import { BrandLoader } from "@/components/ui/loader";
 import { getMiniAppUrl } from "../lib/miniapp";
 import { LoginDialog } from "./LoginDialog";
 
 interface SplashPageProps {
-  isSigningIn?: boolean;
+  isTelegramLaunching?: boolean;
 }
 
 /*    Floating feature card (decorative)    */
@@ -42,7 +43,7 @@ function FeatureCard({
 }
 
 /*    Main splash page    */
-export function SplashPage({ isSigningIn = false }: SplashPageProps) {
+export function SplashPage({ isTelegramLaunching = false }: SplashPageProps) {
   const [loginOpen, setLoginOpen] = useState(false);
   const miniAppUrl = getMiniAppUrl();
 
@@ -89,6 +90,14 @@ export function SplashPage({ isSigningIn = false }: SplashPageProps) {
             </div>
             <span className="text-[15px] font-semibold tracking-tight">Sonny</span>
           </div>
+          {!isTelegramLaunching && (
+            <button
+              onClick={() => setLoginOpen(true)}
+              className="text-[13px] font-medium text-white/60 transition hover:text-white"
+            >
+              Log in
+            </button>
+          )}
         </motion.header>
 
         {/* Hero */}
@@ -143,43 +152,45 @@ export function SplashPage({ isSigningIn = false }: SplashPageProps) {
             className="relative z-10 px-6 pb-10 pt-6 text-center sm:pb-14"
           >
             <div className="mx-auto flex w-full max-w-xs flex-col gap-3 sm:max-w-sm">
-              {isSigningIn ? (
+              {isTelegramLaunching ? (
                 <div
                   aria-live="polite"
-                  className="flex h-[3.25rem] w-full items-center justify-center gap-2 rounded-full bg-white/10 text-[15px] font-semibold text-white/70 backdrop-blur-sm"
+                  className="flex h-[3.25rem] w-full items-center justify-center"
                 >
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Signing in…
+                  <BrandLoader size="sm" />
                 </div>
               ) : (
-                <a
-                  href={miniAppUrl ?? "#"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-disabled={!miniAppUrl}
-                  className={`group flex h-[3.25rem] w-full items-center justify-center gap-2 rounded-full bg-white text-[15px] font-semibold text-[#0a0a0f] shadow-lg shadow-white/10 transition-all hover:scale-[1.02] hover:shadow-white/20 active:scale-[0.98] ${
-                    !miniAppUrl ? "pointer-events-none opacity-50" : ""
-                  }`}
-                >
-                  Get Started
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                </a>
-              )}
+                <>
+                  <a
+                    href={miniAppUrl ?? "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-disabled={!miniAppUrl}
+                    className={`group flex h-[3.25rem] w-full items-center justify-center gap-2 rounded-full bg-white text-[15px] font-semibold text-[#0a0a0f] shadow-lg shadow-white/10 transition-all hover:scale-[1.02] hover:shadow-white/20 active:scale-[0.98] ${
+                      !miniAppUrl ? "pointer-events-none opacity-50" : ""
+                    }`}
+                  >
+                    Get Started
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  </a>
 
-              <button
-                type="button"
-                onClick={() => setLoginOpen(true)}
-                disabled={isSigningIn}
-                className="flex h-[3.25rem] w-full items-center justify-center gap-1 rounded-full border border-white/10 bg-white/[0.04] text-[15px] font-medium text-white/70 backdrop-blur-sm transition hover:bg-white/[0.08] hover:text-white disabled:opacity-50"
-              >
-                Already have an account?
-                <span className="ml-1 font-semibold text-white">Log in</span>
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => setLoginOpen(true)}
+                    className="flex h-[3.25rem] w-full items-center justify-center gap-1 rounded-full border border-white/10 bg-white/[0.04] text-[15px] font-medium text-white/70 backdrop-blur-sm transition hover:bg-white/[0.08] hover:text-white"
+                  >
+                    Already have an account?
+                    <span className="ml-1 font-semibold text-white">Log in</span>
+                  </button>
+                </>
+              )}
             </div>
 
-            <p className="mt-5 text-[11px] text-white/25">
-              By continuing, you agree to our Terms and Privacy Policy.
-            </p>
+            {!isTelegramLaunching && (
+              <p className="mt-5 text-[11px] text-white/25">
+                By continuing, you agree to our Terms and Privacy Policy.
+              </p>
+            )}
           </motion.div>
         </div>
       </div>
