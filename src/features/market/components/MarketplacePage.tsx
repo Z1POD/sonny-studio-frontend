@@ -12,7 +12,7 @@ import {
 } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { Loader2, Search, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, Search, Sparkles } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { homepageQuery, productsInfiniteQuery } from "../queries";
 import { ProductCard } from "./ProductCard";
@@ -102,6 +102,16 @@ export function MarketplacePage() {
 
   // Swipe gesture hint visibility — shown on page start until user swipes.
   const [showSwipeHint, setShowSwipeHint] = useState(true);
+
+  // Track image loading state for the hero card to show a skeleton while
+  // the next product image is fetching.
+  const [heroImageLoaded, setHeroImageLoaded] = useState(false);
+
+  // Reset loading state whenever the featured product changes so the
+  // skeleton shows while the new image loads.
+  useEffect(() => {
+    setHeroImageLoaded(false);
+  }, [featured?.id]);
 
   const goToNextSlide = () => {
     slideDirectionRef.current = "next";
@@ -247,11 +257,17 @@ export function MarketplacePage() {
                   style={cardDropStyle}
                   {...heroImageInteractionProps}
                 >
+                  {/* Skeleton placeholder shown while the next image is loading. */}
+                  {!heroImageLoaded && (
+                    <div className="absolute inset-0 z-10 animate-pulse bg-muted/40" />
+                  )}
+
                   <img
                     src={featured.thumbnail_url || featured.mockup_url || ""}
                     alt={featured.title}
                     className="h-full w-full object-cover"
                     draggable={false}
+                    onLoad={() => setHeroImageLoaded(true)}
                   />
 
                   <div className="absolute bottom-2 left-4 right-4 flex items-end justify-between rounded-2xl border border-border bg-background/70 px-4 py-3 backdrop-blur">
@@ -268,34 +284,47 @@ export function MarketplacePage() {
                 </Link>
 
                 {/* Swipe gesture hint — minimal, Apple HIG-inspired. Shown only
-                    when multiple slides exist and the user hasn't started swiping yet. */}
+                    when multiple slides exist and the user hasn't started swiping yet.
+                    Uses a touch-hand visual instead of chevrons. */}
                 {hasMultipleSlides && showSwipeHint && (
-                  <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-between px-3">
+                  <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
                     <style>{`
                       @keyframes swipeHintFade {
                         0%, 100% { opacity: 0; }
-                        15%, 85% { opacity: 1; }
+                        10%, 90% { opacity: 1; }
                       }
-                      @keyframes swipeHintSlideLeft {
-                        0%, 100% { transform: translateX(0); }
-                        50% { transform: translateX(-6px); }
-                      }
-                      @keyframes swipeHintSlideRight {
-                        0%, 100% { transform: translateX(0); }
-                        50% { transform: translateX(6px); }
+                      @keyframes swipeHandGesture {
+                        0% { transform: translateX(0) scale(1); }
+                        25% { transform: translateX(-18px) scale(0.95); }
+                        50% { transform: translateX(0) scale(1); }
+                        75% { transform: translateX(18px) scale(0.95); }
+                        100% { transform: translateX(0) scale(1); }
                       }
                     `}</style>
                     <div
-                      className="flex h-8 w-8 items-center justify-center rounded-full bg-background/60 backdrop-blur-sm"
-                      style={{ animation: "swipeHintFade 4s ease-in-out both, swipeHintSlideLeft 2s ease-in-out 0.5s 2" }}
+                      className="flex flex-col items-center gap-2 rounded-2xl bg-background/70 px-5 py-3 backdrop-blur-md"
+                      style={{ animation: "swipeHintFade 5s ease-in-out both" }}
                     >
-                      <ChevronLeft className="h-4 w-4 text-foreground/70" />
-                    </div>
-                    <div
-                      className="flex h-8 w-8 items-center justify-center rounded-full bg-background/60 backdrop-blur-sm"
-                      style={{ animation: "swipeHintFade 4s ease-in-out both, swipeHintSlideRight 2s ease-in-out 0.5s 2" }}
-                    >
-                      <ChevronRight className="h-4 w-4 text-foreground/70" />
+                      <svg
+                        width="28"
+                        height="28"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-foreground/60"
+                        style={{ animation: "swipeHandGesture 2.4s ease-in-out 0.3s 2" }}
+                      >
+                        <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                        <path d="M12 11V7" />
+                        <path d="M8 15v-1.5a2.5 2.5 0 0 1 5 0V15" />
+                        <path d="M8 11h8v6a4 4 0 0 1-8 0v-6Z" />
+                      </svg>
+                      <span className="text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground">
+                        Swipe
+                      </span>
                     </div>
                   </div>
                 )}
