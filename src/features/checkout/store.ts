@@ -1,14 +1,4 @@
 // src/features/checkout/store.ts — v5
-/**
- * Complete checkout store.
- * Fixes v4 omissions:
- *   - cities / setCities / citiesLoading / setCitiesLoading
- *   - shippingLoading / setShippingLoading
- *   - setSelectedVendorCode / setSelectedPickupId (aliases)
- *   - clearFieldError
- * All fields consumed by StepShipping, StepVariantQuantity, StepReview,
- * StepPayment are present.
- */
 
 import { create } from "zustand";
 import type { ArtworkState, PrintArea, ApparelProduct } from "@/features/studio/store";
@@ -288,12 +278,7 @@ export const useCheckoutStore = create<CheckoutState>((set, get) => ({
     });
   },
 
-  //    startCheckoutFromCart                                                           
-  // Cart-initiated checkout: variant/color/size/quantity are already resolved
-  // per line, so this skips straight to "shipping" and stores the lines
-  // as-is instead of populating variants/selectedVariants.
   startCheckoutFromCart: (lines) => {
-    console.log("startFromCart called", lines)
     set({
       ...initial,
       isOpen: true,

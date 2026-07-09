@@ -1,26 +1,18 @@
 // src/features/checkout/components/CheckOut.tsx — v5
-/**
- * Changes from v4:
- *  - Supports two entry points: the existing Studio flow (pick variants →
- *    shipping → review → payment) and a new Cart flow (shipping → review →
- *    payment). Which one applies is read from `useCheckoutStore().origin`,
- *    set by `startCheckoutFromCart()` when checkout is opened from the cart drawer.
- *  - STEPS is now computed per-origin instead of a fixed constant, and the
- *    close/back button logic keys off "is this the first step" rather than
- *    a hardcoded `step === "variants"` check.
- *  - No changes to StepShipping / StepReview / StepPayment's own internals
- *    here — they already read order data through the store's getters.
- */
+
 
 import { useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, X } from "lucide-react";
+import { useTelegram } from "@/shared/hooks/use-telegram";
 import { useCheckoutStore } from "../store";
 import { StepVariantQuantity } from "./StepVariantQuantity";
 import { StepShipping } from "./StepShipping";
 import { StepReview } from "./StepReview";
 import { StepPayment } from "./StepPayment";
 import type { CheckoutStep } from "../types";
+import { cn } from "@/lib/utils";
+
 
 const ALL_STEPS: { id: CheckoutStep; label: string }[] = [
   { id: "variants", label: "Variants" },
@@ -54,8 +46,10 @@ export function CheckOut({ mockupUrls: mockupUrlsProp }: CheckOutProps) {
     saveDraft,
     reset,
   } = useCheckoutStore() as ReturnType<typeof useCheckoutStore> & { origin?: "studio" | "cart" };
+  const { isTelegram } = useTelegram();
 
   const isCartOrigin = origin === "cart";
+
 
   // Cart-initiated checkout skips variant selection — it's already resolved
   // per line in the cart itself.
@@ -103,8 +97,12 @@ export function CheckOut({ mockupUrls: mockupUrlsProp }: CheckOutProps) {
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex flex-col bg-background"
     >
-      {/*     Header                                                     */}
-      <header className="flex items-center gap-3 border-b border-border bg-surface/80 px-4 py-3 md:pt-3 backdrop-blur-xl">
+      <header
+        className={cn(
+          "flex items-center gap-3 border-b border-border bg-surface/80 px-4 py-3 backdrop-blur-xl",
+          isTelegram && "pt-[var(--tg-safe-area-top,0px)]"
+        )}
+      >
         {isFirstStep ? (
           <button
             onClick={handleClose}
@@ -113,22 +111,21 @@ export function CheckOut({ mockupUrls: mockupUrlsProp }: CheckOutProps) {
           >
             <X className="h-5 w-5" />
           </button>
-        ) : step == "payment" ? (
-          ""
-        ):
-        <button
-          onClick={goBack}
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors hover:bg-muted"
-          aria-label="Go back"
-        >
-          <ChevronLeft className="h-5 w-5" />
-        </button>
-        }
+        ) : step !== "payment" && !isTelegram ? (
+          <button
+            onClick={goBack}
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors hover:bg-muted"
+            aria-label="Go back"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+        ) : null}
 
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-base font-semibold leading-tight">
             {productName || (isCartOrigin ? "Your bag" : "Checkout")}
           </h1>
+
           <p className="text-[11px] text-muted-foreground">
             Step {currentStepIdx + 1} of {STEPS.length}:{" "}
             {STEPS[currentStepIdx]?.label}
@@ -136,7 +133,7 @@ export function CheckOut({ mockupUrls: mockupUrlsProp }: CheckOutProps) {
         </div>
       </header>
 
-      {/*     Progress bar                                                */}
+      {/* Progress bar */}
       <div className="flex items-center gap-1 px-4 py-2">
         {STEPS.map((s, i) => (
           <div key={s.id} className="flex flex-1 items-center">
@@ -149,7 +146,7 @@ export function CheckOut({ mockupUrls: mockupUrlsProp }: CheckOutProps) {
         ))}
       </div>
 
-      {/*     Step content                                                */}
+      {/* Step content */}
       <div className="flex-1 overflow-hidden">
         <div className="mx-auto h-full max-w-[600px] px-2 sm:px-6">
           <AnimatePresence mode="wait" custom={direction}>

@@ -1,11 +1,7 @@
 // src/features/checkout/components/StepReview.tsx
-/**
- * StepReview.tsx — v3
- * Multi-variant support, correct price calculation with print cost,
- * mockup carousel with all captured images.
- */
 
-import { useMemo } from "react";
+
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ShoppingBag,
@@ -19,11 +15,15 @@ import {
   Loader2,
   Shield,
   Palette,
+  AlertCircle,
+  X,
+  Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useCheckoutStore } from "../store";
 import { useCart } from "@/features/market/store";
-import { orderApi } from "../api";
+import { orderApi, getFieldErrorsFromApiError } from "../api";
 import { toast } from "sonner";
 
 interface Props {
@@ -53,7 +53,11 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
     setOrder,
     setCreatingOrder,
     creatingOrder,
+    fieldErrors,
     setFieldErrors,
+    clearFieldError,
+    setCouponCode,
+    goBack,
     getOrderItems,
     getTotalQuantity,
     getSubtotal,
@@ -64,16 +68,35 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
   const isCartOrigin = origin === "cart";
   const totalQty = getTotalQuantity();
 
+  const [isEditingCoupon, setIsEditingCoupon] = useState(false);
+  const [couponDraft, setCouponDraft] = useState(couponCode);
+
+  useEffect(() => {
+    if (fieldErrors.coupon) {
+      setIsEditingCoupon(true);
+      setCouponDraft(couponCode);
+    }
+    
+  }, [fieldErrors.coupon]);
+
+  const applyCouponDraft = () => {
+    setCouponCode(couponDraft.trim());
+    clearFieldError("coupon");
+    setIsEditingCoupon(false);
+  };
+
+  const removeCoupon = () => {
+    setCouponCode("");
+    setCouponDraft("");
+    clearFieldError("coupon");
+    setIsEditingCoupon(false);
+  };
+
   const primaryMockup = useMemo(
   () => mockupUrls[0] ?? mockupUrl ?? null,
     [mockupUrls, mockupUrl],
   );
 
-  // Get line items to display.
-  // Studio flow: resolved from `variants` + `selectedVariants`.
-  // Cart flow: `selectedVariants` is never populated (cart lines are already
-  // resolved product+color+size+qty), so build display rows from
-  // `cartItems` instead — this was also silently empty before.
   const selectedItems = useMemo(() => {
     if (isCartOrigin) {
       return cartItems.map((line) => ({
@@ -107,13 +130,6 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
     return items;
   }, [isCartOrigin, cartItems, selectedVariants, variants, productName, basePrice, printCost]);
 
-  // Calculate prices.
-  // Subtotal now comes from the store's own getSubtotal(), which already
-  // branches on origin (sums cart line totals vs. basePrice+printCost × qty).
-  // Recomputing it locally from basePrice/printCost was the bug: those two
-  // fields are never populated for cart-origin checkout (startCheckoutFromCart
-  // resets to `...initial`, leaving basePrice/printCost at 0), so subtotal
-  // silently came out as 0 whenever checkout started from the cart.
   const { subtotal, shippingCost, total } = useMemo(() => {
     const sub = getSubtotal();
     let ship = 0;
@@ -168,8 +184,23 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
       if (isCartOrigin) clearCart();
       onContinue();
     } catch (e: any) {
-      const msg = e?.message ?? "Failed to create order";
-      toast.error(msg);
+      const backendErrors = getFieldErrorsFromApiError(e);
+
+      if (backendErrors.coupon) {
+      
+        setFieldErrors({ ...fieldErrors, coupon: backendErrors.coupon });
+        setIsEditingCoupon(true);
+        setCouponDraft(couponCode);
+        toast.error(backendErrors.coupon);
+      } else if (Object.keys(backendErrors).length > 0) {
+    
+        setFieldErrors(backendErrors);
+        toast.error(e?.message ?? "Please review your shipping details");
+        goBack();
+      } else {
+        const msg = e?.message ?? "Failed to create order";
+        toast.error(msg);
+      }
       console.error(e);
     } finally {
       setCreatingOrder(false);
@@ -327,10 +358,82 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
                 {shippingCost === 0 ? "Free" : `${currencySymbol} ${shippingCost.toFixed(2)}`}
               </span>
             </div>
-            {couponCode && (
-              <div className="flex justify-between text-muted-foreground">
-                <span>Coupon</span>
-                <span className="tabular-nums text-green-600">{couponCode}</span>
+            {(couponCode || fieldErrors.coupon) && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-3 text-muted-foreground">
+                  <span className="flex items-center gap-1.5 flex-shrink-0">
+                    <Tag className="h-3.5 w-3.5" />
+                    Coupon
+                  </span>
+
+                  {isEditingCoupon ? (
+                    <div className="flex flex-1 items-center justify-end gap-1.5">
+                      <Input
+                        autoFocus
+                        value={couponDraft}
+                        onChange={(e) => {
+                          setCouponDraft(e.target.value);
+                          if (fieldErrors.coupon) clearFieldError("coupon");
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            applyCouponDraft();
+                          }
+                        }}
+                        placeholder="Coupon code"
+                        className={`h-8 max-w-[140px] rounded-lg border-border bg-surface text-xs ${
+                          fieldErrors.coupon ? "border-destructive" : ""
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={applyCouponDraft}
+                        disabled={!couponDraft.trim() || couponDraft.trim() === couponCode}
+                        className="text-xs font-medium text-primary disabled:opacity-40"
+                      >
+                        Apply
+                      </button>
+                      <button
+                        type="button"
+                        onClick={removeCoupon}
+                        aria-label="Remove coupon"
+                        className="grid h-6 w-6 flex-shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="tabular-nums text-green-600">{couponCode}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCouponDraft(couponCode);
+                          setIsEditingCoupon(true);
+                        }}
+                        className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                      >
+                        Change
+                      </button>
+                      <button
+                        type="button"
+                        onClick={removeCoupon}
+                        aria-label="Remove coupon"
+                        className="grid h-5 w-5 flex-shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {fieldErrors.coupon && (
+                  <p className="flex items-center gap-1 text-[11px] text-destructive">
+                    <AlertCircle className="h-3 w-3" />
+                    {fieldErrors.coupon}
+                  </p>
+                )}
               </div>
             )}
             <div className="border-t border-border/40 pt-2">

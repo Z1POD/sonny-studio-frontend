@@ -1,17 +1,9 @@
 // src/features/checkout/api.ts — v2
-/**
- * Fix: submitReceipt response now maps ALL fields the backend returns:
- *   is_verified, is_terminal, error_message, verified_at, order_status
- * This is critical — without is_terminal the frontend always starts polling
- * even when the backend already returned a terminal result (verified/failed).
- *
- * The ReceiptSubmission type is extended to carry isVerified, isTerminal,
- * errorMessage, verifiedAt so StepPayment can branch immediately on submit.
- */
 
-import { api } from "@/shared/api/client";
+import { api, ApiError } from "@/shared/api/client";
 import type {
   City,
+  FieldErrors,
   FulfillmentType,
   OrderResponse,
   PickupLocation,
@@ -20,6 +12,51 @@ import type {
   ShippingOptions,
   VerificationStatus,
 } from "./types";
+
+/*     Backend field-error mapping                                            */
+
+// Sonny API validation envelope:
+//   { success: false, error: { code, message, details: { field: ["msg", ...] } } }
+// `details` keys are backend/snake_case field names — map them onto the
+// FieldErrors keys the checkout UI actually renders against (fieldErrors.coupon,
+// fieldErrors.phone, etc.) so any step can surface the right inline error.
+const BACKEND_FIELD_MAP: Record<string, keyof FieldErrors> = {
+  coupon_code: "coupon",
+  full_name: "fullName",
+  phone: "phone",
+  street: "street",
+  city_id: "city",
+  shipping_vendor: "vendor",
+  shipping_service_level: "vendor",
+  pickup_location_id: "pickupLocation",
+  receipt_identifier: "receipt",
+  payer_account: "payerAccount",
+};
+
+/**
+ * Extracts field-level validation errors from an ApiError thrown by the
+ * shared api client, mapped onto the checkout FieldErrors shape. Returns an
+ * empty object for non-validation errors (network failures, 5xx, etc.) or
+ * when the response has no `error.details`.
+ */
+export function getFieldErrorsFromApiError(error: unknown): FieldErrors {
+  if (!(error instanceof ApiError)) return {};
+
+  const details = (error.data as {
+    error?: { details?: Record<string, string[]> };
+  } | null)?.error?.details;
+
+  if (!details) return {};
+
+  const out: FieldErrors = {};
+  for (const [backendKey, messages] of Object.entries(details)) {
+    const mapped = BACKEND_FIELD_MAP[backendKey];
+    if (mapped && Array.isArray(messages) && messages.length > 0 && !out[mapped]) {
+      out[mapped] = messages[0];
+    }
+  }
+  return out;
+}
 
 /*     Shipping                                                               */
 
