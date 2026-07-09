@@ -1,0 +1,38 @@
+// src/features/auth/hooks/useTelegramLaunch.ts
+
+import { useEffect, useRef } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { useTelegram } from "@/shared/hooks/use-telegram";
+import { parseStartParam } from "@/lib/telegram-start-param";
+import { getStoredToken } from "@/shared/api/client";
+import { authApi } from "../api";
+import { useAuthStore } from "../store";
+
+export function useTelegramLaunch() {
+  const { tg, isTelegram } = useTelegram();
+  const navigate = useNavigate();
+  const setToken = useAuthStore((s) => s.setToken);
+  const handled = useRef(false);
+
+  useEffect(() => {
+    if (!isTelegram || handled.current) return;
+    handled.current = true;
+
+    // 1. Resolve the deep link immediately — no auth wait.
+    const target = parseStartParam(tg?.initDataUnsafe?.start_param);
+    if (target?.type === "product") {
+      navigate({ to: "/p/$slug", params: { slug: target.id }, replace: true });
+    }
+
+    const initData = tg?.initData;
+    if (initData && !getStoredToken()) {
+      authApi
+        .loginTelegram(initData)
+        .then((data) => setToken(data.token, data.user))
+        .catch(() => {
+          // Silent by design. If the user ends up on /login directly,
+          // useTelegramAutoLogin retries and surfaces a real error there.
+        });
+    }
+  }, [isTelegram, tg, navigate, setToken]);
+}

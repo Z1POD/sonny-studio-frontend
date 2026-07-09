@@ -1,11 +1,10 @@
 // src/features/auth/hooks/useTelegramAutoLogin.ts
 
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useTelegram } from "@/shared/hooks/use-telegram";
-import { parseStartParam } from "@/lib/telegram-start-param";
+import { getStoredToken } from "@/shared/api/client";
 import { authApi } from "../api";
 import { useAuthStore } from "../store";
 
@@ -24,13 +23,23 @@ export function useTelegramAutoLogin({
   const { tg, isTelegram } = useTelegram();
 
   const [tgLoading, setTgLoading] = useState(false);
-
+  // `checked` flips true once we've resolved whether we're in Telegram and
+  // (if so) finished the sign-in attempt — callers use this to avoid
+  // flashing the wrong UI while the environment check settles.
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
     if (!enabled) return;
 
     if (!isTelegram) {
+      setChecked(true);
+      return;
+    }
+
+    // useTelegramLaunch (root-mounted) may have already signed the user
+    // in silently before this ever mounted — skip the redundant call.
+    if (getStoredToken()) {
+      navigate({ to: redirectTo });
       setChecked(true);
       return;
     }
@@ -46,14 +55,7 @@ export function useTelegramAutoLogin({
       .loginTelegram(initData)
       .then((data) => {
         setToken(data.token, data.user);
-
-        // A product deep link takes priority over the default redirect.
-        const target = parseStartParam(tg?.initDataUnsafe?.start_param);
-        if (target?.type === "product") {
-          navigate({ to: "/p/$slug", params: { slug: target.id } });
-        } else {
-          navigate({ to: redirectTo });
-        }
+        navigate({ to: redirectTo });
       })
       .catch((err: Error) => {
         toast.error(err.message || "Auto sign-in failed");

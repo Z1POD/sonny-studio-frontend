@@ -8,6 +8,7 @@ import {
 import { Toaster } from "@/components/ui/sonner";
 
 import { useTelegram } from "@/shared/hooks/use-telegram";
+import { useTelegramLaunch } from "@/features/auth/hooks/useTelegramLaunch";
 import { OverlayRoot } from "@/shared/components/overlay/OverlayRoot";
 import { NotFoundPage } from "@/shared/components/NotFoundPage";
 import { ErrorPage } from "@/shared/components/ErrorPage";
@@ -150,6 +151,7 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   useTelegram();
+  useTelegramLaunch();
 
   return (
     <QueryClientProvider client={queryClient}>
