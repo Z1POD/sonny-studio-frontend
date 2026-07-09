@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart3,
@@ -17,6 +17,7 @@ import { useTelegram } from "@/shared/hooks/use-telegram";
 import { useHasVerifiedStore } from "@/shared/hooks/use-store-access";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { useOverlayStore } from "@/shared/stores/overlay-store";
 
 // Always shown, for every signed-in user.
 const ACCOUNT_NAV = [{ to: "/orders", label: "Orders", icon: Receipt }] as const;
@@ -41,11 +42,12 @@ export function UserMenu({ anchor = "header", className, children }: UserMenuPro
   // NOTE: assumes `useAuthStore` exposes `openSheet` to open the sign-in
   // sheet (same assumption made in CartDrawer). Rename if the real action
   // is named differently.
-  const openAuth = useAuthStore((s) => s.openSheet);
+  const openAuth = useOverlayStore((s) => s.openSheet);
   const { isTelegram } = useTelegram();
   const hasVerifiedStore = useHasVerifiedStore();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!open) return;
@@ -63,11 +65,19 @@ export function UserMenu({ anchor = "header", className, children }: UserMenuPro
     }
     setOpen((v) => !v);
   };
+  const handleSignIn = () => {
+    if (!user) {
+    setOpen(false);
+    navigate({ to: "/login" });
+    return;
+    }
+    setOpen((v) => !v);
+  };
 
   return (
     <div ref={ref} className="relative flex min-h-[44px] flex-col items-center justify-center gap-1 text-[10px] font-medium text-muted-foreground">
       <button
-        onClick={handleTrigger}
+        onClick={handleSignIn}
         aria-label="Account"
         aria-haspopup="menu"
         aria-expanded={open}

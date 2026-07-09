@@ -1,6 +1,7 @@
 // src/features/market/components/CartDrawer.tsx
 
 import { Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useCart } from "../store";
 import { useAuthStore } from "@/features/auth/store";
@@ -22,7 +23,8 @@ export function CartDrawer() {
   const remove = useCart((s) => s.remove);
   const subtotal = useCart((s) => s.subtotal());
   const user = useAuthStore((s) => s.user);
-  const openAuth = useAuthStore((s) => s.openSheet);
+  // const openAuth = useAuthStore((s) => s.openSheet);
+  const navigate = useNavigate();
 
   const startCheckoutFromCart = useCheckoutStore((s) => (s as any).startCheckoutFromCart);
 
@@ -31,7 +33,7 @@ export function CartDrawer() {
   const onCheckout = () => {
     if (!user) {
       close();
-      openAuth();
+      navigate({ to: "/login" });
       toast("Sign in to continue checkout");
       return;
     }
