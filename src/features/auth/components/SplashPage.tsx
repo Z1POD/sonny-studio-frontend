@@ -157,7 +157,7 @@ export function SplashPage({ isTelegramLaunching = false }: SplashPageProps) {
                   aria-live="polite"
                   className="flex h-[3.25rem] w-full items-center justify-center"
                 >
-                  <BrandLoader size="sm" />
+                  <BrandLoader size="md" />
                 </div>
               ) : (
                 <>
