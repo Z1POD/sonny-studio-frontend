@@ -1,7 +1,7 @@
 // src/features/auth/hooks/useTelegramLaunch.ts
 
 import { useEffect, useRef } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useTelegram } from "@/shared/hooks/use-telegram";
 import { parseStartParam } from "@/lib/telegram-start-param";
 import { getStoredToken } from "@/shared/api/client";
@@ -13,6 +13,12 @@ export function useTelegramLaunch() {
   const navigate = useNavigate();
   const setToken = useAuthStore((s) => s.setToken);
   const handled = useRef(false);
+
+  // Captured via ref (not a dependency) — we only care what the URL was
+  // at the moment `tg` first becomes available, not on every navigation.
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
 
   useEffect(() => {
     if (handled.current) return;
@@ -26,6 +32,9 @@ export function useTelegramLaunch() {
     const target = parseStartParam(tg.initDataUnsafe?.start_param);
     if (target?.type === "product") {
       navigate({ to: "/p/$slug", params: { slug: target.id }, replace: true });
+    } else if (pathnameRef.current === "/") {
+      // Plain Telegram launch, no deep link — skip the marketing splash.
+      navigate({ to: "/marketplace", replace: true });
     }
 
     // 2. Silently authenticate in the background, in parallel — purely

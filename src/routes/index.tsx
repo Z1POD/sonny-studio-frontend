@@ -1,6 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { getStoredToken } from "@/shared/api/client";
-import { useTelegramAutoLogin } from "@/features/auth/hooks/useTelegramAutoLogin";
 import { SplashPage } from "@/features/auth/components/SplashPage";
 
 export const Route = createFileRoute("/")({
@@ -21,6 +20,5 @@ export const Route = createFileRoute("/")({
 });
 
 function IndexPage() {
-  const { tgLoading } = useTelegramAutoLogin({ redirectTo: "/marketplace" });
-  return <SplashPage isSigningIn={tgLoading} />;
+  return <SplashPage />;
 }
