@@ -1,4 +1,5 @@
 // src/features/market/components/MarketplacePage.tsx
+
 "use client";
 
 import {
@@ -12,20 +13,17 @@ import {
 } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { Loader2, Search, Sparkles, Fingerprint} from "lucide-react";
+import { Loader2, Search, Sparkles, Fingerprint } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { useTelegram } from "@/shared/hooks/use-telegram";
 import { homepageQuery, productsInfiniteQuery } from "../queries";
 import { ProductCard } from "./ProductCard";
 import type { ProductListItem, ProductListParams } from "../types";
 
-
 const SWIPE_THRESHOLD = 80;
 
-/** Spring-back animation duration when the user releases without crossing threshold. */
 const SPRING_DURATION = 300;
 
-/** sessionStorage key to track if the swipe hint has already been shown. */
 const SWIPE_HINT_SHOWN_KEY = "marketplace_swipe_hint_shown";
 
 type MarketSearch = {
@@ -41,7 +39,7 @@ export function MarketplacePage() {
 
   const { data: homepage, isLoading: isHomepageLoading } = useQuery(homepageQuery());
 
-  const { impactOccurred, selectionChanged, isTelegram } = useTelegram();
+  const { impactOccurred, selectionChanged } = useTelegram();
 
   const filters: Omit<ProductListParams, "page"> = useMemo(
     () => ({
@@ -95,7 +93,6 @@ export function MarketplacePage() {
   const featured = carouselProducts.length > 0 ? carouselProducts[activeIndex] : undefined;
   const hasMultipleSlides = carouselProducts.length > 1;
 
-
   const slideDirectionRef = useRef<"next" | "prev">("next");
 
 
@@ -106,7 +103,7 @@ export function MarketplacePage() {
 
   const [heroImageLoaded, setHeroImageLoaded] = useState(false);
 
-  // Real-time swipe tracking — the card physically follows the finger.
+
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartX = useRef<number | null>(null);
@@ -155,7 +152,6 @@ export function MarketplacePage() {
       }
     }
 
-    // Apply resistance at the edges so the user feels the boundary.
     const resistance = 0.55;
     setDragOffset(delta * resistance);
   };
@@ -167,12 +163,10 @@ export function MarketplacePage() {
     const delta = dragDeltaX.current;
     if (delta <= -SWIPE_THRESHOLD) {
       goToNextSlide();
-      // Haptic: light impact when swipe completes successfully.
-      if (isTelegram) impactOccurred("light");
+      impactOccurred("light");
     } else if (delta >= SWIPE_THRESHOLD) {
       goToPrevSlide();
-      // Haptic: light impact when swipe completes successfully.
-      if (isTelegram) impactOccurred("light");
+      impactOccurred("light");
     }
     // Spring back to center if threshold wasn't crossed.
     setDragOffset(0);
@@ -198,8 +192,7 @@ export function MarketplacePage() {
         e.preventDefault();
         isSwiping.current = false;
       } else {
-        // Haptic: selection feedback when tapping to open product detail.
-        if (isTelegram) selectionChanged();
+        selectionChanged();
       }
     },
   };
@@ -234,35 +227,44 @@ export function MarketplacePage() {
 
           <div className="mx-auto grid max-w-7xl items-center gap-8 px-4 pb-16 pt-10 md:grid-cols-2 md:gap-16 md:px-8 md:pb-24 md:pt-16">
             <div>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/5 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-gold">
-                <Sparkles className="h-3 w-3" /> {heroCollection?.name ?? "Custom Product Marketplace"}
-              </span>
-              <h1 className="mt-5 text-4xl font-semibold leading-[1.02] tracking-[-0.04em] md:text-6xl">
-                Made to order,
-                <br />
-                <span className="text-gold">designed by you.</span>
-              </h1>
-              <p className="mt-5 max-w-md text-base text-muted-foreground">
-                {heroCollection?.description ??
-                  "Customize tees, hoodies, bags, mugs, bottles and more in our design studio. Keep your creation for yourself, or publish it to the marketplace with your own markup — we handle production, fulfillment, and delivery for every order."}
-              </p>
-              <div className="mt-7 flex flex-wrap gap-3">
-                {featured && (
-                  <Link
-                    to="/product/$slug"
-                    params={{ slug: featured.slug }}
-                    className="inline-flex h-10 md:h-12 items-center gap-2 rounded-full bg-foreground px-6 text-sm font-semibold text-background transition-transform active:scale-[0.98]"
-                  >
-                    Shop this piece
-                  </Link>
-                )}
-                <a
-                  href="#shop-all"
-                  className="inline-flex h-10 md:h-12 items-center rounded-full border border-border bg-surface px-6 text-sm font-medium hover:border-gold"
-                >
-                  Explore
-                </a>
-              </div>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/5 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-gold">
+                    <Sparkles className="h-3 w-3" />
+                    {heroCollection?.name ?? "Sonny | Marketplace"}
+                </span>
+
+                <h1 className="mt-5 text-4xl font-semibold leading-[1.02] tracking-[-0.04em] md:text-6xl">
+                    Made to order.
+                    <br />
+                    <span className="text-gold">Designed by you.</span>
+                </h1>
+
+                <p className="mt-4 max-w-md block text-sm leading-relaxed text-muted-foreground md:mt-5 md:text-base md:hidden">
+                    {heroCollection?.description ??
+                    "Design custom products, order your favorites, or sell your creations, we handle production and delivery."}
+                </p>
+                <p className="mt-5 hidden max-w-md text-base text-muted-foreground md:block">
+                    {heroCollection?.description ??
+                    "Customize tees, hoodies, bags, mugs, bottles and more in our design studio. Keep your creation or publish it to the marketplace, we handle production, fulfillment, and delivery."}
+                </p>
+
+                <div className="mt-6 flex flex-wrap gap-3 md:mt-7">
+                    {featured && (
+                    <Link
+                        to="/product/$slug"
+                        params={{ slug: featured.slug }}
+                        className="inline-flex h-10 md:h-12 items-center gap-2 rounded-full bg-foreground px-6 text-sm font-semibold text-background transition-transform active:scale-[0.98]"
+                    >
+                        Shop now
+                    </Link>
+                    )}
+
+                    <a
+                    href="#shop-all"
+                    className="inline-flex h-10 md:h-12 items-center rounded-full border border-border bg-surface px-6 text-sm font-medium transition-colors hover:border-gold"
+                    >
+                    Browse all
+                    </a>
+                </div>
             </div>
 
             {featured && (
@@ -318,134 +320,133 @@ export function MarketplacePage() {
                     </p>
                   </div>
                 </Link>
-
                 {hasMultipleSlides && showSwipeHint && (
-                <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+                  <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
                     <style>{`
                       @keyframes swipeHintFade {
-                          0%, 100% { opacity: 0; }
-                          12%, 88% { opacity: 1; }
+                        0%, 100% { opacity: 0; }
+                        12%, 88% { opacity: 1; }
                       }
 
                       @keyframes fingerSwipe {
-                          0% {
+                        0% {
                           transform: translateX(-18px) rotate(-6deg) scale(.96);
-                          }
-                          18% {
+                        }
+                        18% {
                           transform: translateX(-18px) rotate(-6deg) scale(1);
-                          }
-                          50% {
+                        }
+                        50% {
                           transform: translateX(18px) rotate(6deg) scale(1);
-                          }
-                          68% {
+                        }
+                        68% {
                           transform: translateX(18px) rotate(6deg) scale(1);
-                          }
-                          100% {
+                        }
+                        100% {
                           transform: translateX(-18px) rotate(-6deg) scale(.96);
-                          }
+                        }
                       }
 
                       @keyframes fingerGlow {
-                          0% {
+                        0% {
                           transform: translateX(-18px) scale(.8);
                           opacity: .18;
-                          }
-                          50% {
+                        }
+                        50% {
                           transform: translateX(18px) scale(1.3);
                           opacity: .45;
-                          }
-                          100% {
+                        }
+                        100% {
                           transform: translateX(-18px) scale(.8);
                           opacity: .18;
-                          }
+                        }
                       }
 
                       @keyframes fingerRipple {
-                          0%,100% {
+                        0%,100% {
                           transform: translateX(-18px) scale(.65);
                           opacity: 0;
-                          }
+                        }
 
-                          12% {
+                        12% {
                           opacity: .35;
-                          }
+                        }
 
-                          25% {
+                        25% {
                           transform: translateX(-18px) scale(1.7);
                           opacity: 0;
-                          }
+                        }
 
-                          50% {
+                        50% {
                           transform: translateX(18px) scale(.65);
                           opacity: 0;
-                          }
+                        }
 
-                          62% {
+                        62% {
                           opacity: .35;
-                          }
+                        }
 
-                          75% {
+                        75% {
                           transform: translateX(18px) scale(1.7);
                           opacity: 0;
-                          }
+                        }
                       }
 
                       @keyframes breathe {
-                          0%,100% {
+                        0%,100% {
                           transform: scale(.98);
-                          }
+                        }
 
-                          50% {
+                        50% {
                           transform: scale(1.02);
-                          }
+                        }
                       }
                     `}</style>
 
                     <div
-                    className="flex h-[94%] w-[94%] flex-col items-center justify-center gap-4 rounded-2xl px-8 py-4 backdrop-blur-md"
-                    style={{
+                      className="flex h-[94%] w-[94%] flex-col items-center justify-center gap-4 rounded-2xl px-8 py-4 backdrop-blur-md"
+                      style={{
                         backgroundColor: "rgba(8, 59, 50, 0.65)",
                         animation: "swipeHintFade 6.5s ease-in-out both",
-                    }}
+                      }}
                     >
                       <div
-                          className="relative flex h-20 w-32 items-center justify-center"
-                          style={{
+                        className="relative flex h-20 w-32 items-center justify-center"
+                        style={{
                           animation: "breathe 2.8s ease-in-out infinite",
-                          }}
+                        }}
                       >
-                          {/* Soft glow */}
-                          <div
+                        {/* Soft glow */}
+                        <div
                           className="absolute h-10 w-10 rounded-full bg-white/20 blur-xl"
                           style={{
-                              animation: "fingerGlow 2.2s ease-in-out infinite",
+                            animation: "fingerGlow 2.2s ease-in-out infinite",
                           }}
-                          />
+                        />
 
-                          {/* Ripple */}
-                          <div
+                        {/* Ripple */}
+                        <div
                           className="absolute h-12 w-12 rounded-full border border-white/25"
                           style={{
-                              animation: "fingerRipple 2.2s ease-in-out infinite",
+                            animation: "fingerRipple 2.2s ease-in-out infinite",
                           }}
-                          />
+                        />
 
-                          {/* Finger */}
-                          <div
+                        {/* Finger */}
+                        <div
                           className="relative z-10"
                           style={{
-                              animation: "fingerSwipe 2.2s cubic-bezier(.4,0,.2,1) infinite",
+                            animation: "fingerSwipe 2.2s cubic-bezier(.4,0,.2,1) infinite",
                           }}
-                          >
+                        >
                           <Fingerprint className="h-9 w-9 text-white/90 drop-shadow-[0_2px_10px_rgba(255,255,255,0.35)]" />
-                          </div>
+                        </div>
                       </div>
 
                       <span className="text-[10px] font-medium uppercase tracking-[0.15em] text-gold/80">
-                          Swipe
+                        Swipe
                       </span>
                     </div>
-                </div>
+                  </div>
                 )}
               </div>
             )}

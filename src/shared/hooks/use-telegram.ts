@@ -1,35 +1,6 @@
-/**
- * src/shared/hooks/use-telegram.ts
- *
- * Telegram Mini App integration utilities.
- *
- * Merged from two versions of this hook:
- *  - Base: the version with the updated `shareToStory(mediaUrl, params)` signature,
- *    granular haptics (impactOccurred/notificationOccurred/selectionChanged),
- *    safeAreaInset/contentSafeAreaInset, and MainButton.setParams.
- *  - Folded in from the older version: sendData, switchInlineQuery, isVersionAtLeast,
- *    real Bot API 7.7+ fullscreen support (requestFullscreen/exitFullscreen +
- *    `fullscreenChanged` event), isReady state, callback-based showAlert/showConfirm,
- *    and the standalone getTelegramWebApp()/isTelegramMiniApp() utilities.
- *
- * Notable fixes made while merging (see inline comments):
- *  1. `isFullscreen` was previously derived from `tg.isExpanded`, which is the wrong
- *     property — `isExpanded` (viewport expansion) and `isFullscreen` (Bot API 7.7+
- *     true fullscreen mode) are distinct concepts in the Telegram WebApp API. This
- *     now tracks the real `isFullscreen` flag and stays in sync via the
- *     `fullscreenChanged` event, matching the older hook's behavior. `isExpanded` is
- *     still exposed separately, unchanged.
- *  2. `showConfirm` in the base version was typed as if `tg.showConfirm` returned a
- *     Promise directly, but the real WebApp API takes a callback. It's now wrapped
- *     as a Promise around the callback, so the hook's public signature (returns
- *     Promise<boolean>) is unchanged but the underlying call is now correct.
- *  3. The `enableVerticalSwipes`/`disableVerticalSwipes` JSDoc in the base version
- *     had backwards @deprecated tags (each pointed at the other as the replacement).
- *     Both are real Bot API 7.7+ methods — neither is deprecated — so the tags were
- *     removed.
- *  4. `StoryWidgetLink.name` is now optional (`name?: string`), matching the actual
- *     Telegram API and the older hook, instead of being required.
- */
+// src/shared/hooks/use-telegram.ts
+
+
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
