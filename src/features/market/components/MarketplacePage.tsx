@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useCallback,
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
   type TouchEvent as ReactTouchEvent,
@@ -39,7 +40,7 @@ export function MarketplacePage() {
 
   const { data: homepage, isLoading: isHomepageLoading } = useQuery(homepageQuery());
 
-  const { impactOccurred, selectionChanged } = useTelegram();
+  const { impactOccurred, selectionChanged, notificationOccurred } = useTelegram();
 
   const filters: Omit<ProductListParams, "page"> = useMemo(
     () => ({
@@ -95,48 +96,58 @@ export function MarketplacePage() {
 
   const slideDirectionRef = useRef<"next" | "prev">("next");
 
-
   const [showSwipeHint, setShowSwipeHint] = useState(() => {
     if (typeof window === "undefined") return true;
     return sessionStorage.getItem(SWIPE_HINT_SHOWN_KEY) !== "1";
   });
 
-  const [heroImageLoaded, setHeroImageLoaded] = useState(false);
+  // Trigger large haptic when swipe hint first appears (only once per session)
+  const hintHapticFiredRef = useRef(false);
+  useEffect(() => {
+    if (showSwipeHint && hasMultipleSlides && !hintHapticFiredRef.current) {
+      hintHapticFiredRef.current = true;
+      // Use "heavy" impact for the prominent swipe hint entrance
+      // Fallback to notificationOccurred on Android where impactOccurred is buggy
+      impactOccurred("heavy");
+    }
+  }, [showSwipeHint, hasMultipleSlides, impactOccurred]);
 
+  const [heroImageLoaded, setHeroImageLoaded] = useState(false);
 
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartX = useRef<number | null>(null);
   const dragDeltaX = useRef(0);
   const isSwiping = useRef(false);
-  const cardRef = useRef<HTMLAnchorElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setHeroImageLoaded(false);
   }, [featured?.id]);
 
-  const goToNextSlide = () => {
+  const goToNextSlide = useCallback(() => {
     slideDirectionRef.current = "next";
     setActiveIndex((i) =>
       carouselProducts.length ? (i + 1) % carouselProducts.length : 0,
     );
-  };
-  const goToPrevSlide = () => {
+  }, [carouselProducts.length]);
+
+  const goToPrevSlide = useCallback(() => {
     slideDirectionRef.current = "prev";
     setActiveIndex((i) =>
       carouselProducts.length ? (i - 1 + carouselProducts.length) % carouselProducts.length : 0,
     );
-  };
+  }, [carouselProducts.length]);
 
-  const handleDragStart = (clientX: number) => {
+  const handleDragStart = useCallback((clientX: number) => {
     dragStartX.current = clientX;
     dragDeltaX.current = 0;
     isSwiping.current = false;
     setIsDragging(true);
     setDragOffset(0);
-  };
+  }, []);
 
-  const handleDragMove = (clientX: number) => {
+  const handleDragMove = useCallback((clientX: number) => {
     if (dragStartX.current === null) return;
     const delta = clientX - dragStartX.current;
     dragDeltaX.current = delta;
@@ -154,48 +165,39 @@ export function MarketplacePage() {
 
     const resistance = 0.55;
     setDragOffset(delta * resistance);
-  };
+  }, []);
 
-  const handleDragEnd = () => {
+  const handleDragEnd = useCallback(() => {
     if (dragStartX.current === null) return;
     setIsDragging(false);
 
     const delta = dragDeltaX.current;
     if (delta <= -SWIPE_THRESHOLD) {
+      // Fire haptic BEFORE state update to ensure it executes
+      impactOccurred("light");
       goToNextSlide();
-      impactOccurred("light");
     } else if (delta >= SWIPE_THRESHOLD) {
-      goToPrevSlide();
+      // Fire haptic BEFORE state update to ensure it executes
       impactOccurred("light");
+      goToPrevSlide();
     }
     // Spring back to center if threshold wasn't crossed.
     setDragOffset(0);
     dragStartX.current = null;
     dragDeltaX.current = 0;
-  };
+  }, [goToNextSlide, goToPrevSlide, impactOccurred]);
 
-  const heroImageInteractionProps = {
-    onTouchStart: (e: ReactTouchEvent) => handleDragStart(e.touches[0].clientX),
-    onTouchMove: (e: ReactTouchEvent) => handleDragMove(e.touches[0].clientX),
-    onTouchEnd: handleDragEnd,
-    onMouseDown: (e: ReactMouseEvent) => handleDragStart(e.clientX),
-    onMouseMove: (e: ReactMouseEvent) => {
-      if (dragStartX.current !== null) handleDragMove(e.clientX);
-    },
-    onMouseUp: handleDragEnd,
-    onMouseLeave: () => {
-      if (dragStartX.current !== null) handleDragEnd();
-    },
-    onClick: (e: ReactMouseEvent) => {
-      // A swipe shouldn't also trigger navigation to the product page.
-      if (isSwiping.current) {
-        e.preventDefault();
-        isSwiping.current = false;
-      } else {
-        selectionChanged();
-      }
-    },
-  };
+  // Programmatic navigation to avoid Link's default click behavior conflicting with swipe
+  const handleCardTap = useCallback(() => {
+    if (isSwiping.current) {
+      isSwiping.current = false;
+      return;
+    }
+    if (featured) {
+      selectionChanged();
+      navigate({ to: "/product/$slug", params: { slug: featured.slug } });
+    }
+  }, [featured, navigate, selectionChanged]);
 
   const cardDropStyle = {
     animation: "heroCardDropIn 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both",
@@ -208,11 +210,15 @@ export function MarketplacePage() {
         transform: `translateX(${dragOffset}px) rotate(${dragOffset * 0.02}deg) scale(${1 - Math.abs(dragOffset) * 0.0003})`,
         transition: "none",
         cursor: "grabbing",
+        touchAction: "none", // Prevent browser scrolling while dragging
+        userSelect: "none",
       }
     : dragOffset !== 0
       ? {
           transform: "translateX(0px) rotate(0deg) scale(1)",
           transition: `transform ${SPRING_DURATION}ms cubic-bezier(0.34, 1.56, 0.64, 1)`,
+          touchAction: "pan-y", // Restore vertical scroll after drag
+          userSelect: "auto",
         }
       : cardDropStyle;
 
@@ -238,7 +244,7 @@ export function MarketplacePage() {
                     <span className="text-gold">Designed by you.</span>
                 </h1>
 
-                <p className="mt-4 max-w-md block text-sm leading-relaxed text-muted-foreground md:mt-5 md:text-base md:hidden">
+                <p className="mt-4 max-w-md block text-sm leading-relaxed text-muted-foreground md:mt-5 md:hidden">
                     {heroCollection?.description ??
                     "Design custom products, order your favorites, or sell your creations, we handle production and delivery."}
                 </p>
@@ -268,7 +274,7 @@ export function MarketplacePage() {
             </div>
 
             {featured && (
-              <div className="relative select-none max-h-[80dvh] md:aspect-[4/5]">
+              <div className="relative select-none">
                 <style>{`
                   @keyframes heroCardDropIn {
                     0% {
@@ -287,14 +293,39 @@ export function MarketplacePage() {
                   }
                 `}</style>
 
-                <Link
+                {/* Changed from <Link> to <div> to avoid React Router Link's internal click handling
+                    conflicting with our custom drag/swipe logic. Navigation is handled via onClick. */}
+                <div
                   ref={cardRef}
                   key={featured.id}
-                  to="/product/$slug"
-                  params={{ slug: featured.slug }}
-                  className="relative block aspect-square w-full overflow-hidden rounded-[2rem] border border-border bg-surface apple-shadow md:aspect-[4/5]"
+                  className="relative block aspect-square w-full overflow-hidden rounded-[2rem] border border-border bg-surface apple-shadow md:aspect-[4/5] cursor-pointer"
                   style={swipeTransformStyle}
-                  {...heroImageInteractionProps}
+                  onTouchStart={(e: ReactTouchEvent) => {
+                    handleDragStart(e.touches[0].clientX);
+                  }}
+                  onTouchMove={(e: ReactTouchEvent) => {
+                    // Prevent default to stop page scrolling while swiping horizontally
+                    if (dragStartX.current !== null && Math.abs(dragDeltaX.current) > 10) {
+                      e.preventDefault();
+                    }
+                    handleDragMove(e.touches[0].clientX);
+                  }}
+                  onTouchEnd={() => {
+                    handleDragEnd();
+                  }}
+                  onMouseDown={(e: ReactMouseEvent) => {
+                    handleDragStart(e.clientX);
+                  }}
+                  onMouseMove={(e: ReactMouseEvent) => {
+                    if (dragStartX.current !== null) handleDragMove(e.clientX);
+                  }}
+                  onMouseUp={() => {
+                    handleDragEnd();
+                  }}
+                  onMouseLeave={() => {
+                    if (dragStartX.current !== null) handleDragEnd();
+                  }}
+                  onClick={handleCardTap}
                 >
                   {!heroImageLoaded && (
                     <div className="absolute inset-0 z-10 animate-pulse bg-muted/40" />
@@ -303,7 +334,7 @@ export function MarketplacePage() {
                   <img
                     src={featured.thumbnail_url || featured.mockup_url || ""}
                     alt={featured.title}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover pointer-events-none"
                     draggable={false}
                     onLoad={() => setHeroImageLoaded(true)}
                   />
@@ -319,7 +350,7 @@ export function MarketplacePage() {
                       {formatPrice(featured.retail_price, featured.currency)}
                     </p>
                   </div>
-                </Link>
+                </div>
                 {hasMultipleSlides && showSwipeHint && (
                   <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
                     <style>{`

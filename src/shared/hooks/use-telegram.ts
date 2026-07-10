@@ -1,7 +1,8 @@
 // src/shared/hooks/use-telegram.ts
 
 
-import { useCallback, useEffect, useState } from "react";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 // Types for Telegram WebApp
 
@@ -194,9 +195,33 @@ export function useTelegram() {
     [tg]
   );
 
+  /**
+   * Triggers an impact haptic feedback.
+   * 
+   * NOTE: On Android Telegram, `impactOccurred` is known to be buggy and may not
+   * produce any haptic feedback (see Telegram-Mini-Apps/issues#28). This wrapper
+   * falls back to `notificationOccurred("success")` when running on Android to
+   * ensure the user still receives tactile feedback.
+   * 
+   * @param style - The impact style: "light" | "medium" | "heavy" | "rigid" | "soft"
+   */
   const impactOccurred = useCallback(
     (style: "light" | "medium" | "heavy" | "rigid" | "soft") => {
-      tg?.HapticFeedback?.impactOccurred?.(style);
+      const haptic = tg?.HapticFeedback;
+      if (!haptic) return;
+
+      const platform = tg?.platform?.toLowerCase() ?? "";
+      const isAndroid = platform.includes("android");
+
+      if (isAndroid) {
+        // Android Telegram bug: impactOccurred doesn't work reliably.
+        // Fallback to notificationOccurred which is confirmed working on Android.
+        // Map impact styles to notification types for best UX:
+        // light/soft -> success (subtle), medium/rigid/heavy -> success (same on Android)
+        haptic.notificationOccurred("success");
+      } else {
+        haptic.impactOccurred(style);
+      }
     },
     [tg]
   );
@@ -209,7 +234,19 @@ export function useTelegram() {
   );
 
   const selectionChanged = useCallback(() => {
-    tg?.HapticFeedback?.selectionChanged?.();
+    const haptic = tg?.HapticFeedback;
+    if (!haptic) return;
+
+    const platform = tg?.platform?.toLowerCase() ?? "";
+    const isAndroid = platform.includes("android");
+
+    if (isAndroid) {
+      // Same Android bug: selectionChanged also doesn't work on Android.
+      // Use a very light notificationOccurred as fallback.
+      haptic.notificationOccurred("success");
+    } else {
+      haptic.selectionChanged();
+    }
   }, [tg]);
 
   const openTelegramLink = useCallback(
