@@ -37,7 +37,7 @@ export const Route = createFileRoute("/_authenticated")({
 const steps = [
   { icon: Shirt, label: "Pick" },
   { icon: Palette, label: "Customize" },
-  { icon: ShoppingBag, label: "Order" },
+  { icon: ShoppingBag, label: "Sell/Order" },
 ];
 
 function AuthenticatedLayout() {
@@ -61,29 +61,6 @@ function AuthenticatedLayout() {
         {/* Center Loader */}
         <div className="relative z-10 my-auto flex flex-col items-center">
           <BrandLoader size="md" />
-        </div>
-
-        <div className="relative z-10 w-full max-w-sm pb-5">
-          <div className="relative h-6 overflow-hidden">
-            <div className="absolute inset-x-0 top-1/2 h-px bg-white/10" />
-
-            <motion.div
-              className="absolute top-0"
-              animate={{
-                x: ["-10%", "1110%"],
-              }}
-              transition={{
-                duration: 4,
-                repeat: Infinity,
-                ease: "linear",
-              }}
-            >
-              <div className="flex items-center gap-1">
-                <div className="h-2 w-2 rounded-sm bg-emerald-300/60" />
-                <Truck className="h-5 w-5 text-amber-300/70" />
-              </div>
-            </motion.div>
-          </div>
         </div>
 
         {/* Bottom Steps - Mobile optimized card grid */}

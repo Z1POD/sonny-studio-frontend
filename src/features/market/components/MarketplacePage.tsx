@@ -12,15 +12,21 @@ import {
 } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { Loader2, Search, Sparkles } from "lucide-react";
+import { Loader2, Search, Sparkles, Fingerprint, Undo, Redo } from "lucide-react";
 import { formatPrice } from "@/lib/format";
+import { useTelegram } from "@/shared/hooks/use-telegram";
 import { homepageQuery, productsInfiniteQuery } from "../queries";
 import { ProductCard } from "./ProductCard";
 import type { ProductListItem, ProductListParams } from "../types";
 
+
 const SWIPE_THRESHOLD = 80;
 
+/** Spring-back animation duration when the user releases without crossing threshold. */
 const SPRING_DURATION = 300;
+
+/** sessionStorage key to track if the swipe hint has already been shown. */
+const SWIPE_HINT_SHOWN_KEY = "marketplace_swipe_hint_shown";
 
 type MarketSearch = {
   q?: string;
@@ -34,6 +40,8 @@ export function MarketplacePage() {
   const navigate = useNavigate();
 
   const { data: homepage, isLoading: isHomepageLoading } = useQuery(homepageQuery());
+
+  const { impactOccurred, selectionChanged, isTelegram } = useTelegram();
 
   const filters: Omit<ProductListParams, "page"> = useMemo(
     () => ({
@@ -87,12 +95,18 @@ export function MarketplacePage() {
   const featured = carouselProducts.length > 0 ? carouselProducts[activeIndex] : undefined;
   const hasMultipleSlides = carouselProducts.length > 1;
 
+
   const slideDirectionRef = useRef<"next" | "prev">("next");
 
-  const [showSwipeHint, setShowSwipeHint] = useState(true);
+
+  const [showSwipeHint, setShowSwipeHint] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return sessionStorage.getItem(SWIPE_HINT_SHOWN_KEY) !== "1";
+  });
 
   const [heroImageLoaded, setHeroImageLoaded] = useState(false);
 
+  // Real-time swipe tracking — the card physically follows the finger.
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartX = useRef<number | null>(null);
@@ -132,9 +146,16 @@ export function MarketplacePage() {
 
     if (Math.abs(delta) > 6) {
       isSwiping.current = true;
+      // Hide hint permanently for this session on first swipe.
       setShowSwipeHint(false);
+      try {
+        sessionStorage.setItem(SWIPE_HINT_SHOWN_KEY, "1");
+      } catch {
+        /* ignore storage errors */
+      }
     }
 
+    // Apply resistance at the edges so the user feels the boundary.
     const resistance = 0.55;
     setDragOffset(delta * resistance);
   };
@@ -146,10 +167,14 @@ export function MarketplacePage() {
     const delta = dragDeltaX.current;
     if (delta <= -SWIPE_THRESHOLD) {
       goToNextSlide();
+      // Haptic: light impact when swipe completes successfully.
+      if (isTelegram) impactOccurred("light");
     } else if (delta >= SWIPE_THRESHOLD) {
       goToPrevSlide();
+      // Haptic: light impact when swipe completes successfully.
+      if (isTelegram) impactOccurred("light");
     }
-
+    // Spring back to center if threshold wasn't crossed.
     setDragOffset(0);
     dragStartX.current = null;
     dragDeltaX.current = 0;
@@ -168,9 +193,13 @@ export function MarketplacePage() {
       if (dragStartX.current !== null) handleDragEnd();
     },
     onClick: (e: ReactMouseEvent) => {
+      // A swipe shouldn't also trigger navigation to the product page.
       if (isSwiping.current) {
         e.preventDefault();
         isSwiping.current = false;
+      } else {
+        // Haptic: selection feedback when tapping to open product detail.
+        if (isTelegram) selectionChanged();
       }
     },
   };
@@ -265,7 +294,6 @@ export function MarketplacePage() {
                   style={swipeTransformStyle}
                   {...heroImageInteractionProps}
                 >
-                  {/* Skeleton placeholder shown while the next image is loading. */}
                   {!heroImageLoaded && (
                     <div className="absolute inset-0 z-10 animate-pulse bg-muted/40" />
                   )}
@@ -292,49 +320,58 @@ export function MarketplacePage() {
                 </Link>
 
                 {hasMultipleSlides && showSwipeHint && (
-                  <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+                <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
                     <style>{`
-                      @keyframes swipeHintFade {
+                    @keyframes swipeHintFade {
                         0%, 100% { opacity: 0; }
-                        10%, 90% { opacity: 1; }
-                      }
-                      @keyframes swipeHandGesture {
-                        0% { transform: translateX(0) scale(1); }
-                        25% { transform: translateX(-22px) scale(0.95); }
-                        50% { transform: translateX(0) scale(1); }
-                        75% { transform: translateX(22px) scale(0.95); }
-                        100% { transform: translateX(0) scale(1); }
-                      }
+                        12%, 88% { opacity: 1; }
+                    }
+
+                    @keyframes swipeLeft {
+                        0%,100% { transform: translateX(0); opacity:.45; }
+                        50% { transform: translateX(-10px); opacity:1; }
+                    }
+
+                    @keyframes swipeRight {
+                        0%,100% { transform: translateX(0); opacity:.45; }
+                        50% { transform: translateX(10px); opacity:1; }
+                    }
+
+                    @keyframes pulseHint {
+                        0%,100% { transform: scale(.95); opacity:.85; }
+                        50% { transform: scale(1); opacity:1; }
+                    }
                     `}</style>
+
                     <div
-                      className="flex flex-col h-[94%] w-[94%] items-center justify-center gap-2 rounded-2xl px-6 py-3 backdrop-blur-md"
-                      style={{
-                        backgroundColor: "rgba(8, 59, 50, 0.5)",
-                        animation: "swipeHintFade 5s ease-in-out both",
-                      }}
+                    className="flex h-[94%] w-[94%] flex-col items-center justify-center gap-4 rounded-2xl px-8 py-4 backdrop-blur-md"
+                    style={{
+                        backgroundColor: "rgba(8, 59, 50, 0.85)",
+                        animation: "swipeHintFade 6.5s ease-in-out both",
+                    }}
                     >
-                      <svg
-                        width="32"
-                        height="32"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="text-white/90"
-                        style={{ animation: "swipeHandGesture 2.4s ease-in-out 0.3s 2" }}
-                      >
-                        <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-                        <path d="M12 11V7" />
-                        <path d="M8 15v-1.5a2.5 2.5 0 0 1 5 0V15" />
-                        <path d="M8 11h8v6a4 4 0 0 1-8 0v-6Z" />
-                      </svg>
-                      <span className="text-[10px] font-medium uppercase tracking-[0.15em] text-gold/80">
-                        Swipe
-                      </span>
+                    <div
+                        className="relative flex items-center justify-center"
+                        style={{ animation: "pulseHint 2s ease-in-out infinite" }}
+                    >
+                        <Undo
+                        className="h-9 w-9 text-white/80"
+                        style={{ animation: "swipeLeft 1.6s ease-in-out infinite" }}
+                        />
+
+                        <Fingerprint className="mx-2 h-6 w-6 text-white/35" />
+
+                        <Redo
+                        className="h-9 w-9 text-white/80"
+                        style={{ animation: "swipeRight 1.6s ease-in-out infinite" }}
+                        />
                     </div>
-                  </div>
+
+                    <span className="text-[10px] font-medium uppercase tracking-[0.15em] text-gold/80">
+                        Swipe
+                    </span>
+                    </div>
+                </div>
                 )}
               </div>
             )}
