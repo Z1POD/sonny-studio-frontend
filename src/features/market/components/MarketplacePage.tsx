@@ -12,7 +12,7 @@ import {
 } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { Loader2, Search, Sparkles, Fingerprint, Undo, Redo } from "lucide-react";
+import { Loader2, Search, Sparkles, Fingerprint} from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { useTelegram } from "@/shared/hooks/use-telegram";
 import { homepageQuery, productsInfiniteQuery } from "../queries";
@@ -404,7 +404,7 @@ export function MarketplacePage() {
                     <div
                     className="flex h-[94%] w-[94%] flex-col items-center justify-center gap-4 rounded-2xl px-8 py-4 backdrop-blur-md"
                     style={{
-                        backgroundColor: "rgba(8, 59, 50, 0.85)",
+                        backgroundColor: "rgba(8, 59, 50, 0.65)",
                         animation: "swipeHintFade 6.5s ease-in-out both",
                     }}
                     >

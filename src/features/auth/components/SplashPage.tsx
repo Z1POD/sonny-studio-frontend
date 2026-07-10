@@ -3,7 +3,7 @@
 "use client";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Shirt, Palette, ShoppingBag, Sparkles, ShoppingCart } from "lucide-react";
+import { ArrowRight, Shirt, Palette, ShoppingBag, Sparkles, ShoppingCart, Truck } from "lucide-react";
 import { BrandLoader } from "@/components/ui/loader";
 import { getMiniAppUrl } from "../lib/miniapp";
 import { LoginDialog } from "./LoginDialog";
