@@ -43,7 +43,6 @@ export function CheckOut({ mockupUrls: mockupUrlsProp }: CheckOutProps) {
     origin,
     goBack,
     goForward,
-    saveDraft,
     reset,
   } = useCheckoutStore() as ReturnType<typeof useCheckoutStore> & { origin?: "studio" | "cart" };
   const { isTelegram } = useTelegram();
@@ -111,7 +110,7 @@ export function CheckOut({ mockupUrls: mockupUrlsProp }: CheckOutProps) {
           >
             <X className="h-5 w-5" />
           </button>
-        ) : step !== "payment" && !isTelegram ? (
+        ) : step !== "payment" ? (
           <button
             onClick={goBack}
             className="grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors hover:bg-muted"
