@@ -41,6 +41,8 @@ export function MarketplacePage() {
 
   const { impactOccurred, selectionChanged } = useTelegram();
 
+  const { tg, showAlert } = useTelegram();
+
   const filters: Omit<ProductListParams, "page"> = useMemo(
     () => ({
       q: search.q || undefined,
@@ -163,9 +165,11 @@ export function MarketplacePage() {
     const delta = dragDeltaX.current;
     if (delta <= -SWIPE_THRESHOLD) {
       goToNextSlide();
+      showAlert;
       impactOccurred("light");
     } else if (delta >= SWIPE_THRESHOLD) {
       goToPrevSlide();
+      showAlert;
       impactOccurred("light");
     }
     // Spring back to center if threshold wasn't crossed.
