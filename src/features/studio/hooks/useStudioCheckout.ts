@@ -251,6 +251,13 @@ export function useStudioCheckout({ canvasRef, savedProductId }: UseStudioChecko
         blobs,
       );
 
+      // Check for API warning on asset upload and surface it to the user.
+      const warningMsg =
+        assetsData?.warning ??
+        assetsData?.data?.warning ??
+        savedProduct?.warning ??
+        savedProduct?.data?.warning;
+
       const pricing        = savedProduct.pricing ?? {};
       const basePrice      = parseFloat(pricing.base_price ?? product.basePrice ?? "0");
       const printCost      = calculatePrintCost();
@@ -265,7 +272,7 @@ export function useStudioCheckout({ canvasRef, savedProductId }: UseStudioChecko
         userFullName:         user?.display_name ?? user?.username ?? "",
         productId:            savedProduct.id ?? savedProductId!,
         productName:          savedProduct.title ?? product.name,
-        thumbnailUrl:         assetsData.thumbnail_url ?? mainMockup ?? undefined,
+        thumbnailUrl:         assetsData.thumbnail_url ?? assetsData?.data?.thumbnail_url ?? mainMockup ?? undefined,
         mockupUrl:            mainMockup ?? undefined,
         mockupUrls:           dataUrls,
         basePrice,
@@ -280,7 +287,19 @@ export function useStudioCheckout({ canvasRef, savedProductId }: UseStudioChecko
         preselectedVariantId: product.variants.find((v) => v.color.hex === selectedColor)?.id,
       });
 
+      // Show success toast — include the warning in description if one exists.
       toast.success("Design saved. Continue to checkout.");
+      if (warningMsg) {
+        toast.success(`${warningMsg}`,
+          {
+          duration: 6000,
+          classNames: {
+            toast:     "!border-gold/20 !bg-surface",
+            title:     "!text-gold",
+            description: "!text-amber-400",
+          },
+        });
+      }
     } catch (err: any) {
       toast.error(err?.data?.error?.message ?? err?.message ?? "Failed to save design");
       console.error(err);
