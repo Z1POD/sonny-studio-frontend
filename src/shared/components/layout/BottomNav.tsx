@@ -1,4 +1,4 @@
-// src/components/layout/BottomNav.tsx
+// src/shared/components/layout/BottomNav.tsx
 "use client";
 
 import { Link, useRouterState } from "@tanstack/react-router";

@@ -22,6 +22,7 @@ import { ApparelMesh } from "./ApparelMesh";
 import { Lights } from "@/features/studio/components/Lights";
 import { ProgressReporter } from "@/features/studio/components/ProgressReporter";
 import { CanvasErrorBoundary } from "@/features/studio/components/CanvasErrorBoundary";
+import { ENVIRONMENT_FILES } from "@/shared/rendering/environmentFiles";
 
 interface Props {
   color: ColorVariant;
@@ -70,7 +71,14 @@ export function ApparelCanvas({ color, viewer, onLoadingChange, onError }: Props
                 onLoadingChange?.(loading, progress);
               }}
             />
-            {viewer.environment && <Environment preset={viewer.environment as any} />}
+            {viewer.environment && (
+              <Environment
+                files={
+                  ENVIRONMENT_FILES[viewer.environment] ??
+                  ENVIRONMENT_FILES.studio
+                }
+              />
+            )}
             <Lights lighting={viewer.lighting} />
             <ApparelMesh
               modelUrl={viewer.model_url}

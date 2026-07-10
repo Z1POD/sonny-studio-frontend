@@ -19,6 +19,7 @@ import { CaptureBridge, type CaptureAPI } from "./CaptureBridge";
 import { Lights } from "./Lights";
 import { ProgressReporter } from "./ProgressReporter";
 import { CanvasErrorBoundary } from "./CanvasErrorBoundary";
+import { ENVIRONMENT_FILES } from "@/shared/rendering/environmentFiles";
 
 export interface ShotConfig {
   id: string;
@@ -121,7 +122,12 @@ export const StudioCanvas = forwardRef<StudioCanvasHandle, StudioCanvasProps>(
                   onLoadingChange?.(loading, progress);
                 }}
               />
-              <Environment preset={product.environment} />
+              <Environment
+                files={
+                  ENVIRONMENT_FILES[product.environment] ??
+                  ENVIRONMENT_FILES.studio
+                }
+              />
               <Lights lighting={(render as any).lighting} />
 
               <group position={render.modelPosition}>
