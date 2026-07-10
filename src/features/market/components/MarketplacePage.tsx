@@ -251,14 +251,14 @@ export function MarketplacePage() {
                   <Link
                     to="/product/$slug"
                     params={{ slug: featured.slug }}
-                    className="inline-flex h-12 items-center gap-2 rounded-full bg-foreground px-6 text-sm font-semibold text-background transition-transform active:scale-[0.98]"
+                    className="inline-flex h-10 md:h-12 items-center gap-2 rounded-full bg-foreground px-6 text-sm font-semibold text-background transition-transform active:scale-[0.98]"
                   >
                     Shop this piece
                   </Link>
                 )}
                 <a
                   href="#shop-all"
-                  className="inline-flex h-12 items-center rounded-full border border-border bg-surface px-6 text-sm font-medium hover:border-gold"
+                  className="inline-flex h-10 md:h-12 items-center rounded-full border border-border bg-surface px-6 text-sm font-medium hover:border-gold"
                 >
                   Explore
                 </a>
@@ -322,25 +322,83 @@ export function MarketplacePage() {
                 {hasMultipleSlides && showSwipeHint && (
                 <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
                     <style>{`
-                    @keyframes swipeHintFade {
-                        0%, 100% { opacity: 0; }
-                        12%, 88% { opacity: 1; }
-                    }
+                      @keyframes swipeHintFade {
+                          0%, 100% { opacity: 0; }
+                          12%, 88% { opacity: 1; }
+                      }
 
-                    @keyframes swipeLeft {
-                        0%,100% { transform: translateX(0); opacity:.45; }
-                        50% { transform: translateX(-10px); opacity:1; }
-                    }
+                      @keyframes fingerSwipe {
+                          0% {
+                          transform: translateX(-18px) rotate(-6deg) scale(.96);
+                          }
+                          18% {
+                          transform: translateX(-18px) rotate(-6deg) scale(1);
+                          }
+                          50% {
+                          transform: translateX(18px) rotate(6deg) scale(1);
+                          }
+                          68% {
+                          transform: translateX(18px) rotate(6deg) scale(1);
+                          }
+                          100% {
+                          transform: translateX(-18px) rotate(-6deg) scale(.96);
+                          }
+                      }
 
-                    @keyframes swipeRight {
-                        0%,100% { transform: translateX(0); opacity:.45; }
-                        50% { transform: translateX(10px); opacity:1; }
-                    }
+                      @keyframes fingerGlow {
+                          0% {
+                          transform: translateX(-18px) scale(.8);
+                          opacity: .18;
+                          }
+                          50% {
+                          transform: translateX(18px) scale(1.3);
+                          opacity: .45;
+                          }
+                          100% {
+                          transform: translateX(-18px) scale(.8);
+                          opacity: .18;
+                          }
+                      }
 
-                    @keyframes pulseHint {
-                        0%,100% { transform: scale(.95); opacity:.85; }
-                        50% { transform: scale(1); opacity:1; }
-                    }
+                      @keyframes fingerRipple {
+                          0%,100% {
+                          transform: translateX(-18px) scale(.65);
+                          opacity: 0;
+                          }
+
+                          12% {
+                          opacity: .35;
+                          }
+
+                          25% {
+                          transform: translateX(-18px) scale(1.7);
+                          opacity: 0;
+                          }
+
+                          50% {
+                          transform: translateX(18px) scale(.65);
+                          opacity: 0;
+                          }
+
+                          62% {
+                          opacity: .35;
+                          }
+
+                          75% {
+                          transform: translateX(18px) scale(1.7);
+                          opacity: 0;
+                          }
+                      }
+
+                      @keyframes breathe {
+                          0%,100% {
+                          transform: scale(.98);
+                          }
+
+                          50% {
+                          transform: scale(1.02);
+                          }
+                      }
                     `}</style>
 
                     <div
@@ -350,26 +408,42 @@ export function MarketplacePage() {
                         animation: "swipeHintFade 6.5s ease-in-out both",
                     }}
                     >
-                    <div
-                        className="relative flex items-center justify-center"
-                        style={{ animation: "pulseHint 2s ease-in-out infinite" }}
-                    >
-                        <Undo
-                        className="h-9 w-9 text-white/80"
-                        style={{ animation: "swipeLeft 1.6s ease-in-out infinite" }}
-                        />
+                      <div
+                          className="relative flex h-20 w-32 items-center justify-center"
+                          style={{
+                          animation: "breathe 2.8s ease-in-out infinite",
+                          }}
+                      >
+                          {/* Soft glow */}
+                          <div
+                          className="absolute h-10 w-10 rounded-full bg-white/20 blur-xl"
+                          style={{
+                              animation: "fingerGlow 2.2s ease-in-out infinite",
+                          }}
+                          />
 
-                        <Fingerprint className="mx-2 h-6 w-6 text-white/35" />
+                          {/* Ripple */}
+                          <div
+                          className="absolute h-12 w-12 rounded-full border border-white/25"
+                          style={{
+                              animation: "fingerRipple 2.2s ease-in-out infinite",
+                          }}
+                          />
 
-                        <Redo
-                        className="h-9 w-9 text-white/80"
-                        style={{ animation: "swipeRight 1.6s ease-in-out infinite" }}
-                        />
-                    </div>
+                          {/* Finger */}
+                          <div
+                          className="relative z-10"
+                          style={{
+                              animation: "fingerSwipe 2.2s cubic-bezier(.4,0,.2,1) infinite",
+                          }}
+                          >
+                          <Fingerprint className="h-9 w-9 text-white/90 drop-shadow-[0_2px_10px_rgba(255,255,255,0.35)]" />
+                          </div>
+                      </div>
 
-                    <span className="text-[10px] font-medium uppercase tracking-[0.15em] text-gold/80">
-                        Swipe
-                    </span>
+                      <span className="text-[10px] font-medium uppercase tracking-[0.15em] text-gold/80">
+                          Swipe
+                      </span>
                     </div>
                 </div>
                 )}
