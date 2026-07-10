@@ -7,7 +7,7 @@ export const ENVIRONMENT_FILES: Record<string, string> = (() => {
     return typeof parsed === "object" && parsed !== null ? parsed : {};
   } catch {
     console.warn(
-      "Invalid VITE_STUDIO_ENV_FILES. Falling back to an empty mapping."
+      "Invalid STUDIO_ENV_FILES. Falling back to an empty mapping."
     );
 
     return {};
