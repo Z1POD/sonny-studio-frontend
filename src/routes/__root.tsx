@@ -12,6 +12,7 @@ import { useTelegramLaunch } from "@/features/auth/hooks/useTelegramLaunch";
 import { OverlayRoot } from "@/shared/components/overlay/OverlayRoot";
 import { NotFoundPage } from "@/shared/components/NotFoundPage";
 import { ErrorPage } from "@/shared/components/ErrorPage";
+import { RouteProgressBar } from "@/shared/components/RouteProgressBar";
 import appCss from "../styles.css?url";
 
 // Environment-derived config (only what changes per environment)
@@ -155,6 +156,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <RouteProgressBar />
       <Outlet />
       <OverlayRoot />
       <Toaster position="bottom-center" theme="system" offset="52px" />

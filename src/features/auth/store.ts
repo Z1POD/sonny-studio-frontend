@@ -1,10 +1,5 @@
 // src/features/auth/store.ts
 
-/**
- * Auth store — single source of truth for the active session.
- * The token is persisted to localStorage via the API client; this store
- * mirrors it for reactive consumers and tracks the current user.
- */
 import { create } from "zustand";
 import {
   ApiError,
@@ -37,14 +32,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ status: "unauthenticated", token: null, user: null });
       return;
     }
+    if (get().status === "authenticated" && get().user) {
+      return;
+    }
     set({ status: "loading", token });
     try {
       const user = await authApi.me();
       set({ user, status: "authenticated" });
     } catch (err) {
-      // Only invalidate the session on an explicit 401 Unauthorized.
-      // Network errors, 5xx server errors, or timeouts should NOT log the
-      // user out — the token is still valid; the server is just unreachable.
       if (err instanceof ApiError && err.status === 401) {
         setStoredToken(null);
         set({ token: null, user: null, status: "unauthenticated" });
