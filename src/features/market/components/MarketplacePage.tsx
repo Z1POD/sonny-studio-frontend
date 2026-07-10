@@ -41,7 +41,19 @@ export function MarketplacePage() {
 
   const { impactOccurred, selectionChanged } = useTelegram();
 
+
   const { tg, showAlert } = useTelegram();
+
+  useEffect(() => {
+    if (!tg) return;
+    showAlert(
+      `platform: ${tg.platform}\n` +
+      `version: ${tg.version}\n` +
+      `isVersionAtLeast(6.1): ${tg.isVersionAtLeast?.("6.1")}\n` +
+      `HapticFeedback present: ${!!tg.HapticFeedback}\n` +
+      `impactOccurred present: ${!!tg.HapticFeedback?.impactOccurred}`
+    );
+  }, [tg]);
 
   const filters: Omit<ProductListParams, "page"> = useMemo(
     () => ({
@@ -165,11 +177,9 @@ export function MarketplacePage() {
     const delta = dragDeltaX.current;
     if (delta <= -SWIPE_THRESHOLD) {
       goToNextSlide();
-      showAlert;
       impactOccurred("light");
     } else if (delta >= SWIPE_THRESHOLD) {
       goToPrevSlide();
-      showAlert;
       impactOccurred("light");
     }
     // Spring back to center if threshold wasn't crossed.
