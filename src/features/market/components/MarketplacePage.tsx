@@ -21,9 +21,8 @@ import { homepageQuery, productsInfiniteQuery } from "../queries";
 import { ProductCard } from "./ProductCard";
 import type { ProductListItem, ProductListParams } from "../types";
 
-const SWIPE_THRESHOLD = 80;
-
-const SPRING_DURATION = 300;
+const SWIPE_THRESHOLD = 60;
+const SWIPE_VELOCITY_THRESHOLD = 0.4;
 
 const SWIPE_HINT_SHOWN_KEY = "marketplace_swipe_hint_shown";
 
@@ -40,7 +39,7 @@ export function MarketplacePage() {
 
   const { data: homepage, isLoading: isHomepageLoading } = useQuery(homepageQuery());
 
-  const { impactOccurred, selectionChanged, notificationOccurred } = useTelegram();
+  const { impactOccurred, selectionChanged } = useTelegram();
 
   const filters: Omit<ProductListParams, "page"> = useMemo(
     () => ({
@@ -101,25 +100,40 @@ export function MarketplacePage() {
     return sessionStorage.getItem(SWIPE_HINT_SHOWN_KEY) !== "1";
   });
 
-  // Trigger large haptic when swipe hint first appears (only once per session)
+  // Trigger large haptic when swipe hint first appears
   const hintHapticFiredRef = useRef(false);
   useEffect(() => {
     if (showSwipeHint && hasMultipleSlides && !hintHapticFiredRef.current) {
       hintHapticFiredRef.current = true;
-      // Use "heavy" impact for the prominent swipe hint entrance
-      // Fallback to notificationOccurred on Android where impactOccurred is buggy
       impactOccurred("heavy");
     }
   }, [showSwipeHint, hasMultipleSlides, impactOccurred]);
 
   const [heroImageLoaded, setHeroImageLoaded] = useState(false);
 
-  const [dragOffset, setDragOffset] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStartX = useRef<number | null>(null);
-  const dragDeltaX = useRef(0);
+  // ---- SMOOTH SWIPE STATE ----
+  // Using a single state object for transform values to batch updates
+  const [swipeState, setSwipeState] = useState<{
+    offset: number;
+    rotate: number;
+    scale: number;
+    isDragging: boolean;
+    isAnimating: boolean;
+  }>({
+    offset: 0,
+    rotate: 0,
+    scale: 1,
+    isDragging: false,
+    isAnimating: false,
+  });
+
+  // Refs for gesture tracking (not state - avoids re-renders during drag)
+  const dragStartX = useRef(0);
+  const dragStartY = useRef(0);
+  const dragCurrentX = useRef(0);
+  const dragStartTime = useRef(0);
   const isSwiping = useRef(false);
-  const cardRef = useRef<HTMLDivElement>(null);
+  const isHorizontalSwipe = useRef<boolean | null>(null);
 
   useEffect(() => {
     setHeroImageLoaded(false);
@@ -139,55 +153,104 @@ export function MarketplacePage() {
     );
   }, [carouselProducts.length]);
 
-  const handleDragStart = useCallback((clientX: number) => {
-    dragStartX.current = clientX;
-    dragDeltaX.current = 0;
-    isSwiping.current = false;
-    setIsDragging(true);
-    setDragOffset(0);
+  // Reset swipe state with spring animation
+  const springBack = useCallback(() => {
+    setSwipeState({
+      offset: 0,
+      rotate: 0,
+      scale: 1,
+      isDragging: false,
+      isAnimating: false,
+    });
   }, []);
 
-  const handleDragMove = useCallback((clientX: number) => {
-    if (dragStartX.current === null) return;
-    const delta = clientX - dragStartX.current;
-    dragDeltaX.current = delta;
+  const handleDragStart = useCallback((clientX: number, clientY: number) => {
+    dragStartX.current = clientX;
+    dragStartY.current = clientY;
+    dragCurrentX.current = clientX;
+    dragStartTime.current = Date.now();
+    isSwiping.current = false;
+    isHorizontalSwipe.current = null;
 
-    if (Math.abs(delta) > 6) {
+    setSwipeState({
+      offset: 0,
+      rotate: 0,
+      scale: 1,
+      isDragging: true,
+      isAnimating: false,
+    });
+  }, []);
+
+  const handleDragMove = useCallback((clientX: number, clientY: number) => {
+    if (dragStartX.current === 0) return;
+
+    const deltaX = clientX - dragStartX.current;
+    const deltaY = clientY - dragStartY.current;
+    dragCurrentX.current = clientX;
+
+    // Determine swipe direction on first significant movement
+    if (isHorizontalSwipe.current === null && (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8)) {
+      isHorizontalSwipe.current = Math.abs(deltaX) > Math.abs(deltaY);
+    }
+
+    // If scrolling vertically, ignore
+    if (isHorizontalSwipe.current === false) return;
+
+    // Horizontal swipe detected
+    if (Math.abs(deltaX) > 10) {
       isSwiping.current = true;
-      // Hide hint permanently for this session on first swipe.
       setShowSwipeHint(false);
       try {
         sessionStorage.setItem(SWIPE_HINT_SHOWN_KEY, "1");
       } catch {
-        /* ignore storage errors */
+        /* ignore */
       }
     }
 
-    const resistance = 0.55;
-    setDragOffset(delta * resistance);
+    // Apply resistance at edges
+    const resistance = 0.6;
+    const resistedDelta = deltaX * resistance;
+
+    setSwipeState({
+      offset: resistedDelta,
+      rotate: resistedDelta * 0.03,
+      scale: 1 - Math.abs(resistedDelta) * 0.00025,
+      isDragging: true,
+      isAnimating: false,
+    });
   }, []);
 
   const handleDragEnd = useCallback(() => {
-    if (dragStartX.current === null) return;
-    setIsDragging(false);
+    if (dragStartX.current === 0) return;
 
-    const delta = dragDeltaX.current;
-    if (delta <= -SWIPE_THRESHOLD) {
-      // Fire haptic BEFORE state update to ensure it executes
-      impactOccurred("light");
-      goToNextSlide();
-    } else if (delta >= SWIPE_THRESHOLD) {
-      // Fire haptic BEFORE state update to ensure it executes
-      impactOccurred("light");
-      goToPrevSlide();
+    const deltaX = dragCurrentX.current - dragStartX.current;
+    const deltaTime = Date.now() - dragStartTime.current;
+    const velocity = Math.abs(deltaX) / (deltaTime || 1);
+
+    // Swipe threshold: either distance OR velocity-based flick
+    const isSwipe = Math.abs(deltaX) > SWIPE_THRESHOLD || (velocity > SWIPE_VELOCITY_THRESHOLD && Math.abs(deltaX) > 20);
+
+    if (isSwipe && isHorizontalSwipe.current === true) {
+      if (deltaX < 0) {
+        impactOccurred("light");
+        goToNextSlide();
+      } else {
+        impactOccurred("light");
+        goToPrevSlide();
+      }
     }
-    // Spring back to center if threshold wasn't crossed.
-    setDragOffset(0);
-    dragStartX.current = null;
-    dragDeltaX.current = 0;
-  }, [goToNextSlide, goToPrevSlide, impactOccurred]);
 
-  // Programmatic navigation to avoid Link's default click behavior conflicting with swipe
+    // Always spring back (slide change will replace the card anyway)
+    springBack();
+
+    // Reset refs
+    dragStartX.current = 0;
+    dragStartY.current = 0;
+    dragCurrentX.current = 0;
+    isHorizontalSwipe.current = null;
+  }, [goToNextSlide, goToPrevSlide, impactOccurred, springBack]);
+
+  // Programmatic navigation on tap
   const handleCardTap = useCallback(() => {
     if (isSwiping.current) {
       isSwiping.current = false;
@@ -199,32 +262,25 @@ export function MarketplacePage() {
     }
   }, [featured, navigate, selectionChanged]);
 
+  // Card styles
   const cardDropStyle = {
-    animation: "heroCardDropIn 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both",
+    animation: swipeState.isDragging || swipeState.isAnimating ? undefined : "heroCardDropIn 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both",
     "--drop-x": slideDirectionRef.current === "prev" ? "-28px" : "28px",
-    "--drop-rotate": slideDirectionRef.current === "prev" ? "-3deg" : "3deg",
+    
   } as CSSProperties;
 
-  const swipeTransformStyle: CSSProperties = isDragging
-    ? {
-        transform: `translateX(${dragOffset}px) rotate(${dragOffset * 0.02}deg) scale(${1 - Math.abs(dragOffset) * 0.0003})`,
-        transition: "none",
-        cursor: "grabbing",
-        touchAction: "none", // Prevent browser scrolling while dragging
-        userSelect: "none",
-      }
-    : dragOffset !== 0
-      ? {
-          transform: "translateX(0px) rotate(0deg) scale(1)",
-          transition: `transform ${SPRING_DURATION}ms cubic-bezier(0.34, 1.56, 0.64, 1)`,
-          touchAction: "pan-y", // Restore vertical scroll after drag
-          userSelect: "auto",
-        }
-      : cardDropStyle;
+  const swipeTransformStyle: CSSProperties = {
+    transform: `translateX(${swipeState.offset}px) rotate(${swipeState.rotate}deg) scale(${swipeState.scale})`,
+    transition: swipeState.isDragging ? "none" : "transform 250ms ease-out",
+    cursor: swipeState.isDragging ? "grabbing" : "grab",
+    touchAction: "pan-y",
+    userSelect: "none",
+    willChange: swipeState.isDragging ? "transform" : undefined,
+  };
 
   return (
     <div>
-      {/* HERO — only on the unfiltered marketplace home, once homepage data is in */}
+      {/* HERO */}
       {!isFiltered && homepage && (
         <section className="relative overflow-hidden">
           <div className="pointer-events-none absolute inset-0 -z-10">
@@ -279,51 +335,49 @@ export function MarketplacePage() {
                   @keyframes heroCardDropIn {
                     0% {
                       opacity: 0;
-                      transform: translate(var(--drop-x), -18px) scale(0.92) rotate(var(--drop-rotate));
-                    }
-                    55% {
-                      opacity: 1;
-                      transform: translate(calc(var(--drop-x) * -0.2), 6px) scale(1.03)
-                        rotate(calc(var(--drop-rotate) * -0.3));
+                      transform: translate(var(--drop-x), -12px) scale(0.95);
                     }
                     100% {
                       opacity: 1;
-                      transform: translate(0, 0) scale(1) rotate(0deg);
+                      transform: translate(0, 0) scale(1);
                     }
                   }
                 `}</style>
 
-                {/* Changed from <Link> to <div> to avoid React Router Link's internal click handling
-                    conflicting with our custom drag/swipe logic. Navigation is handled via onClick. */}
                 <div
-                  ref={cardRef}
                   key={featured.id}
-                  className="relative block aspect-square w-full overflow-hidden rounded-[2rem] border border-border bg-surface apple-shadow md:aspect-[4/5] cursor-pointer"
-                  style={swipeTransformStyle}
+                  className="relative block aspect-square w-full overflow-hidden rounded-[2rem] border border-border bg-surface apple-shadow md:aspect-[4/5]"
+                  style={{ ...cardDropStyle, ...swipeTransformStyle }}
                   onTouchStart={(e: ReactTouchEvent) => {
-                    handleDragStart(e.touches[0].clientX);
+                    const t = e.touches[0];
+                    handleDragStart(t.clientX, t.clientY);
                   }}
                   onTouchMove={(e: ReactTouchEvent) => {
-                    // Prevent default to stop page scrolling while swiping horizontally
-                    if (dragStartX.current !== null && Math.abs(dragDeltaX.current) > 10) {
+                    const t = e.touches[0];
+                    // Prevent vertical scroll only once horizontal swipe is confirmed
+                    if (isHorizontalSwipe.current === true) {
                       e.preventDefault();
                     }
-                    handleDragMove(e.touches[0].clientX);
+                    handleDragMove(t.clientX, t.clientY);
                   }}
                   onTouchEnd={() => {
                     handleDragEnd();
                   }}
                   onMouseDown={(e: ReactMouseEvent) => {
-                    handleDragStart(e.clientX);
+                    handleDragStart(e.clientX, e.clientY);
                   }}
                   onMouseMove={(e: ReactMouseEvent) => {
-                    if (dragStartX.current !== null) handleDragMove(e.clientX);
+                    if (dragStartX.current !== 0) {
+                      handleDragMove(e.clientX, e.clientY);
+                    }
                   }}
                   onMouseUp={() => {
                     handleDragEnd();
                   }}
                   onMouseLeave={() => {
-                    if (dragStartX.current !== null) handleDragEnd();
+                    if (dragStartX.current !== 0) {
+                      handleDragEnd();
+                    }
                   }}
                   onClick={handleCardTap}
                 >
@@ -351,6 +405,8 @@ export function MarketplacePage() {
                     </p>
                   </div>
                 </div>
+
+                {/* SWIPE HINT OVERLAY */}
                 {hasMultipleSlides && showSwipeHint && (
                   <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
                     <style>{`
@@ -358,78 +414,29 @@ export function MarketplacePage() {
                         0%, 100% { opacity: 0; }
                         12%, 88% { opacity: 1; }
                       }
-
                       @keyframes fingerSwipe {
-                        0% {
-                          transform: translateX(-18px) rotate(-6deg) scale(.96);
-                        }
-                        18% {
-                          transform: translateX(-18px) rotate(-6deg) scale(1);
-                        }
-                        50% {
-                          transform: translateX(18px) rotate(6deg) scale(1);
-                        }
-                        68% {
-                          transform: translateX(18px) rotate(6deg) scale(1);
-                        }
-                        100% {
-                          transform: translateX(-18px) rotate(-6deg) scale(.96);
-                        }
+                        0% { transform: translateX(-18px) rotate(-6deg) scale(.96); }
+                        18% { transform: translateX(-18px) rotate(-6deg) scale(1); }
+                        50% { transform: translateX(18px) rotate(6deg) scale(1); }
+                        68% { transform: translateX(18px) rotate(6deg) scale(1); }
+                        100% { transform: translateX(-18px) rotate(-6deg) scale(.96); }
                       }
-
                       @keyframes fingerGlow {
-                        0% {
-                          transform: translateX(-18px) scale(.8);
-                          opacity: .18;
-                        }
-                        50% {
-                          transform: translateX(18px) scale(1.3);
-                          opacity: .45;
-                        }
-                        100% {
-                          transform: translateX(-18px) scale(.8);
-                          opacity: .18;
-                        }
+                        0% { transform: translateX(-18px) scale(.8); opacity: .18; }
+                        50% { transform: translateX(18px) scale(1.3); opacity: .45; }
+                        100% { transform: translateX(-18px) scale(.8); opacity: .18; }
                       }
-
                       @keyframes fingerRipple {
-                        0%,100% {
-                          transform: translateX(-18px) scale(.65);
-                          opacity: 0;
-                        }
-
-                        12% {
-                          opacity: .35;
-                        }
-
-                        25% {
-                          transform: translateX(-18px) scale(1.7);
-                          opacity: 0;
-                        }
-
-                        50% {
-                          transform: translateX(18px) scale(.65);
-                          opacity: 0;
-                        }
-
-                        62% {
-                          opacity: .35;
-                        }
-
-                        75% {
-                          transform: translateX(18px) scale(1.7);
-                          opacity: 0;
-                        }
+                        0%,100% { transform: translateX(-18px) scale(.65); opacity: 0; }
+                        12% { opacity: .35; }
+                        25% { transform: translateX(-18px) scale(1.7); opacity: 0; }
+                        50% { transform: translateX(18px) scale(.65); opacity: 0; }
+                        62% { opacity: .35; }
+                        75% { transform: translateX(18px) scale(1.7); opacity: 0; }
                       }
-
                       @keyframes breathe {
-                        0%,100% {
-                          transform: scale(.98);
-                        }
-
-                        50% {
-                          transform: scale(1.02);
-                        }
+                        0%,100% { transform: scale(.98); }
+                        50% { transform: scale(1.02); }
                       }
                     `}</style>
 
@@ -442,32 +449,19 @@ export function MarketplacePage() {
                     >
                       <div
                         className="relative flex h-20 w-32 items-center justify-center"
-                        style={{
-                          animation: "breathe 2.8s ease-in-out infinite",
-                        }}
+                        style={{ animation: "breathe 2.8s ease-in-out infinite" }}
                       >
-                        {/* Soft glow */}
                         <div
                           className="absolute h-10 w-10 rounded-full bg-white/20 blur-xl"
-                          style={{
-                            animation: "fingerGlow 2.2s ease-in-out infinite",
-                          }}
+                          style={{ animation: "fingerGlow 2.2s ease-in-out infinite" }}
                         />
-
-                        {/* Ripple */}
                         <div
                           className="absolute h-12 w-12 rounded-full border border-white/25"
-                          style={{
-                            animation: "fingerRipple 2.2s ease-in-out infinite",
-                          }}
+                          style={{ animation: "fingerRipple 2.2s ease-in-out infinite" }}
                         />
-
-                        {/* Finger */}
                         <div
                           className="relative z-10"
-                          style={{
-                            animation: "fingerSwipe 2.2s cubic-bezier(.4,0,.2,1) infinite",
-                          }}
+                          style={{ animation: "fingerSwipe 2.2s cubic-bezier(.4,0,.2,1) infinite" }}
                         >
                           <Fingerprint className="h-9 w-9 text-white/90 drop-shadow-[0_2px_10px_rgba(255,255,255,0.35)]" />
                         </div>
@@ -491,7 +485,7 @@ export function MarketplacePage() {
         </div>
       )}
 
-      {/* TRENDING — only unfiltered */}
+      {/* TRENDING */}
       {!isFiltered && homepage && homepage.trending.products.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 pb-16 md:px-8">
           <div className="mb-6">
@@ -514,7 +508,7 @@ export function MarketplacePage() {
         </section>
       )}
 
-      {/* NEW ARRIVALS — only unfiltered */}
+      {/* NEW ARRIVALS */}
       {!isFiltered && homepage && homepage.new_arrivals.products.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 pb-24 md:px-8">
           <div className="mb-6">
@@ -533,7 +527,7 @@ export function MarketplacePage() {
         </section>
       )}
 
-      {/* FEATURED CREATORS — only unfiltered; tap filters the grid below by store */}
+      {/* FEATURED CREATORS */}
       {!isFiltered && homepage && homepage.top_stores.length > 0 && (
         <section className="mx-auto max-w-7xl border-t border-border px-4 py-14 md:px-8">
           <h2 className="text-xl font-semibold tracking-tight md:text-2xl">Featured creators</h2>
@@ -565,7 +559,7 @@ export function MarketplacePage() {
         </section>
       )}
 
-      {/* SHOP ALL — the paginated marketplace grid (this replaces a separate listing page) */}
+      {/* SHOP ALL */}
       <section
         id="shop-all"
         className="mx-auto max-w-7xl border-t border-border px-4 py-14 md:px-8"
