@@ -330,7 +330,7 @@ export function MarketplacePage() {
             </div>
 
             {featured && (
-              <div className="relative select-none">
+              <div className="relative select-none max-h-[80dvh] md:aspect-[4/5]">
                 <style>{`
                   @keyframes heroCardDropIn {
                     0% {
