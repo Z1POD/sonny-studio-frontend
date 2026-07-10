@@ -41,20 +41,6 @@ export function MarketplacePage() {
 
   const { impactOccurred, selectionChanged } = useTelegram();
 
-
-  const { tg, showAlert } = useTelegram();
-
-  useEffect(() => {
-    if (!tg) return;
-    showAlert(
-      `platform: ${tg.platform}\n` +
-      `version: ${tg.version}\n` +
-      `isVersionAtLeast(6.1): ${tg.isVersionAtLeast?.("6.1")}\n` +
-      `HapticFeedback present: ${!!tg.HapticFeedback}\n` +
-      `impactOccurred present: ${!!tg.HapticFeedback?.impactOccurred}`
-    );
-  }, [tg]);
-
   const filters: Omit<ProductListParams, "page"> = useMemo(
     () => ({
       q: search.q || undefined,
@@ -279,27 +265,6 @@ export function MarketplacePage() {
                     Browse all
                     </a>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    console.log("test tap");
-                    impactOccurred("heavy");
-                  }}
-                  style={{
-                    position: "fixed",
-                    top: 60,
-                    right: 16,
-                    zIndex: 9999,
-                    padding: "10px 16px",
-                    background: "red",
-                    color: "white",
-                    borderRadius: 8,
-                  }}
-                >
-                  Test Haptic
-                </button>
-
             </div>
 
             {featured && (

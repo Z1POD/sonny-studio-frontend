@@ -1,7 +1,6 @@
 // src/shared/hooks/use-telegram.ts
 
-
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 // Types for Telegram WebApp
 
@@ -139,7 +138,6 @@ export function useTelegram() {
   const [tg, setTg] = useState<TelegramWebApp | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isTelegram, setIsTelegram] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -151,15 +149,21 @@ export function useTelegram() {
     telegram.expand();
     setIsReady(true);
 
-    const hasInitData = !!telegram.initDataUnsafe?.user;
-    const hasInitDataString = !!telegram.initData && telegram.initData.length > 0;
-    setIsTelegram(hasInitData || hasInitDataString);
-
     // Bot API 7.7+ fullscreen state, kept in sync with the native event.
     setIsFullscreen(!!telegram.isFullscreen);
     const onFullscreenChanged = () => setIsFullscreen(!!telegram.isFullscreen);
     telegram.onEvent?.("fullscreenChanged", onFullscreenChanged);
     return () => telegram.offEvent?.("fullscreenChanged", onFullscreenChanged);
+  }, []);
+
+
+  const isTelegram = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    const webApp = (window as unknown as TelegramWindow).Telegram?.WebApp;
+    if (!webApp) return false;
+    const hasInitData = !!webApp.initDataUnsafe && !!webApp.initDataUnsafe.user;
+    const hasInitDataString = !!webApp.initData && webApp.initData.length > 0;
+    return hasInitData || hasInitDataString;
   }, []);
 
   const isShareToStoryAvailable = useCallback(() => {
