@@ -12,6 +12,7 @@ export function useTelegramLaunch() {
   const { tg } = useTelegram();
   const navigate = useNavigate();
   const setToken = useAuthStore((s) => s.setToken);
+  const hydrate = useAuthStore((s) => s.hydrate);
   const handled = useRef(false);
 
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -31,24 +32,20 @@ export function useTelegramLaunch() {
       });
     };
 
+    const resolveAuth = () => signIn().catch(() => {}).then(() => hydrate()).catch(() => {});
+
     const target = parseStartParam(tg.initDataUnsafe?.start_param);
 
     if (target?.type === "product" || pathnameRef.current === "/") {
-
-      signIn()
-        .catch(() => {
-
-        })
-        .finally(() => {
-          if (target?.type === "product") {
-            navigate({ to: "/p/$slug", params: { slug: target.id }, replace: true });
-          } else {
-            navigate({ to: "/marketplace", replace: true });
-          }
-        });
+      resolveAuth().finally(() => {
+        if (target?.type === "product") {
+          navigate({ to: "/p/$slug", params: { slug: target.id }, replace: true });
+        } else {
+          navigate({ to: "/marketplace", replace: true });
+        }
+      });
       return;
     }
-
-    signIn().catch(() => {});
-  }, [tg, navigate, setToken]);
+    resolveAuth();
+  }, [tg, navigate, setToken, hydrate]);
 }
