@@ -13,6 +13,7 @@ import { designKeys } from "../queries";
 import { StatusBadge } from "./StatusBadge";
 import { QuickBtn } from "./QuickBtn";
 import { DesignLightbox } from "./DesignLightbox";
+import { haptics } from "@/shared/lib/haptics";
 
 interface DesignCardProps {
   design: ProductListItem;
@@ -39,6 +40,7 @@ export function DesignCard({ design, onOpenDetail, onOpenEdit, onMutated }: Desi
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    haptics.impactOccurred("heavy");
     const ok = await confirm({
       title: "Delete this design?",
       description: "This cannot be undone.",
