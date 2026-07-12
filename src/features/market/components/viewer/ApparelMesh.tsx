@@ -56,7 +56,7 @@ export function ApparelMesh({
 
   const group = useRef<THREE.Group>(null);
   useFrame((_, dt) => {
-    if (autoRotate && group.current) group.current.rotation.y += dt * 0.35;
+    if (autoRotate && group.current) group.current.rotation.y += dt * 0.25;
   });
 
   return (

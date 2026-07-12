@@ -25,6 +25,7 @@ import {
   CircleFadingPlus,
 } from "lucide-react";
 import { appToast as toast } from "@/lib/toaster";
+import { haptics } from "@/shared/lib/haptics";
 import { Button } from "@/components/ui/button";
 import { useOverlayStore } from "@/shared/stores/overlay-store";
 import { useTelegram } from "@/shared/hooks/use-telegram";
@@ -216,6 +217,7 @@ function SocialIcon({ btn, url, title, onDone }: {
     <motion.button
       whileTap={{ scale: 0.88 }}
       onClick={() => {
+        haptics.impactOccurred("light");
         btn.action(url, title);
         if (btn.id !== "instagram" && btn.id !== "tiktok") {
           setTimeout(onDone, 350);
@@ -255,7 +257,10 @@ function MenuRow({
     <>
       <motion.button
         whileTap={{ backgroundColor: "rgba(0,0,0,0.04)" }}
-        onClick={onClick}
+        onClick={() => {
+          haptics.impactOccurred("light");
+          onClick();
+        }}
         className={`flex w-full items-center gap-3.5 px-4 py-[13px] text-left transition-colors active:bg-black/5 dark:active:bg-white/5 ${
           destructive ? "text-red-500" : "text-foreground"
         }`}
@@ -315,8 +320,7 @@ interface ShareDrawerContentProps {
 export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps) {
   const [copied, setCopied] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
-  const { isTelegram, isShareToStoryAvailable, shareToStory, hapticFeedback } =
-    useTelegram();
+  const { isTelegram, isShareToStoryAvailable, shareToStory } = useTelegram();
 
   const inTelegram = isTelegram && isShareToStoryAvailable();
 
@@ -332,6 +336,8 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
   }, []);
 
   const handlePublishAndShare = useCallback(async () => {
+    haptics.impactOccurred("light");
+
     if (!target.productId) {
       toast.error("Product ID not available");
       return;
@@ -347,7 +353,8 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
       toast.success("Published!");
 
       if (inTelegram) {
-        hapticFeedback("success");
+        // No manual haptic here — appToast.success above already fired
+        // notificationOccurred("success"); firing it again would double-buzz.
 
         // Get high-quality 4:5 cropped image for the story
         const storyImageUrl = await getStoryImageUrl(target.imageUrl);
@@ -374,7 +381,7 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
     } finally {
       setIsPublishing(false);
     }
-  }, [target, inTelegram, shareToStory, hapticFeedback]);
+  }, [target, inTelegram, shareToStory]);
 
   const copyLink = async () => {
     await navigator.clipboard.writeText(target.url);
@@ -431,7 +438,7 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
             {typeof navigator !== "undefined" && "share" in navigator && (
               <motion.button
                 whileTap={{ scale: 0.88 }}
-                onClick={handleNativeShare}
+                onClick={() => { haptics.impactOccurred("light"); handleNativeShare(); }}
                 className="flex flex-col items-center gap-2 min-w-[60px] flex-shrink-0 select-none"
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-primary text-primary-foreground shadow-sm">
@@ -445,7 +452,7 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
 
             <motion.button
               whileTap={{ scale: 0.88 }}
-              onClick={copyLink}
+              onClick={() => { haptics.impactOccurred("light"); copyLink(); }}
               className="flex flex-col items-center gap-2 min-w-[60px] flex-shrink-0 select-none"
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-surface-elevated border border-border/50 text-foreground shadow-sm">
