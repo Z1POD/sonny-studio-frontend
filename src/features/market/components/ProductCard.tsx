@@ -85,7 +85,7 @@ export function ProductCard({ product, size = "default", page }: Props) {
           )}
         </div>
       </div>
-      <div className="relative z-10 flex items-end justify-between gap-3 border-t border-border bg-background/20 px-5 py-4 backdrop-blur-md">
+      <div className="relative z-10 flex items-end justify-between gap-3 border-t border-border bg-background/20 px-3 py-3 backdrop-blur-md md:px-5 md:py-4">
         <div className="min-w-0 hidden md:block">
           <p className="truncate text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
             {product.store.name}

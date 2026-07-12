@@ -24,6 +24,7 @@ import { useCheckoutStore } from "../store";
 import { useCart } from "@/features/market/store";
 import { orderApi, getFieldErrorsFromApiError } from "../api";
 import { appToast as toast } from "@/lib/toaster";
+import { haptics } from "@/shared/lib/haptics";
 
 interface Props {
   mockupUrl?: string;
@@ -464,7 +465,11 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
       {/* Sticky Place Order Button */}
       <div className="sticky bottom-0 -mx-4 border-t border-border bg-background/95 px-4 py-4 backdrop-blur-xl sm:-mx-6 sm:px-6">
         <Button
-          onClick={handlePlaceOrder}
+          onClick={() =>{
+            handlePlaceOrder
+            haptics.impactOccurred("light");
+          }
+        }
           disabled={creatingOrder}
           className="w-full h-12 rounded-2xl text-base font-semibold"
           size="lg"

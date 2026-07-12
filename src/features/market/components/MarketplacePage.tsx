@@ -14,7 +14,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence, type PanInfo } from "framer-motion";
 import { Loader2, Search, Sparkles, Fingerprint } from "lucide-react";
 import { formatPrice } from "@/lib/format";
-import { useTelegram } from "@/shared/hooks/use-telegram";
+import { haptics } from "@/shared/lib/haptics";
 import { homepageQuery, productsInfiniteQuery } from "../queries";
 import { ProductCard } from "./ProductCard";
 import { getStockBadge } from "../stock";
@@ -37,8 +37,6 @@ export function MarketplacePage() {
   const navigate = useNavigate();
 
   const { data: homepage, isLoading: isHomepageLoading } = useQuery(homepageQuery());
-
-  const { impactOccurred, selectionChanged } = useTelegram();
 
   const filters: Omit<ProductListParams, "page"> = useMemo(
     () => ({
@@ -105,9 +103,9 @@ export function MarketplacePage() {
   useEffect(() => {
     if (showSwipeHint && hasMultipleSlides && !hintHapticFiredRef.current) {
       hintHapticFiredRef.current = true;
-      impactOccurred("heavy");
+      haptics.impactOccurred("heavy");
     }
-  }, [showSwipeHint, hasMultipleSlides, impactOccurred]);
+  }, [showSwipeHint, hasMultipleSlides]);
 
   const [heroImageLoaded, setHeroImageLoaded] = useState(false);
 
@@ -155,8 +153,6 @@ export function MarketplacePage() {
         Math.abs(info.velocity.x) > SWIPE_VELOCITY_THRESHOLD * 1000;
 
       if (isSwipe) {
-        // Light haptic for a slide change — distinct from the tap-to-open feedback below.
-        impactOccurred("light");
         if (info.offset.x < 0) goToNextSlide();
         else goToPrevSlide();
       }
@@ -166,7 +162,7 @@ export function MarketplacePage() {
         justDraggedRef.current = false;
       });
     },
-    [goToNextSlide, goToPrevSlide, impactOccurred],
+    [goToNextSlide, goToPrevSlide],
   );
 
   // Programmatic navigation on tap — only fires for a genuine tap, gated by
@@ -174,17 +170,19 @@ export function MarketplacePage() {
   const handleCardTap = useCallback(() => {
     if (justDraggedRef.current) return;
     if (featured) {
-      selectionChanged();
+      haptics.impactOccurred("light");
       navigate({ to: "/product/$slug", params: { slug: featured.slug } });
     }
-  }, [featured, navigate, selectionChanged]);
+  }, [featured, navigate]);
 
-  // Simple slide + fade, direction-aware — same feel as the product detail
-  // page's gallery carousel, no rotation/scale distortion while dragging.
+  // Direction-aware slide, transform-only — no opacity/fade. The opacity
+  // animation doesn't composite correctly inside the Telegram Mini App
+  // webview (visible flicker/double-layer artifacts on exit), so the slide
+  // relies on translateX alone, which renders reliably there.
   const slideVariants = {
-    enter: (dir: 1 | -1) => ({ opacity: 0, x: dir > 0 ? "100%" : "-100%" }),
-    center: { opacity: 1, x: 0 },
-    exit: (dir: 1 | -1) => ({ opacity: 0, x: dir > 0 ? "-100%" : "100%" }),
+    enter: (dir: 1 | -1) => ({ x: dir > 0 ? "100%" : "-100%" }),
+    center: { x: 0 },
+    exit: (dir: 1 | -1) => ({ x: dir > 0 ? "-100%" : "100%" }),
   };
   const slideDirection = slideDirectionRef.current === "prev" ? -1 : 1;
 
@@ -224,6 +222,7 @@ export function MarketplacePage() {
                     <Link
                         to="/product/$slug"
                         params={{ slug: featured.slug }}
+                        onClick={() => haptics.impactOccurred("light")}
                         className="inline-flex h-10 md:h-12 items-center gap-2 rounded-full bg-foreground px-6 text-sm font-semibold text-background transition-transform active:scale-[0.98]"
                     >
                         Shop now
@@ -232,6 +231,7 @@ export function MarketplacePage() {
 
                     <a
                     href="#shop-all"
+                    onClick={() => haptics.impactOccurred("light")}
                     className="inline-flex h-10 md:h-12 items-center rounded-full border border-border bg-surface px-6 text-sm font-medium transition-colors hover:border-gold"
                     >
                     Browse all
@@ -390,7 +390,7 @@ export function MarketplacePage() {
               In rotation now
             </h2>
           </div>
-          <div className="grid auto-rows-[260px] grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+          <div className="grid auto-rows-[260px] grid-cols-2 gap-2 md:grid-cols-4 sm:gap-3 md:gap-4">
             {homepage.trending.products.slice(0, 6).map((p, i) => (
               <ProductCard
                 key={p.id}
@@ -429,7 +429,10 @@ export function MarketplacePage() {
             {homepage.top_stores.map((s) => (
               <button
                 key={s.slug}
-                onClick={() => navigate({ to: "/marketplace", search: { store: s.slug } })}
+                onClick={() => {
+                  haptics.impactOccurred("light");
+                  navigate({ to: "/marketplace", search: { store: s.slug } });
+                }}
                 className="group relative overflow-hidden rounded-2xl border border-border bg-surface p-5 text-left transition-all hover:border-gold"
               >
                 {s.banner_url && (
@@ -471,6 +474,7 @@ export function MarketplacePage() {
           {isFiltered && (
             <Link
               to="/marketplace"
+              onClick={() => haptics.impactOccurred("light")}
               className="text-xs font-medium text-muted-foreground hover:text-foreground"
             >
               Clear filters
@@ -503,7 +507,10 @@ export function MarketplacePage() {
             {hasNextPage && (
               <div className="mt-8 flex justify-center">
                 <button
-                  onClick={() => fetchNextPage()}
+                  onClick={() => {
+                    haptics.impactOccurred("light");
+                    fetchNextPage();
+                  }}
                   disabled={isFetchingNextPage}
                   className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-surface px-6 text-sm font-medium transition hover:border-gold disabled:opacity-50"
                 >
