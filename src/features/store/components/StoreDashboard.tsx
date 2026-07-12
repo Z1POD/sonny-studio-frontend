@@ -27,7 +27,7 @@ import {
 import { storeProductApi, getRetailPrice, type ProductListItem } from "../api";
 import { ProductListSheet } from "./ProductList";
 import { EditProductModal } from "./EditProductModal";
-import { useConfirm } from "./ConfirmModal";
+import { useConfirm } from "../../../shared/components/ConfirmModal";
 import { useShareDrawer } from "@/shared/components/ShareDrawer";
 import { DiscountSuggestionCard } from "./DiscountSuggestionCard";
 

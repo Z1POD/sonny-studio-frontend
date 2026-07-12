@@ -8,7 +8,7 @@ import { appToast as toast } from "@/lib/toaster";
 import { useNavigate } from "@tanstack/react-router";
 import type { ProductListItem } from "@/features/store/api";
 import { storeProductApi, getRetailPrice } from "@/features/store/api";
-import { useConfirm } from "@/features/store/components/ConfirmModal";
+import { useConfirm } from "@/shared/components/ConfirmModal";
 import { designKeys } from "../queries";
 import { StatusBadge } from "./StatusBadge";
 import { QuickBtn } from "./QuickBtn";

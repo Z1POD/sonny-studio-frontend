@@ -20,7 +20,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { orderDetailQuery, orderKeys } from "../queries";
 import { ordersApi } from "../api";
 import type { OrderDetail, PaymentMethod } from "../api";
-import { useConfirm } from "@/features/store/components/ConfirmModal";
+import { useConfirm } from "@/shared/components/ConfirmModal";
 import { BrandLoader } from "@/components/ui/loader";
 
 //     Status helpers                                                             

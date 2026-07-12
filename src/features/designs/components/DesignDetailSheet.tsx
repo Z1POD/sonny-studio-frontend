@@ -31,7 +31,7 @@ import {
 import { designDetailQuery, designKeys } from "../queries";
 import { storeProductApi, getRetailPrice } from "@/features/store/api";
 import type { ProductListItem, ProductDetail } from "@/features/store/api";
-import { useConfirm } from "@/features/store/components/ConfirmModal";
+import { useConfirm } from "@/shared/components/ConfirmModal";
 import { useCheckoutStore } from "@/features/checkout/store";
 import { DesignLightbox } from "./DesignLightbox";
 import type { ApparelProduct, PrintArea } from "@/features/studio/store";

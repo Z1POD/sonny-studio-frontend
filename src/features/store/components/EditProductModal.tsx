@@ -25,7 +25,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { storeProductDetailQuery, storeProductKeys } from "../queries";
 import { storeProductApi, type ProductVariant, type UpdateProductPayload } from "../api";
-import { useConfirm } from "./ConfirmModal";
+import { useConfirm } from "../../../shared/components/ConfirmModal";
 import { useHasVerifiedStore } from "@/shared/hooks/use-store-access";
 
 //     Variant matrix                                                            

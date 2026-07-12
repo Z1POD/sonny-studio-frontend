@@ -28,7 +28,7 @@ import {
 import { storeProductsInfiniteQuery, storeProductKeys } from "../queries";
 import { storeProductApi, getRetailPrice, type ProductListItem } from "../api";
 import { EditProductModal } from "./EditProductModal";
-import { useConfirm } from "./ConfirmModal";
+import { useConfirm } from "../../../shared/components/ConfirmModal";
 import { useShareDrawer } from "@/shared/components/ShareDrawer";
 import { BrandLoader } from "@/components/ui/loader";
 
