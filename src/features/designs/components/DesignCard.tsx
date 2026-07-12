@@ -13,7 +13,6 @@ import { designKeys } from "../queries";
 import { StatusBadge } from "./StatusBadge";
 import { QuickBtn } from "./QuickBtn";
 import { DesignLightbox } from "./DesignLightbox";
-import { haptics } from "@/shared/lib/haptics";
 
 interface DesignCardProps {
   design: ProductListItem;
@@ -95,10 +94,7 @@ export function DesignCard({ design, onOpenDetail, onOpenEdit, onMutated }: Desi
               <ShoppingCart className="h-3 w-3" />
             </QuickBtn>
             <QuickBtn
-              onClick={() => {
-                  haptics.impactOccurred("medium");
-                  handleDelete
-                }}
+              onClick={handleDelete}
               title="Delete"
               loading={deleteMutation.isPending}
               danger

@@ -108,9 +108,15 @@ export function MarketplacePage() {
   }, [showSwipeHint, hasMultipleSlides]);
 
   const [heroImageLoaded, setHeroImageLoaded] = useState(false);
+  const heroImgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
-    setHeroImageLoaded(false);
+    // If the browser already has this image cached, `onLoad` may never fire
+    // again (this is what left the pulsing skeleton stuck forever after
+    // swiping back to an already-seen product inside the Mini App webview).
+    // Check synchronously on mount and skip the skeleton if it's already loaded.
+    const img = heroImgRef.current;
+    setHeroImageLoaded(!!img?.complete && img.naturalWidth > 0);
   }, [featured?.id]);
 
   const goToNextSlide = useCallback(() => {
@@ -175,6 +181,10 @@ export function MarketplacePage() {
     }
   }, [featured, navigate]);
 
+  // Direction-aware slide, transform-only — no opacity/fade. The opacity
+  // animation doesn't composite correctly inside the Telegram Mini App
+  // webview (visible flicker/double-layer artifacts on exit), so the slide
+  // relies on translateX alone, which renders reliably there.
   const slideVariants = {
     enter: (dir: 1 | -1) => ({ x: dir > 0 ? "100%" : "-100%" }),
     center: { x: 0 },
@@ -252,7 +262,7 @@ export function MarketplacePage() {
                     onDragStart={handleDragStart}
                     onDragEnd={handleDragEnd}
                     onClick={handleCardTap}
-                    className="relative block aspect-square w-full cursor-grab overflow-hidden rounded-[2rem] border border-border bg-surface active:cursor-grabbing md:aspect-[4/5]"
+                    className="relative block aspect-square w-full cursor-grab overflow-hidden rounded-[2rem] border border-border bg-surface apple-shadow active:cursor-grabbing md:aspect-[4/5]"
                     style={{ touchAction: "pan-y" }}
                   >
                     {!heroImageLoaded && (
@@ -260,27 +270,38 @@ export function MarketplacePage() {
                     )}
 
                     <img
+                      ref={heroImgRef}
                       src={featured.thumbnail_url || featured.mockup_url || ""}
                       alt={featured.title}
                       className="h-full w-full object-cover pointer-events-none"
                       draggable={false}
                       onLoad={() => setHeroImageLoaded(true)}
+                      onError={() => setHeroImageLoaded(true)}
                     />
 
-                    {featuredStockBadge && (
-                      <span
-                        className={
-                          "absolute left-4 top-4 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] backdrop-blur-2 " +
-                          (featuredStockBadge.kind === "out"
-                            ? "bg-red-600 text-white"
-                            : featuredStockBadge.kind === "limited"
-                              ? "border border-gold bg-background/20 text-gold"
-                              : "bg-foreground text-background")
-                        }
-                      >
-                        {featuredStockBadge.label}
-                      </span>
-                    )}
+                    <div className="absolute left-4 top-4 flex flex-col gap-2">
+                      {featured.is_limited_edition && (
+                        <span className="w-fit rounded-full bg-gold px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-gold-foreground">
+                          Limited
+                        </span>
+                      )}
+                    </div>
+                    <div className="absolute right-4 top-4 flex flex-col gap-2">
+                      {featuredStockBadge && (
+                        <span
+                          className={
+                            "w-fit rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] backdrop-blur-2 " +
+                            (featuredStockBadge.kind === "out"
+                              ? "bg-red-600 text-white"
+                              : featuredStockBadge.kind === "limited"
+                                ? "border border-gold bg-background/20 text-gold"
+                                : "bg-foreground text-background")
+                          }
+                        >
+                          {featuredStockBadge.label}
+                        </span>
+                      )}
+                    </div>
 
                     <div className="absolute bottom-2 left-4 right-4 flex items-end justify-between rounded-2xl border border-border bg-background/70 px-4 py-3 backdrop-blur">
                       <div>
