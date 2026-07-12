@@ -200,12 +200,13 @@ export function StepPayment() {
   }
 
   if (verifyState && (verifyState.isVerified || verifyState.status === "verified")) {
-    haptics.impactOccurred('light');
+    haptics.impactOccurred('heavy')
+
     return <SuccessState orderNumber={order?.orderNumber} />;
   }
 
   if (verifyState && verifyState.isTerminal) {
-    haptics.impactOccurred('heavy')
+    haptics.impactOccurred('light')
     return (
       <FailedState
         isMismatch={verifyState.status === "mismatch"}

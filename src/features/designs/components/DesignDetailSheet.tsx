@@ -1,18 +1,7 @@
-/**
- * src/features/userDesigns/components/DesignDetailSheet.tsx — v4
- *
- * Fixes:
- *  - mapToApparelProduct uses exact editor-config shape (render_config, model.glb_url)
- *  - Reorder flow: loadDesign now reads artworks from
- *    detail.render_config.artworkPrintInfos (real saved shape)
- *  - studioDetailQuery still fetched for methods/tiers when user wants to
- *    reorder with a modified design — but for a straight reorder we can
- *    reconstruct from detail.render_config directly (fast path)
- */
+// src/features/userDesigns/components/DesignDetailSheet.tsx
 
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   X, Pencil, Box, ShoppingCart, Trash2, Loader2,
   ChevronLeft, ChevronRight, ImageIcon, Archive,
@@ -526,15 +515,13 @@ export function DesignDetailSheet({ design, onClose, onEdit, onMutated }: Design
       </Sheet>
 
       {/* Lightbox */}
-      <AnimatePresence>
-        {lightboxIdx !== null && lightboxImages.length > 0 && (
-          <DesignLightbox
-            images={lightboxImages}
-            initialIndex={lightboxIdx}
-            onClose={() => setLightboxIdx(null)}
-          />
-        )}
-      </AnimatePresence>
+      {lightboxIdx !== null && lightboxImages.length > 0 && (
+        <DesignLightbox
+          images={lightboxImages}
+          initialIndex={lightboxIdx}
+          onClose={() => setLightboxIdx(null)}
+        />
+      )}
 
       {ConfirmModal}
     </>
