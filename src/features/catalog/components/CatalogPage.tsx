@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { useLightbox } from "@/shared/hooks/use-overlays";
 import { catalogListQuery, catalogCategoriesQuery } from "../queries";
 import type { CatalogBlank, Category } from "../api";
+import { haptics } from "@/shared/lib/haptics";
 
 function formatPrice(pricing: CatalogBlank["pricing"]): string {
   const symbol = pricing.currency.symbol;
@@ -340,6 +341,7 @@ export function CatalogPage() {
                           onClick={(e) => {
                             e.stopPropagation();
                             handleCustomize(b.id);
+                            haptics.impactOccurred("light");
                           }}
                         >
                           <Plus className="mr-1 sm:mr-1.5 h-3.5 w-3.5 sm:h-4 w-4 stroke-[2.5]" />

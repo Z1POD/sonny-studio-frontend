@@ -32,7 +32,7 @@ export function ApparelMesh({
   modelPosition,
   colorableMeshes = [],
   printAreas = [],
-  autoRotate = false,
+  autoRotate = true,
 }: Props) {
   const { nodes } = useGLTF(modelUrl);
 

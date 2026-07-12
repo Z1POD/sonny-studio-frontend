@@ -18,6 +18,7 @@ import { ProductCard } from "./ProductCard";
 import { ApparelCanvas } from "./viewer/ApparelCanvas";
 import { BrandLoader } from "@/components/ui/loader";
 import { CanvasErrorBoundary } from "@/features/studio/components/CanvasErrorBoundary";
+import { haptics } from "@/shared/lib/haptics";
 
 export function ProductDetailPage({
   slug,
@@ -252,7 +253,10 @@ function ProductDetailContent({
 
                 {has3D && (
                 <button
-                onClick={() => setIs3D((v) => !v)}
+                onClick={() => {
+                  haptics.impactOccurred("light");
+                  setIs3D((v) => !v)}
+                }
                 className="absolute right-4 bottom-4 inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-[11px] font-medium text-foreground backdrop-blur transition hover:border-gold"
                 >
                 {is3D ? (

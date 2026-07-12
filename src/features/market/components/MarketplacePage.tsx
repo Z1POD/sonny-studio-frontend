@@ -175,10 +175,6 @@ export function MarketplacePage() {
     }
   }, [featured, navigate]);
 
-  // Direction-aware slide, transform-only — no opacity/fade. The opacity
-  // animation doesn't composite correctly inside the Telegram Mini App
-  // webview (visible flicker/double-layer artifacts on exit), so the slide
-  // relies on translateX alone, which renders reliably there.
   const slideVariants = {
     enter: (dir: 1 | -1) => ({ x: dir > 0 ? "100%" : "-100%" }),
     center: { x: 0 },
@@ -256,7 +252,7 @@ export function MarketplacePage() {
                     onDragStart={handleDragStart}
                     onDragEnd={handleDragEnd}
                     onClick={handleCardTap}
-                    className="relative block aspect-square w-full cursor-grab overflow-hidden rounded-[2rem] border border-border bg-surface apple-shadow active:cursor-grabbing md:aspect-[4/5]"
+                    className="relative block aspect-square w-full cursor-grab overflow-hidden rounded-[2rem] border border-border bg-surface active:cursor-grabbing md:aspect-[4/5]"
                     style={{ touchAction: "pan-y" }}
                   >
                     {!heroImageLoaded && (
