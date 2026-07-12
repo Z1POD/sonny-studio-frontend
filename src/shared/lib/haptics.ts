@@ -7,6 +7,13 @@ export type NotificationType = "error" | "success" | "warning";
 
 // HapticFeedback was introduced in Bot API 6.1.
 const MIN_HAPTIC_VERSION = "6.1";
+const ANDROID_IMPACT_MAP: Record<ImpactStyle, NotificationType> = {
+  light: "success",
+  soft: "success",
+  medium: "warning",
+  rigid: "warning",
+  heavy: "error",
+};
 
 function getHapticController() {
   const tg = getTelegramWebApp();
@@ -20,17 +27,18 @@ function isAndroidClient(): boolean {
   return (tg?.platform ?? "").toLowerCase().includes("android");
 }
 
+
 export function impactOccurred(style: ImpactStyle = "medium"): void {
   const haptic = getHapticController();
   if (!haptic) return;
 
   if (isAndroidClient()) {
-    haptic.notificationOccurred("success");
+    haptic.notificationOccurred(ANDROID_IMPACT_MAP[style]);
     return;
   }
+
   haptic.impactOccurred(style);
 }
-
 
 export function notificationOccurred(type: NotificationType = "success"): void {
   const haptic = getHapticController();

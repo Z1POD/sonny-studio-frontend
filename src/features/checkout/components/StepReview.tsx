@@ -183,6 +183,7 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
 
       setOrder(order);
       if (isCartOrigin) clearCart();
+      haptics.impactOccurred('light');
       onContinue();
     } catch (e: any) {
       const backendErrors = getFieldErrorsFromApiError(e);

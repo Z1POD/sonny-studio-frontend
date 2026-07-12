@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Pencil, Box, Trash2, ImageIcon, ShoppingCart } from "lucide-react";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/toaster";
 import { useNavigate } from "@tanstack/react-router";
 import type { ProductListItem } from "@/features/store/api";
 import { storeProductApi, getRetailPrice } from "@/features/store/api";

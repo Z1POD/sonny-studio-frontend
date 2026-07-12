@@ -19,6 +19,7 @@ import {
   SuccessState,
   FailedState,
 } from "./payment";
+import { haptics } from "@/shared/lib/haptics";
 
 export function StepPayment() {
   const {
@@ -199,10 +200,12 @@ export function StepPayment() {
   }
 
   if (verifyState && (verifyState.isVerified || verifyState.status === "verified")) {
+    haptics.impactOccurred('light');
     return <SuccessState orderNumber={order?.orderNumber} />;
   }
 
   if (verifyState && verifyState.isTerminal) {
+    haptics.impactOccurred('heavy')
     return (
       <FailedState
         isMismatch={verifyState.status === "mismatch"}
