@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { ImageIcon, Plus, Search } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLightbox } from "@/shared/hooks/use-overlays";
@@ -172,6 +173,23 @@ export function CatalogPage() {
                   />
                 </div>
 
+                {/* Stock badge */}
+                {!b.stock.is_in_stock ? (
+                  <Badge
+                    variant="destructive"
+                    className="absolute left-2 top-2 z-20"
+                  >
+                    Out of stock
+                  </Badge>
+                ) : b.stock.available_quantity < 10 ? (
+                  <Badge
+                    variant="secondary"
+                    className="absolute left-2 top-2 z-20 bg-orange-400"
+                  >
+                    Only {b.stock.available_quantity} left
+                  </Badge>
+                ) : null}
+
                 <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/40 via-black/10 to-transparent pt-8 text-white transition-opacity duration-300 group-hover:opacity-0 pointer-events-none">
                   <p className="truncate text-sm font-semibold tracking-tight">{b.name}</p>
                   <p className="text-xs text-white/80 mt-0.5">{formatPrice(b.pricing)}</p>
@@ -299,7 +317,7 @@ export function CatalogPage() {
                         </div>
 
                         <Button
-                          disabled={isOpeningStudio}
+                          disabled={isOpeningStudio || !b.stock.is_in_stock}
                           size="default"
                           className="
                             pointer-events-auto
@@ -316,6 +334,8 @@ export function CatalogPage() {
                             hover:bg-white/90
                             active:scale-[0.98]
                             mt-1
+                            disabled:opacity-50
+                            disabled:cursor-not-allowed
                           "
                           onClick={(e) => {
                             e.stopPropagation();
@@ -323,7 +343,11 @@ export function CatalogPage() {
                           }}
                         >
                           <Plus className="mr-1 sm:mr-1.5 h-3.5 w-3.5 sm:h-4 w-4 stroke-[2.5]" />
-                          {isOpeningStudio ? "Opening..." : "Customize"}
+                          {!b.stock.is_in_stock
+                            ? "Out of stock"
+                            : isOpeningStudio
+                              ? "Opening..."
+                              : "Customize"}
                         </Button>
                       </div>
                     </motion.div>

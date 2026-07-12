@@ -123,6 +123,15 @@ export function AmountBanner({ invoice }: AmountBannerProps) {
                       : `${invoice?.amount?.currency?.symbol} ${invoice?.amount?.shipping}`}
                   </span>
                 </div>
+                {Number(invoice?.amount?.platform_fee) > 0 && (
+                  <div className="flex justify-between text-emerald-300/70">
+                    <span>Platform Fee</span>
+                    <span className="tabular-nums text-emerald-700 dark:text-green-400">
+                      {invoice?.amount?.currency?.symbol}{" "}
+                      {invoice?.amount?.platform_fee}
+                    </span>
+                  </div>
+                )}
                 {Number(invoice?.amount?.tax) > 0 && (
                   <div className="flex justify-between text-emerald-300/70">
                     <span>Tax</span>

@@ -65,6 +65,15 @@ export interface AvailableSizes {
   sizes: string[];
 }
 
+// Stock
+
+export interface Stock {
+  available_quantity: number;
+  is_in_stock: boolean;
+  variants_in_stock: number;
+  variants_total: number;
+}
+
 // Full CatalogBlank (aligned to real API)
 
 export interface CatalogBlank {
@@ -80,6 +89,7 @@ export interface CatalogBlank {
   is_featured: boolean;
   rating: string;
   review_count: number;
+  stock: Stock;
   available_colors: AvailableColors;
   available_sizes: AvailableSizes;
   tags: string[];

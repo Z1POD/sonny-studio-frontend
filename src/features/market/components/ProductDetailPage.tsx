@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { useCart } from "../store";
 import { formatPrice } from "@/lib/format";
+import { getStockBadge, isOutOfStock, OUT_OF_STOCK_MESSAGE } from "../stock";
 import type { ProductDetail, ProductDetailParams } from "../api";
 import { productQuery } from "../queries";
 import { ProductCard } from "./ProductCard";
@@ -91,6 +92,8 @@ function ProductDetailContent({
 
   const gallery = product.mockups.length > 0 ? product.mockups.map((m) => m.url) : [product.thumbnail_url];
   const unitPrice = color?.prices?.[size] ?? product.pricing.retail_price;
+  const outOfStock = isOutOfStock(product);
+  const stockBadge = getStockBadge(product);
 
   const goToImage = (index: number) => {
     if (index < 0 || index >= gallery.length || index === activeImage) return;
@@ -106,6 +109,17 @@ function ProductDetailContent({
 
   const onAdd = () => {
     if (!color) return;
+    if (outOfStock) {
+      toast.error("Out of stock", {
+        description: OUT_OF_STOCK_MESSAGE,
+        classNames: {
+          toast: "!border-red-500/20 !bg-surface/80 backdrop-blur-xl",
+          title: "!text-red-500",
+          description: "!text-muted-foreground",
+        },
+      });
+      return;
+    }
     addToCart(product, color, size, 1);
     toast.success("Added to bag", {
         description: `${product.title} · ${color.name} · ${size}`,
@@ -206,10 +220,34 @@ function ProductDetailContent({
                 </div>
                 )}
 
-                {product.is_limited_edition && (
-                <span className="absolute left-4 top-4 rounded-full bg-gold px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-gold-foreground">
-                    Limited
-                </span>
+                {(product.is_limited_edition || stockBadge) && (
+                <div className="absolute left-4 top-4 flex flex-col items-start gap-2">
+                    {product.is_limited_edition && (
+                    <span className="rounded-full bg-gold px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-gold-foreground">
+                        Limited
+                    </span>
+                    )}
+                    {stockBadge && (
+                    <span
+                        title={stockBadge.kind === "out" ? OUT_OF_STOCK_MESSAGE : undefined}
+                        onClick={
+                        stockBadge.kind === "out"
+                            ? () => toast.error("Out of stock", { description: OUT_OF_STOCK_MESSAGE })
+                            : undefined
+                        }
+                        className={
+                        "rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] backdrop-blur-md " +
+                        (stockBadge.kind === "out"
+                            ? "cursor-pointer bg-red-600 text-white"
+                            : stockBadge.kind === "limited"
+                            ? "border border-gold bg-background/20 text-gold"
+                            : "bg-foreground text-background")
+                        }
+                    >
+                        {stockBadge.label}
+                    </span>
+                    )}
+                </div>
                 )}
 
                 {has3D && (
@@ -346,11 +384,21 @@ function ProductDetailContent({
                         <button
                             onClick={onAdd}
                             disabled={!color || isAdded}
+                            title={outOfStock ? OUT_OF_STOCK_MESSAGE : undefined}
+                            aria-disabled={outOfStock}
                             className={`flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl font-semibold transition-all duration-300 active:scale-[0.98] disabled:opacity-50 md:flex-none md:px-8 ${
-                                isAdded ? "bg-[#083b32]/80 text-white" : "bg-gold text-gold-foreground"
+                                outOfStock
+                                    ? "bg-muted text-muted-foreground cursor-not-allowed hover:bg-muted"
+                                    : isAdded
+                                        ? "bg-[#083b32]/80 text-white"
+                                        : "bg-gold text-gold-foreground"
                             }`}
                         >
-                            {isAdded ? (
+                            {outOfStock ? (
+                                <>
+                                    <ShoppingBag className="h-4 w-4" /> Out of stock
+                                </>
+                            ) : isAdded ? (
                                 <>
                                     <Check className="h-4 w-4" /> Added!
                                 </>

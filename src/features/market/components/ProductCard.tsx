@@ -3,6 +3,7 @@
 import { Link } from "@tanstack/react-router";
 import type { ProductListItem } from "../types";
 import { formatPrice } from "@/lib/format";
+import { getStockBadge } from "../stock";
 
 // Identifies the parent page so the card can adapt its radius/layout.
 type CardPageOrigin = "catalog" | "landing" | "cart-recommendations" | "orders";
@@ -16,6 +17,7 @@ interface Props {
 
 export function ProductCard({ product, size = "default", page }: Props) {
   const image = product.mockup_url || product.thumbnail_url;
+  const stockBadge = getStockBadge(product);
 
   // Determine layout size constraints
   const sizeClass =
@@ -65,9 +67,26 @@ export function ProductCard({ product, size = "default", page }: Props) {
             </span>
           )}
         </div>
+        <div className="absolute right-3 bottom-3 flex flex-col gap-2">
+          {stockBadge && (
+            <span
+              title={stockBadge.kind === "out" ? "This item is currently out of stock." : undefined}
+              className={
+                "rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] " +
+                (stockBadge.kind === "out"
+                  ? "bg-red-600 text-white"
+                  : stockBadge.kind === "limited"
+                    ? "border border-gold bg-background/20 text-gold backdrop-blur-md"
+                    : "bg-foreground text-background")
+              }
+            >
+              {stockBadge.label}
+            </span>
+          )}
+        </div>
       </div>
-      <div className="relative z-10 flex items-end justify-between gap-3 border-t border-border bg-background/80 px-5 py-4 backdrop-blur">
-        <div className="min-w-0">
+      <div className="relative z-10 flex items-end justify-between gap-3 border-t border-border bg-background/20 px-5 py-4 backdrop-blur-md">
+        <div className="min-w-0 hidden md:block">
           <p className="truncate text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
             {product.store.name}
           </p>

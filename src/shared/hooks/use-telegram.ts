@@ -232,6 +232,7 @@ export function useTelegram() {
     },
     [tg]
   );
+  
 
   const selectionChanged = useCallback(() => {
     const haptic = tg?.HapticFeedback;

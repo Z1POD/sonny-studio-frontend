@@ -8,17 +8,16 @@ import {
   useRef,
   useState,
   useCallback,
-  type CSSProperties,
-  type MouseEvent as ReactMouseEvent,
-  type TouchEvent as ReactTouchEvent,
 } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { motion, AnimatePresence, type PanInfo } from "framer-motion";
 import { Loader2, Search, Sparkles, Fingerprint } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { useTelegram } from "@/shared/hooks/use-telegram";
 import { homepageQuery, productsInfiniteQuery } from "../queries";
 import { ProductCard } from "./ProductCard";
+import { getStockBadge } from "../stock";
 import type { ProductListItem, ProductListParams } from "../types";
 
 const SWIPE_THRESHOLD = 60;
@@ -92,6 +91,7 @@ export function MarketplacePage() {
 
   const featured = carouselProducts.length > 0 ? carouselProducts[activeIndex] : undefined;
   const hasMultipleSlides = carouselProducts.length > 1;
+  const featuredStockBadge = featured ? getStockBadge(featured) : null;
 
   const slideDirectionRef = useRef<"next" | "prev">("next");
 
@@ -111,30 +111,6 @@ export function MarketplacePage() {
 
   const [heroImageLoaded, setHeroImageLoaded] = useState(false);
 
-  // ---- SMOOTH SWIPE STATE ----
-  // Using a single state object for transform values to batch updates
-  const [swipeState, setSwipeState] = useState<{
-    offset: number;
-    rotate: number;
-    scale: number;
-    isDragging: boolean;
-    isAnimating: boolean;
-  }>({
-    offset: 0,
-    rotate: 0,
-    scale: 1,
-    isDragging: false,
-    isAnimating: false,
-  });
-
-  // Refs for gesture tracking (not state - avoids re-renders during drag)
-  const dragStartX = useRef(0);
-  const dragStartY = useRef(0);
-  const dragCurrentX = useRef(0);
-  const dragStartTime = useRef(0);
-  const isSwiping = useRef(false);
-  const isHorizontalSwipe = useRef<boolean | null>(null);
-
   useEffect(() => {
     setHeroImageLoaded(false);
   }, [featured?.id]);
@@ -153,130 +129,64 @@ export function MarketplacePage() {
     );
   }, [carouselProducts.length]);
 
-  // Reset swipe state with spring animation
-  const springBack = useCallback(() => {
-    setSwipeState({
-      offset: 0,
-      rotate: 0,
-      scale: 1,
-      isDragging: false,
-      isAnimating: false,
-    });
-  }, []);
-
-  const handleDragStart = useCallback((clientX: number, clientY: number) => {
-    dragStartX.current = clientX;
-    dragStartY.current = clientY;
-    dragCurrentX.current = clientX;
-    dragStartTime.current = Date.now();
-    isSwiping.current = false;
-    isHorizontalSwipe.current = null;
-
-    setSwipeState({
-      offset: 0,
-      rotate: 0,
-      scale: 1,
-      isDragging: true,
-      isAnimating: false,
-    });
-  }, []);
-
-  const handleDragMove = useCallback((clientX: number, clientY: number) => {
-    if (dragStartX.current === 0) return;
-
-    const deltaX = clientX - dragStartX.current;
-    const deltaY = clientY - dragStartY.current;
-    dragCurrentX.current = clientX;
-
-    // Determine swipe direction on first significant movement
-    if (isHorizontalSwipe.current === null && (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8)) {
-      isHorizontalSwipe.current = Math.abs(deltaX) > Math.abs(deltaY);
+  const dismissSwipeHint = useCallback(() => {
+    setShowSwipeHint(false);
+    try {
+      sessionStorage.setItem(SWIPE_HINT_SHOWN_KEY, "1");
+    } catch {
+      /* ignore */
     }
-
-    // If scrolling vertically, ignore
-    if (isHorizontalSwipe.current === false) return;
-
-    // Horizontal swipe detected
-    if (Math.abs(deltaX) > 10) {
-      isSwiping.current = true;
-      setShowSwipeHint(false);
-      try {
-        sessionStorage.setItem(SWIPE_HINT_SHOWN_KEY, "1");
-      } catch {
-        /* ignore */
-      }
-    }
-
-    // Apply resistance at edges
-    const resistance = 0.6;
-    const resistedDelta = deltaX * resistance;
-
-    setSwipeState({
-      offset: resistedDelta,
-      rotate: resistedDelta * 0.03,
-      scale: 1 - Math.abs(resistedDelta) * 0.00025,
-      isDragging: true,
-      isAnimating: false,
-    });
   }, []);
 
-  const handleDragEnd = useCallback(() => {
-    if (dragStartX.current === 0) return;
+  // Guards against the click-after-drag problem: a swipe ends with a
+  // pointerup in the same place a tap's pointerup would land, so without
+  // this flag every swipe would also fire the tap-to-open-PDP handler.
+  const justDraggedRef = useRef(false);
 
-    const deltaX = dragCurrentX.current - dragStartX.current;
-    const deltaTime = Date.now() - dragStartTime.current;
-    const velocity = Math.abs(deltaX) / (deltaTime || 1);
+  const handleDragStart = useCallback(() => {
+    justDraggedRef.current = true;
+    dismissSwipeHint();
+  }, [dismissSwipeHint]);
 
-    // Swipe threshold: either distance OR velocity-based flick
-    const isSwipe = Math.abs(deltaX) > SWIPE_THRESHOLD || (velocity > SWIPE_VELOCITY_THRESHOLD && Math.abs(deltaX) > 20);
+  const handleDragEnd = useCallback(
+    (_: unknown, info: PanInfo) => {
+      const isSwipe =
+        Math.abs(info.offset.x) > SWIPE_THRESHOLD ||
+        Math.abs(info.velocity.x) > SWIPE_VELOCITY_THRESHOLD * 1000;
 
-    if (isSwipe && isHorizontalSwipe.current === true) {
-      if (deltaX < 0) {
+      if (isSwipe) {
+        // Light haptic for a slide change — distinct from the tap-to-open feedback below.
         impactOccurred("light");
-        goToNextSlide();
-      } else {
-        impactOccurred("light");
-        goToPrevSlide();
+        if (info.offset.x < 0) goToNextSlide();
+        else goToPrevSlide();
       }
-    }
 
-    // Always spring back (slide change will replace the card anyway)
-    springBack();
+      // Let the click event that follows pointerup see the flag, then clear it.
+      requestAnimationFrame(() => {
+        justDraggedRef.current = false;
+      });
+    },
+    [goToNextSlide, goToPrevSlide, impactOccurred],
+  );
 
-    // Reset refs
-    dragStartX.current = 0;
-    dragStartY.current = 0;
-    dragCurrentX.current = 0;
-    isHorizontalSwipe.current = null;
-  }, [goToNextSlide, goToPrevSlide, impactOccurred, springBack]);
-
-  // Programmatic navigation on tap
+  // Programmatic navigation on tap — only fires for a genuine tap, gated by
+  // justDraggedRef so a swipe never opens the product detail page.
   const handleCardTap = useCallback(() => {
-    if (isSwiping.current) {
-      isSwiping.current = false;
-      return;
-    }
+    if (justDraggedRef.current) return;
     if (featured) {
       selectionChanged();
       navigate({ to: "/product/$slug", params: { slug: featured.slug } });
     }
   }, [featured, navigate, selectionChanged]);
 
-  // Card styles
-  const cardDropStyle = {
-    animation: swipeState.isDragging || swipeState.isAnimating ? undefined : "heroCardDropIn 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both",
-    "--drop-x": slideDirectionRef.current === "prev" ? "-28px" : "28px",
-    
-  } as CSSProperties;
-
-  const swipeTransformStyle: CSSProperties = {
-    transform: `translateX(${swipeState.offset}px) rotate(${swipeState.rotate}deg) scale(${swipeState.scale})`,
-    transition: swipeState.isDragging ? "none" : "transform 250ms ease-out",
-    cursor: swipeState.isDragging ? "grabbing" : "grab",
-    touchAction: "pan-y",
-    userSelect: "none",
-    willChange: swipeState.isDragging ? "transform" : undefined,
+  // Simple slide + fade, direction-aware — same feel as the product detail
+  // page's gallery carousel, no rotation/scale distortion while dragging.
+  const slideVariants = {
+    enter: (dir: 1 | -1) => ({ opacity: 0, x: dir > 0 ? "100%" : "-100%" }),
+    center: { opacity: 1, x: 0 },
+    exit: (dir: 1 | -1) => ({ opacity: 0, x: dir > 0 ? "-100%" : "100%" }),
   };
+  const slideDirection = slideDirectionRef.current === "prev" ? -1 : 1;
 
   return (
     <div>
@@ -330,81 +240,65 @@ export function MarketplacePage() {
             </div>
 
             {featured && (
-              <div className="relative select-none max-h-[80dvh] md:aspect-[4/5]">
-                <style>{`
-                  @keyframes heroCardDropIn {
-                    0% {
-                      opacity: 0;
-                      transform: translate(var(--drop-x), -12px) scale(0.95);
-                    }
-                    100% {
-                      opacity: 1;
-                      transform: translate(0, 0) scale(1);
-                    }
-                  }
-                `}</style>
+              <div className="relative select-none max-h-[80dvh] overflow-hidden rounded-[2rem] md:aspect-[4/5]">
+                <AnimatePresence mode="popLayout" custom={slideDirection} initial={false}>
+                  <motion.div
+                    key={featured.id}
+                    custom={slideDirection}
+                    variants={slideVariants}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={{ type: "spring", stiffness: 300, damping: 32 }}
+                    drag="x"
+                    dragConstraints={{ left: 0, right: 0 }}
+                    dragElastic={0.6}
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                    onClick={handleCardTap}
+                    className="relative block aspect-square w-full cursor-grab overflow-hidden rounded-[2rem] border border-border bg-surface apple-shadow active:cursor-grabbing md:aspect-[4/5]"
+                    style={{ touchAction: "pan-y" }}
+                  >
+                    {!heroImageLoaded && (
+                      <div className="absolute inset-0 z-10 animate-pulse bg-muted/40" />
+                    )}
 
-                <div
-                  key={featured.id}
-                  className="relative block aspect-square w-full overflow-hidden rounded-[2rem] border border-border bg-surface apple-shadow md:aspect-[4/5]"
-                  style={{ ...cardDropStyle, ...swipeTransformStyle }}
-                  onTouchStart={(e: ReactTouchEvent) => {
-                    const t = e.touches[0];
-                    handleDragStart(t.clientX, t.clientY);
-                  }}
-                  onTouchMove={(e: ReactTouchEvent) => {
-                    const t = e.touches[0];
-                    // Prevent vertical scroll only once horizontal swipe is confirmed
-                    if (isHorizontalSwipe.current === true) {
-                      e.preventDefault();
-                    }
-                    handleDragMove(t.clientX, t.clientY);
-                  }}
-                  onTouchEnd={() => {
-                    handleDragEnd();
-                  }}
-                  onMouseDown={(e: ReactMouseEvent) => {
-                    handleDragStart(e.clientX, e.clientY);
-                  }}
-                  onMouseMove={(e: ReactMouseEvent) => {
-                    if (dragStartX.current !== 0) {
-                      handleDragMove(e.clientX, e.clientY);
-                    }
-                  }}
-                  onMouseUp={() => {
-                    handleDragEnd();
-                  }}
-                  onMouseLeave={() => {
-                    if (dragStartX.current !== 0) {
-                      handleDragEnd();
-                    }
-                  }}
-                  onClick={handleCardTap}
-                >
-                  {!heroImageLoaded && (
-                    <div className="absolute inset-0 z-10 animate-pulse bg-muted/40" />
-                  )}
+                    <img
+                      src={featured.thumbnail_url || featured.mockup_url || ""}
+                      alt={featured.title}
+                      className="h-full w-full object-cover pointer-events-none"
+                      draggable={false}
+                      onLoad={() => setHeroImageLoaded(true)}
+                    />
 
-                  <img
-                    src={featured.thumbnail_url || featured.mockup_url || ""}
-                    alt={featured.title}
-                    className="h-full w-full object-cover pointer-events-none"
-                    draggable={false}
-                    onLoad={() => setHeroImageLoaded(true)}
-                  />
+                    {featuredStockBadge && (
+                      <span
+                        className={
+                          "absolute left-4 top-4 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] backdrop-blur-2 " +
+                          (featuredStockBadge.kind === "out"
+                            ? "bg-red-600 text-white"
+                            : featuredStockBadge.kind === "limited"
+                              ? "border border-gold bg-background/20 text-gold"
+                              : "bg-foreground text-background")
+                        }
+                      >
+                        {featuredStockBadge.label}
+                      </span>
+                    )}
 
-                  <div className="absolute bottom-2 left-4 right-4 flex items-end justify-between rounded-2xl border border-border bg-background/70 px-4 py-3 backdrop-blur">
-                    <div>
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                        {featured.store.name}
+                    <div className="absolute bottom-2 left-4 right-4 flex items-end justify-between rounded-2xl border border-border bg-background/70 px-4 py-3 backdrop-blur">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                          {featured.store.name}
+                        </p>
+                        <p className="text-sm font-semibold line-clamp-2">{featured.title}</p>
+                      </div>
+                      <p className="text-sm font-semibold tabular-nums">
+                        {formatPrice(featured.retail_price, featured.currency)}
                       </p>
-                      <p className="text-sm font-semibold line-clamp-2">{featured.title}</p>
                     </div>
-                    <p className="text-sm font-semibold tabular-nums">
-                      {formatPrice(featured.retail_price, featured.currency)}
-                    </p>
-                  </div>
-                </div>
+                  </motion.div>
+                </AnimatePresence>
 
                 {/* SWIPE HINT OVERLAY */}
                 {hasMultipleSlides && showSwipeHint && (
