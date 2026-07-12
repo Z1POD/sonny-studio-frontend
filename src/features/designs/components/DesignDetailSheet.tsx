@@ -21,6 +21,13 @@ import {
 import { appToast as toast } from "@/lib/toaster";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import { designDetailQuery, designKeys } from "../queries";
 import { storeProductApi, getRetailPrice } from "@/features/store/api";
 import type { ProductListItem, ProductDetail } from "@/features/store/api";
@@ -145,16 +152,22 @@ export function DesignDetailSheet({ design, onClose, onEdit, onMutated }: Design
   const [reorderLoading, setReorderLoading] = useState(false);
   const [variantsExpanded, setVariantsExpanded] = useState(false);
 
+  const [localDesign, setLocalDesign] = useState<ProductListItem | null>(design);
+  if (design && design !== localDesign) {
+    setLocalDesign(design);
+  }
+  const isOpen = !!design;
+
   // Full product detail (has render_config, snapshot, mockups, enabled_variant)
   const { data: detailRaw, isLoading } = useQuery({
-    ...designDetailQuery(design?.id ?? ""),
-    enabled: !!design?.id,
+    ...designDetailQuery(localDesign?.id ?? ""),
+    enabled: !!localDesign?.id,
   });
   const detail = (detailRaw as any)?.data ?? detailRaw;
 
   //    Mutations                                                                
   const deleteMutation = useMutation({
-    mutationFn: () => storeProductApi.deleteProduct(design!.id),
+    mutationFn: () => storeProductApi.deleteProduct(localDesign!.id),
     onSuccess: () => {
       toast.success("Design deleted");
       queryClient.invalidateQueries({ queryKey: designKeys.all });
@@ -165,7 +178,7 @@ export function DesignDetailSheet({ design, onClose, onEdit, onMutated }: Design
   });
 
   const archiveMutation = useMutation({
-    mutationFn: () => storeProductApi.archive(design!.id),
+    mutationFn: () => storeProductApi.archive(localDesign!.id),
     onSuccess: () => {
       toast.success("Design archived");
       queryClient.invalidateQueries({ queryKey: designKeys.all });
@@ -212,7 +225,7 @@ export function DesignDetailSheet({ design, onClose, onEdit, onMutated }: Design
   //    Edit entry point — same modal used everywhere else                       
   const handleEdit = () => {
     onClose();
-    onEdit(design!);
+    onEdit(localDesign!);
   };
 
   const handle3DCanvas = () => {
@@ -220,7 +233,7 @@ export function DesignDetailSheet({ design, onClose, onEdit, onMutated }: Design
     navigate({
       to: "/studio",
       state: {
-        productId: design!.id,
+        productId: localDesign!.id,
         apparelId: detail?.base_apparel?.id,
         mode: "3d",
       },
@@ -250,63 +263,50 @@ export function DesignDetailSheet({ design, onClose, onEdit, onMutated }: Design
 
   const mockups        = detail?.mockups ?? [];
   const lightboxImages = mockups.map((m: any) => ({ url: m.url, label: m.type }));
-  const isArchived     = design?.status === "archived";
-  const isPublished    = design?.is_published || design?.status === "published";
+  const isArchived     = localDesign?.status === "archived";
+  const isPublished    = localDesign?.is_published || localDesign?.status === "published";
 
   return (
     <>
-      <AnimatePresence>
-        {design && (
-          <>
-            <motion.div
-              key="design-backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+      <Sheet open={isOpen} onOpenChange={(next) => { if (!next) onClose(); }}>
+        <SheetContent
+          side="bottom"
+          className="flex max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-3xl border-t border-border/60 p-0 [&>button]:hidden"
+        >
+          {/* Handle */}
+          <div className="flex shrink-0 justify-center pt-3 pb-1">
+            <div className="h-1 w-10 rounded-full bg-border" />
+          </div>
+
+          {/* Title bar */}
+          <SheetHeader className="flex shrink-0 flex-row items-center justify-between space-y-0 px-5 pb-3 text-left">
+            <div className="min-w-0 flex-1 pr-3">
+              <SheetTitle className="truncate text-base font-semibold">
+                {localDesign?.title}
+              </SheetTitle>
+              <SheetDescription className="text-xs text-muted-foreground">
+                {isPublished ? "Published" : isArchived ? "Archived" : "Draft"}
+                {" · "}
+                {localDesign ? getRetailPrice(localDesign) : null}
+              </SheetDescription>
+            </div>
+            <button
               onClick={onClose}
-            />
-
-            <motion.div
-              key="design-sheet"
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 32, stiffness: 340 }}
-              className="fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] flex-col overflow-hidden rounded-t-3xl border-t border-border/60 bg-background shadow-2xl"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-muted/80"
             >
-              {/* Handle */}
-              <div className="flex shrink-0 justify-center pt-3 pb-1">
-                <div className="h-1 w-10 rounded-full bg-border" />
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </button>
+          </SheetHeader>
+
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto pb-8 max-w-[100%] md:max-w-[600px] mx-auto no-scrollbar w-full">
+            {isLoading || !detail ? (
+              <div className="flex items-center justify-center py-20">
+                <BrandLoader size="md" />
               </div>
-
-              {/* Title bar */}
-              <div className="flex shrink-0 items-center justify-between px-5 pb-3">
-                <div className="min-w-0 flex-1 pr-3">
-                  <p className="truncate font-semibold">{design.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {isPublished ? "Published" : isArchived ? "Archived" : "Draft"}
-                    {" · "}
-                    {getRetailPrice(design)}
-                  </p>
-                </div>
-                <button
-                  onClick={onClose}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-muted/80"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              {/* Body */}
-              <div className="flex-1 overflow-y-auto pb-8 max-w-[100%] md:max-w-[600px] mx-auto no-scrollbar">
-                {isLoading || !detail ? (
-                  <div className="flex items-center justify-center py-20">
-                    <BrandLoader size="md" />
-                  </div>
-                ) : (
-                  <div className="space-y-5 px-5">
-
+            ) : (
+              <div className="space-y-5 px-5">
                     {/* Mockup carousel */}
                     {mockups.length > 0 ? (
                       <div>
@@ -369,7 +369,7 @@ export function DesignDetailSheet({ design, onClose, onEdit, onMutated }: Design
                     {/* Stats */}
                     <div className="grid grid-cols-3 gap-2">
                       {[
-                        { label: "Price",  value: getRetailPrice(design) },
+                        { label: "Price",  value: localDesign ? getRetailPrice(localDesign) : "" },
                         // { label: "Sold",    value: String(detail.sold_quantity ?? 0) },
                         // { label: "Views",   value: String(detail.analytics?.view_count ?? 0) },
                       ].map(({ label, value }) => (
@@ -522,10 +522,8 @@ export function DesignDetailSheet({ design, onClose, onEdit, onMutated }: Design
                   </div>
                 )}
               </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+        </SheetContent>
+      </Sheet>
 
       {/* Lightbox */}
       <AnimatePresence>

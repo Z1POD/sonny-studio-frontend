@@ -7,7 +7,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   X, ChevronDown, Truck, MapPin, Copy, CheckCircle2,
   Clock, Loader2, AlertCircle, ExternalLink, FileText,
@@ -17,6 +16,7 @@ import { appToast as toast } from "@/lib/toaster";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { orderDetailQuery, orderKeys } from "../queries";
 import { ordersApi } from "../api";
 import type { OrderDetail, PaymentMethod } from "../api";
@@ -387,73 +387,56 @@ export function OrderDetailSheet({
 
   return (
     <>
-      <AnimatePresence>
-        {orderId && (
-          <>
-            <motion.div
-              key="order-backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+      <Sheet open={!!orderId} onOpenChange={(open) => !open && onClose()}>
+        <SheetContent
+          side="bottom"
+          className="inset-x-0 bottom-0 top-auto flex h-auto max-h-[92dvh] w-full flex-col gap-0 overflow-hidden rounded-t-3xl border-t border-border/60 bg-background p-0 shadow-2xl [&>button]:hidden sm:max-w-none"
+        >
+          {/* Handle */}
+          <div className="flex shrink-0 justify-center pt-3 pb-1">
+            <div className="h-1 w-10 rounded-full bg-border" />
+          </div>
+
+          {/* Title bar */}
+          <div className="flex shrink-0 items-center justify-between px-5 pb-3">
+            <div>
+              <p className="text-xs text-muted-foreground">Order</p>
+              <p className="font-semibold">{order?.order_number ?? "—"}</p>
+            </div>
+            <button
               onClick={onClose}
-            />
-
-            <motion.div
-              key="order-sheet"
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 32, stiffness: 340 }}
-              className="fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] flex-col overflow-hidden rounded-t-3xl border-t border-border/60 bg-background shadow-2xl"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-muted/80"
             >
-              {/* Handle */}
-              <div className="flex shrink-0 justify-center pt-3 pb-1">
-                <div className="h-1 w-10 rounded-full bg-border" />
-              </div>
+              <X className="h-4 w-4" />
+            </button>
+          </div>
 
-              {/* Title bar */}
-              <div className="flex shrink-0 items-center justify-between px-5 pb-3">
-                <div>
-                  <p className="text-xs text-muted-foreground">Order</p>
-                  <p className="font-semibold">{order?.order_number ?? "—"}</p>
-                </div>
-                <button
-                  onClick={onClose}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-muted/80"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+          {/* Scrollable body */}
+          <div className="flex-1 overflow-y-auto px-5 pb-8 no-scrollbar">
+            {isLoading || !order ? (
+              <div className="flex items-center justify-center py-20">
+                <BrandLoader size="md" />
               </div>
-
-              {/* Scrollable body */}
-              <div className="flex-1 overflow-y-auto px-5 pb-8 no-scrollbar">
-                {isLoading || !order ? (
-                  <div className="flex items-center justify-center py-20">
-                    <BrandLoader size="md" />
-                  </div>
-                ) : (
-                  <OrderDetailContent
-                    order={order}
-                    section={section}
-                    setSection={setSection}
-                    paymentOpen={paymentOpen}
-                    setPaymentOpen={setPaymentOpen}
-                    txRef={txRef}
-                    setTxRef={setTxRef}
-                    onCancel={handleCancel}
-                    onInvoice={handleInvoice}
-                    cancelPending={cancelMutation.isPending}
-                    onPaymentVerified={() => {
-                      queryClient.invalidateQueries({ queryKey: orderKeys.all });
-                    }}
-                  />
-                )}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+            ) : (
+              <OrderDetailContent
+                order={order}
+                section={section}
+                setSection={setSection}
+                paymentOpen={paymentOpen}
+                setPaymentOpen={setPaymentOpen}
+                txRef={txRef}
+                setTxRef={setTxRef}
+                onCancel={handleCancel}
+                onInvoice={handleInvoice}
+                cancelPending={cancelMutation.isPending}
+                onPaymentVerified={() => {
+                  queryClient.invalidateQueries({ queryKey: orderKeys.all });
+                }}
+              />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
       {ConfirmModal}
     </>
   );

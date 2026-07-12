@@ -18,6 +18,13 @@ import {
 import { Link } from "@tanstack/react-router";
 import { appToast as toast } from "@/lib/toaster";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import { storeProductsInfiniteQuery, storeProductKeys } from "../queries";
 import { storeProductApi, getRetailPrice, type ProductListItem } from "../api";
 import { EditProductModal } from "./EditProductModal";
@@ -181,18 +188,18 @@ function ProductRow({
         {/* Actions */}
         <div className="flex flex-shrink-0 items-center gap-1.5">
           {isDraft && (
-            <>
-              <ActionBtn
-                onClick={(e) => { e.stopPropagation(); publishMutation.mutate(); }}
-                title="Publish"
-                loading={publishMutation.isPending}
-              >
-                <Globe className="h-3.5 w-3.5" />
-              </ActionBtn>
-              <ActionBtn onClick={(e) => { e.stopPropagation(); onEdit(product); }} title="Edit">
-                <Pencil className="h-3.5 w-3.5" />
-              </ActionBtn>
-            </>
+            <ActionBtn
+              onClick={(e) => { e.stopPropagation(); publishMutation.mutate(); }}
+              title="Publish"
+              loading={publishMutation.isPending}
+            >
+              <Globe className="h-3.5 w-3.5" />
+            </ActionBtn>
+          )}
+          {!isPublished && (
+            <ActionBtn onClick={(e) => { e.stopPropagation(); onEdit(product); }} title="Edit">
+              <Pencil className="h-3.5 w-3.5" />
+            </ActionBtn>
           )}
           {isPublished && (
             <ActionBtn onClick={handleShare} title="Share">
@@ -212,9 +219,9 @@ function ProductRow({
   );
 }
 
-//     ProductListModal                                                          
+//     ProductList                                                          
 
-export function ProductListModal({ onClose }: { onClose: () => void }) {
+export function ProductList({ onClose }: { onClose: () => void }) {
   const [editTarget, setEditTarget] = useState<ProductListItem | null>(null);
   const qc = useQueryClient();
 
@@ -328,31 +335,22 @@ export function ProductListSheet() {
         View all
       </button>
 
-      <AnimatePresence>
-        {open && (
-          <>
-            <motion.div
-              key="backdrop"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-              onClick={() => setOpen(false)}
-            />
-            <motion.div
-              key="panel"
-              initial={{ opacity: 0, y: "100%" }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: "100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 320 }}
-              className="fixed inset-x-0 bottom-0 z-50 h-[90dvh] overflow-hidden rounded-t-3xl border border-border/60 bg-surface shadow-2xl md:inset-x-auto md:left-1/2 md:bottom-auto md:top-1/2 md:h-[80dvh] md:w-[680px] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-3xl"
-            >
-              <div className="flex justify-center pt-3 md:hidden">
-                <div className="h-1 w-10 rounded-full bg-border" />
-              </div>
-              <ProductListModal onClose={() => setOpen(false)} />
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent
+          side="bottom"
+          className="h-[90dvh] gap-0 overflow-hidden rounded-t-3xl border border-border/60 bg-surface p-0 shadow-2xl [&>button]:hidden md:inset-x-auto md:left-1/2 md:bottom-auto md:top-1/2 md:h-[80dvh] md:w-[680px] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-3xl"
+        >
+          <SheetHeader className="sr-only">
+            <SheetTitle>All Products</SheetTitle>
+            <SheetDescription>Browse, edit, publish, and manage your products.</SheetDescription>
+          </SheetHeader>
+
+          <div className="flex justify-center pt-3 md:hidden">
+            <div className="h-1 w-10 rounded-full bg-border" />
+          </div>
+          <ProductList onClose={() => setOpen(false)} />
+        </SheetContent>
+      </Sheet>
     </>
   );
 }
