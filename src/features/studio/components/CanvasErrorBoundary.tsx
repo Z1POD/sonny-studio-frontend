@@ -24,7 +24,6 @@ export class CanvasErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: unknown) {
-    console.error("Studio canvas crashed:", error);
     this.props.onError?.(error);
   }
 

@@ -200,7 +200,6 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
         const msg = e?.message ?? "Failed to create order";
         toast.error(msg);
       }
-      console.error(e);
     } finally {
       setCreatingOrder(false);
     }
@@ -465,11 +464,7 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
       {/* Sticky Place Order Button */}
       <div className="sticky bottom-0 -mx-4 border-t border-border bg-background/95 px-4 py-4 backdrop-blur-xl sm:-mx-6 sm:px-6">
         <Button
-          onClick={() =>{
-            handlePlaceOrder
-            haptics.impactOccurred("light");
-          }
-        }
+          onClick={handlePlaceOrder}
           disabled={creatingOrder}
           className="w-full h-12 rounded-2xl text-base font-semibold"
           size="lg"

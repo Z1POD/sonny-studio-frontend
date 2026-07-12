@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { useCheckoutStore } from "../store";
 import { checkoutApi } from "../api";
 import type { FulfillmentType } from "../types";
+import { haptics } from "@/shared/lib/haptics";
 
 interface Props {
   onContinue: () => void;
@@ -291,6 +292,7 @@ export function StepShipping({ onContinue }: Props) {
                   onClick={() => {
                     setShippingAddress({ cityId: city.id, cityName: city.name, state: city.state });
                     clearFieldError("city");
+                    haptics.impactOccurred("light")
                   }}
                   className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
                     shippingAddress.cityId === city.id
@@ -330,6 +332,7 @@ export function StepShipping({ onContinue }: Props) {
                     }
                     clearFieldError("vendor");
                     clearFieldError("pickupLocation");
+                    haptics.impactOccurred("light")
                   }}
                   className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all ${
                     fulfillmentType === type

@@ -302,7 +302,6 @@ export function useStudioCheckout({ canvasRef, savedProductId }: UseStudioChecko
       }
     } catch (err: any) {
       toast.error(err?.data?.error?.message ?? err?.message ?? "Failed to save design");
-      console.error(err);
     } finally {
       setIsCapturing(false);
     }

@@ -203,7 +203,6 @@ export function DesignDetailSheet({ design, onClose, onEdit, onMutated }: Design
       loadDesign(detail as ProductDetail, apparelProduct);
       onClose();
     } catch (e: any) {
-      console.error(e);
       toast.error(e?.message ?? "Failed to prepare checkout");
     } finally {
       setReorderLoading(false);
