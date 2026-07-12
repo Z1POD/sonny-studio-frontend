@@ -16,7 +16,7 @@ import {
   ChevronDown, PackageOpen, Globe, Trash2, PackageX,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/toaster";
 import { Button } from "@/components/ui/button";
 import { storeProductsInfiniteQuery, storeProductKeys } from "../queries";
 import { storeProductApi, getRetailPrice, type ProductListItem } from "../api";

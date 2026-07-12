@@ -9,7 +9,7 @@
 // Keeping this out of StudioWorkspace reduces that component to pure layout.
 
 import { useCallback, useState } from "react";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/toaster";
 import { useStudioStore } from "../store";
 import { useCheckoutStore } from "@/features/checkout/store";
 import { useAuthStore } from "@/features/auth/store";

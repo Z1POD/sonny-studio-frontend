@@ -18,7 +18,7 @@ import {
   ChevronLeft, ChevronRight, ImageIcon, Archive,
   ChevronDown,
 } from "lucide-react";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/toaster";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { designDetailQuery, designKeys } from "../queries";

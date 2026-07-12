@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useCheckoutStore } from "../store";
 import { orderApi, paymentApi } from "../api";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/toaster";
 import { useClipboardCopy } from "../hooks/useClipboardCopy";
 import { usePaymentPolling } from "../hooks/usePaymentPolling";
 import { useReceiptValidation } from "../hooks/useReceiptValidation";

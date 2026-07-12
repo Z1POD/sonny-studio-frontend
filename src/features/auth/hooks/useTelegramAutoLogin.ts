@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/toaster";
 import { useTelegram } from "@/shared/hooks/use-telegram";
 import { getStoredToken } from "@/shared/api/client";
 import { authApi } from "../api";

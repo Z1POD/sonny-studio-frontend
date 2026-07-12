@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { useCheckoutStore } from "../store";
 import { useCart } from "@/features/market/store";
 import { orderApi, getFieldErrorsFromApiError } from "../api";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/toaster";
 
 interface Props {
   mockupUrl?: string;

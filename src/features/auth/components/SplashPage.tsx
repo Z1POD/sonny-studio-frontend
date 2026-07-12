@@ -82,9 +82,9 @@ export function SplashPage({ isTelegramLaunching = false }: SplashPageProps) {
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-          className="flex items-center justify-between px-6 pt-6 sm:px-8 sm:pt-8"
+          className="flex items-center justify-center px-6 pt-6 sm:px-8 sm:pt-8"
         >
-          <div className="flex justify-center items-center gap-2.5">
+          <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-[#0a0a0f]">
               <Sparkles className="h-4 w-4" />
             </div>

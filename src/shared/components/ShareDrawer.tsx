@@ -24,7 +24,7 @@ import {
   Share2,
   CircleFadingPlus,
 } from "lucide-react";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/toaster";
 import { Button } from "@/components/ui/button";
 import { useOverlayStore } from "@/shared/stores/overlay-store";
 import { useTelegram } from "@/shared/hooks/use-telegram";

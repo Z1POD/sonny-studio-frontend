@@ -1,7 +1,7 @@
 // src/features/checkout/hooks/useClipboardCopy.ts
 
 import { useState, useCallback } from "react";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/toaster";
 
 export function useClipboardCopy(timeoutMs = 2_000) {
   const [copiedField, setCopiedField] = useState<string | null>(null);

@@ -14,7 +14,7 @@
 import { useRef, useMemo, useState } from "react";
 import { Image as ImageIcon, Trash2, Move, RotateCw, ZoomIn, ZoomOut, SlidersHorizontal } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/toaster";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";

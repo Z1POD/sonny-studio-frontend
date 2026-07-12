@@ -7,7 +7,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Box, Check, Eye, Image as ImageIcon, Loader2, ShoppingBag, Star } from "lucide-react";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/toaster";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { useCart } from "../store";
 import { formatPrice } from "@/lib/format";

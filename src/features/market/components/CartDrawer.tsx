@@ -2,7 +2,7 @@
 
 import { Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/toaster";
 import { useCart } from "../store";
 import { useAuthStore } from "@/features/auth/store";
 import { useCheckoutStore } from "@/features/checkout/store";

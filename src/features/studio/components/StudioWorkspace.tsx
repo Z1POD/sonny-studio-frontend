@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Shirt } from "lucide-react";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/toaster";
 import { useStudioStore, getDefaultArtwork } from "../store";
 import { StudioCanvas, type StudioCanvasHandle } from "./StudioCanvas";
 import { StudioControls } from "./StudioControls";

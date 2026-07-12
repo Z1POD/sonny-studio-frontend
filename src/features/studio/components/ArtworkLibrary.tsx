@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { ImageIcon, Upload, X, Loader2, Plus, Trash2, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/toaster";
 import { artworkApi, type ArtworkItem } from "../api";
 import { artworkLibraryInfiniteQuery, artworkKeys } from "../queries";
 

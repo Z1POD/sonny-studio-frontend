@@ -11,7 +11,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/toaster";
 import { authApi } from "../api";
 import { useAuthStore } from "../store";
 import { ApiError } from "@/shared/api/client";

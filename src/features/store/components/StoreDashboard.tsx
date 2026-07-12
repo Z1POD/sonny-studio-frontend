@@ -19,7 +19,7 @@ import {
   Share2, Pencil, Check, Globe, Archive, Trash2,
   Loader2,
 } from "lucide-react";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/toaster";
 import { Button } from "@/components/ui/button";
 import {
   storeStatsQuery, storeSummaryQuery, walletQuery, storeProductsQuery, storeProductKeys,

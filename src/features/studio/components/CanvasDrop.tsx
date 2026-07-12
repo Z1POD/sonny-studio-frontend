@@ -12,7 +12,7 @@
 import { useCallback, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Upload } from "lucide-react";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/toaster";
 import { useQueryClient } from "@tanstack/react-query";
 import { artworkApi } from "../api";
 import { artworkKeys } from "../queries";

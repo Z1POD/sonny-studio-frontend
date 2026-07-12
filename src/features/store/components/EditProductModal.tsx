@@ -17,7 +17,7 @@ import {
   Store,
 } from "lucide-react";
 import { useNavigate, Link } from "@tanstack/react-router";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/toaster";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
