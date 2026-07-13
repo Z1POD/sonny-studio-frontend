@@ -24,3 +24,5 @@ yarn.lock
 .tanstack
 
 map_project.py
+/scripts
+/scripts/*
