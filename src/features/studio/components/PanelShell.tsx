@@ -90,7 +90,7 @@ export function PanelShell({
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 24 }}
           transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-          className="pointer-events-auto absolute right-4 top-4 z-20 w-[320px] max-w-[90dvw] md:top-[var(--tg-safe-area-top,0px)]"
+          className="pointer-events-auto absolute right-4 top-4 z-40 w-[320px] max-w-[90dvw] md:top-[calc(var(--tg-safe-area-top,0px)+var(--tg-header-height,3.5rem))]"
         >
           <div className="glass-light overflow-hidden rounded-2xl border border-border/60 shadow-floating backdrop-blur-xl">
             <div className="flex items-center justify-between border-b border-border/40 px-5 py-3">
@@ -98,7 +98,7 @@ export function PanelShell({
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{subtitle ?? "Studio"}</p>
                 <h2 className="text-sm font-semibold">{title}</h2>
               </div>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+              <Button type="button" variant="ghost" size="icon" className="relative z-10 h-7 w-7" onClick={onClose}>
                 <X className="h-3.5 w-3.5" />
               </Button>
             </div>

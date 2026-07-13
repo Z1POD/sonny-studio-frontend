@@ -6,13 +6,14 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
-import { ImageIcon, Upload, X, Loader2, Plus, Trash2, ChevronDown } from "lucide-react";
+import { ImageIcon, Images, Upload, X, Loader2, Plus, Trash2, ChevronDown, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Tooltip from "@/components/ui/tooltip2";
 import { appToast as toast } from "@/lib/toaster";
 import { artworkApi, type ArtworkItem } from "../api";
 import { artworkLibraryInfiniteQuery, artworkKeys } from "../queries";
 
-/*     Types                                                                   */
+/* Types */
 
 interface ArtworkLibraryProps {
   onSelect: (artwork: { url: string; aspect: number }) => void;
@@ -20,7 +21,7 @@ interface ArtworkLibraryProps {
   onClose?: () => void;
 }
 
-/*     ArtworkCard                                                             */
+/* ArtworkCard */
 
 function ArtworkCard({
   artwork,
@@ -63,7 +64,6 @@ function ArtworkCard({
         )}
       </div>
 
-      {/* Name + delete — always visible on mobile, hover-only on desktop */}
       <div className={`flex items-center justify-between px-1.5 py-1 ${
         isMobile ? "" : "opacity-0 group-hover:opacity-100 transition-opacity"
       }`}>
@@ -79,7 +79,7 @@ function ArtworkCard({
   );
 }
 
-/*     PanelBody                                                               */
+/* PanelBody */
 
 function PanelBody({
   onUploadClick,
@@ -110,6 +110,8 @@ function PanelBody({
   isMobile: boolean;
   showHandle?: boolean;
 }) {
+  const [activeTab, setActiveTab] = useState<"library" | "ai">("library");
+
   const {
     data,
     isLoading,
@@ -157,18 +159,53 @@ function PanelBody({
           <h3 className="text-sm font-semibold">Your Artworks</h3>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onUploadClick} title="Upload">
-            <Plus className="h-3.5 w-3.5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+          {activeTab === "library" && (
+            <Button type="button" variant="ghost" size="icon" className="relative z-10 h-7 w-7" onClick={onUploadClick} title="Upload">
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          <Button type="button" variant="ghost" size="icon" className="relative z-10 h-7 w-7" onClick={onClose}>
             <X className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
 
-      {/* Grid */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 pb-[12rem] max-h-[calc(100dvh-12rem)] no-scrollbar">
-        {isLoading ? (
+      {/* Tabs */}
+      <div className="flex items-center gap-1 border-b border-border/40 px-3 pt-2.5 pb-2">
+        <button
+          onClick={() => setActiveTab("library")}
+          className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors
+            ${activeTab === "library" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          <Images className="h-3.5 w-3.5" />
+          Library
+        </button>
+        <button
+          onClick={() => setActiveTab("ai")}
+          className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors
+            ${activeTab === "ai" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          AI
+        </button>
+      </div>
+
+      {/* Body */}
+      <div className="flex-1 overflow-y-auto px-3 py-3 pb-[12rem] max-h-[calc(100dvh-16rem)] no-scrollbar">
+        {activeTab === "ai" ? (
+          <div className="flex h-48 flex-col items-center justify-center gap-2.5 text-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-overlay">
+              <Sparkles className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <p className="text-xs text-muted-foreground">Generate artwork from a text prompt</p>
+            <Tooltip text="Coming soon">
+              <Button variant="outline" size="sm" className="h-8 rounded-full px-4 text-xs" disabled>
+                <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                Generate with AI
+              </Button>
+            </Tooltip>
+          </div>
+        ) : isLoading ? (
           <div className="flex h-32 items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
@@ -179,6 +216,15 @@ function PanelBody({
             </div>
             <p className="text-xs text-muted-foreground">No artworks yet</p>
             <p className="text-[10px] text-muted-foreground">Drag & drop or click + to upload</p>
+            <Button
+              variant="default"
+              size="sm"
+              className="mt-1 h-8 rounded-full px-4 text-xs"
+              onClick={onUploadClick}
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Upload artwork
+            </Button>
           </div>
         ) : (
           <>
@@ -219,9 +265,11 @@ function PanelBody({
       </div>
 
       {/* Footer */}
-      <div className="border-t border-border/40 px-4 py-2 text-center text-[10px] text-muted-foreground">
-        Drag & drop images here or onto the canvas
-      </div>
+      {activeTab === "library" && (
+        <div className="border-t border-border/40 px-4 py-2 text-center text-[10px] text-muted-foreground">
+          Drag & drop images here or onto the canvas
+        </div>
+      )}
 
       <input
         ref={fileInputRef as React.RefObject<HTMLInputElement>}
@@ -235,7 +283,7 @@ function PanelBody({
   );
 }
 
-/*     ArtworkLibrary                                                          */
+/* ArtworkLibrary */
 
 export function ArtworkLibrary({ onSelect, isOpen: controlledIsOpen, onClose }: ArtworkLibraryProps) {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
@@ -373,7 +421,7 @@ export function ArtworkLibrary({ onSelect, isOpen: controlledIsOpen, onClose }: 
               animate={{ opacity: 1, x: 0, width: 280 }}
               exit={{ opacity: 0, x: -20, width: 0 }}
               transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-              className="pointer-events-auto absolute left-4 top-4 z-30 w-[320px] max-w-[90dvw] overflow-hidden rounded-2xl shadow-elevated"
+              className="pointer-events-auto absolute left-4 top-4 z-40 w-[320px] max-w-[90dvw] overflow-hidden rounded-2xl shadow-elevated md:top-[calc(var(--tg-safe-area-top,0px)+var(--tg-header-height,3.5rem))]"
             >
               <PanelBody {...bodyProps} />
             </motion.aside>
