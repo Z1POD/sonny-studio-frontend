@@ -288,7 +288,7 @@ export function StoreDashboard() {
         <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StatTile label="Products" value={String(stats.data?.total_products ?? "—")} />
           <StatTile label="Sales" value={String(stats.data?.total_sales ?? "—")} />
-          <StatTile label="Revenue" value={stats.data?.total_revenue != null ? `${wallet.data.data.currency.symbol} ${stats.data.total_revenue.toLocaleString()}` : "—"} />
+          <StatTile label="Revenue" value={stats.data?.total_revenue != null ? `${wallet.data.currency.symbol} ${stats.data.total_revenue.toLocaleString()}` : "—"} />
           <StatTile label="Rating" value={stats.data?.rating != null ? stats.data.rating.toFixed(1) : "—"} />
         </div>
       </motion.section>

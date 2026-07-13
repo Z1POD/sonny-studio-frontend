@@ -8,6 +8,21 @@ import { getStoredToken } from "@/shared/api/client";
 import { authApi } from "../api";
 import { useAuthStore } from "../store";
 
+/**
+ * Root-mounted. Runs once per app load inside the Telegram Mini App.
+ *
+ * Two responsibilities that are intentionally decoupled:
+ *   1. Navigation — happens immediately, synchronously with this effect.
+ *      Marketplace / product pages are public, so we never block the user
+ *      on auth resolving first.
+ *   2. Sign-in — runs in the background (fire-and-forget). Whichever
+ *      component is on screen (splash, marketplace, product page) reads
+ *      auth state reactively from useAuthStore once it settles.
+ *
+ * `useTelegramAutoLogin` (used on the splash page) is the safety net for
+ * cases where this hook's background sign-in hasn't resolved yet, or a
+ * guarded route bounced the user back to `/login` -> `/`.
+ */
 export function useTelegramLaunch() {
   const { tg } = useTelegram();
   const navigate = useNavigate();
@@ -25,27 +40,45 @@ export function useTelegramLaunch() {
     handled.current = true;
 
     const initData = tg.initData;
-    const signIn = () => {
-      if (!initData || getStoredToken()) return Promise.resolve();
-      return authApi.loginTelegram(initData).then((data) => {
-        setToken(data.token, data.user);
-      });
-    };
 
-    const resolveAuth = () => signIn().catch(() => {}).then(() => hydrate()).catch(() => {});
+    const signIn = async () => {
+      if (getStoredToken()) {
+        // A stored token isn't proof of a valid session — the backend
+        // decides. hydrate() clears it if it's stale/rejected (401/403).
+        await hydrate().catch(() => {});
+        if (useAuthStore.getState().status === "authenticated") return;
+        // token was invalid and has now been cleared — fall through to a
+        // fresh Telegram sign-in below
+      }
+
+      if (!initData) {
+        // Nothing to sign in with — settle status to "unauthenticated" so
+        // consumers (e.g. guarded routes) stop waiting.
+        await hydrate().catch(() => {});
+        return;
+      }
+
+      try {
+        const data = await authApi.loginTelegram(initData);
+        setToken(data.token, data.user);
+      } catch {
+        // Swallowed — user keeps browsing unauthenticated. Splash /
+        // marketplace fall back to showing a login CTA. Guarded pages will
+        // redirect to /login, which bounces Telegram users back to splash
+        // where useTelegramAutoLogin retries.
+      }
+    };
 
     const target = parseStartParam(tg.initDataUnsafe?.start_param);
 
-    if (target?.type === "product" || pathnameRef.current === "/") {
-      resolveAuth().finally(() => {
-        if (target?.type === "product") {
-          navigate({ to: "/p/$slug", params: { slug: target.id }, replace: true });
-        } else {
-          navigate({ to: "/marketplace", replace: true });
-        }
-      });
-      return;
+    // Navigate immediately — do not wait on auth for public destinations.
+    if (target?.type === "product") {
+      navigate({ to: "/p/$slug", params: { slug: target.id }, replace: true });
+    } else if (pathnameRef.current === "/") {
+      navigate({ to: "/marketplace", replace: true });
     }
-    resolveAuth();
+
+    // Fire-and-forget: resolves auth state in the background.
+    void signIn();
   }, [tg, navigate, setToken, hydrate]);
 }

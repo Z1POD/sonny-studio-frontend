@@ -8,7 +8,6 @@ import {
 } from "@/shared/api/client";
 import type { User } from "@/shared/api/types";
 import { authApi } from "./api";
-import { features } from "process";
 
 interface AuthState {
   token: string | null;
@@ -40,12 +39,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const user = await authApi.me();
       set({ user, status: "authenticated" });
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
+      // A token existing in storage is not proof it's still valid — the
+      // backend is the source of truth. Both 401 (unauthenticated) and 403
+      // (forbidden / token rejected, e.g. stale Telegram session) mean the
+      // stored token no longer grants access and must be cleared, not
+      // treated as "authenticated with no data yet".
+      if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
         setStoredToken(null);
         set({ token: null, user: null, status: "unauthenticated" });
       } else {
-        // Keep the token; mark as authenticated so the UI doesn't redirect.
-        // The user object will be null until the next successful hydration.
+        // Network error / 5xx / etc — keep the token, don't force a logout
+        // over a transient failure. The user object stays null until the
+        // next successful hydration.
         set({ status: "authenticated" });
       }
     }

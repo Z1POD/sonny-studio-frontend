@@ -14,12 +14,24 @@ interface UseTelegramAutoLoginOptions {
   enabled?: boolean;
 }
 
+/**
+ * Splash-page hook. Acts as the safety net / retry path for Telegram
+ * sign-in: handles the case where `useTelegramLaunch`'s background
+ * sign-in (root-mounted) hasn't resolved yet, or where a guarded route
+ * bounced the user to `/login` -> `/` because their stored token was
+ * rejected by the backend.
+ *
+ * Never trusts `getStoredToken()` presence alone — a token in storage is
+ * not proof it still grants access, so it's verified via `hydrate()`
+ * before being treated as a valid session.
+ */
 export function useTelegramAutoLogin({
   redirectTo = "/marketplace",
   enabled = true,
 }: UseTelegramAutoLoginOptions = {}) {
   const navigate = useNavigate();
   const setToken = useAuthStore((s) => s.setToken);
+  const hydrate = useAuthStore((s) => s.hydrate);
   const { tg, isTelegram } = useTelegram();
 
   const [tgLoading, setTgLoading] = useState(false);
@@ -36,36 +48,54 @@ export function useTelegramAutoLogin({
       return;
     }
 
-    // useTelegramLaunch (root-mounted) may have already signed the user
-    // in silently before this ever mounted — skip the redundant call.
-    if (getStoredToken()) {
-      navigate({ to: redirectTo });
-      setChecked(true);
-      return;
-    }
+    let cancelled = false;
 
-    const initData = tg?.initData;
-    if (!initData) {
-      setChecked(true);
-      return;
-    }
+    async function run() {
+      if (getStoredToken()) {
+        // Verify before trusting — the token may have been revoked or
+        // expired server-side since it was written to storage.
+        await hydrate().catch(() => {});
+        if (cancelled) return;
+        if (useAuthStore.getState().status === "authenticated") {
+          navigate({ to: redirectTo });
+          setChecked(true);
+          return;
+        }
+        // invalid token — hydrate() already cleared it. Fall through to a
+        // real Telegram sign-in below.
+      }
 
-    setTgLoading(true);
-    authApi
-      .loginTelegram(initData)
-      .then((data) => {
+      const initData = tg?.initData;
+      if (!initData) {
+        setChecked(true);
+        return;
+      }
+
+      setTgLoading(true);
+      try {
+        const data = await authApi.loginTelegram(initData);
+        if (cancelled) return;
         setToken(data.token, data.user);
         navigate({ to: redirectTo });
-      })
-      .catch((err: Error) => {
-        toast.error(err.message || "Auto sign-in failed");
-      })
-      .finally(() => {
-        setTgLoading(false);
-        setChecked(true);
-      });
+      } catch (err) {
+        if (!cancelled) {
+          toast.error((err as Error).message || "Auto sign-in failed");
+        }
+      } finally {
+        if (!cancelled) {
+          setTgLoading(false);
+          setChecked(true);
+        }
+      }
+    }
+
+    run();
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, isTelegram, tg, setToken, navigate, redirectTo]);
+  }, [enabled, isTelegram, tg, setToken, navigate, redirectTo, hydrate]);
 
   return { tgLoading, isTelegram, checked };
 }
