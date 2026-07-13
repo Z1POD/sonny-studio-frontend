@@ -133,6 +133,7 @@
   --toast-offset: 48px;
   --tg-safe-area-top: 0px;
   --tg-safe-area-bottom: 0px;
+  --tg-header-height: 3.5rem
 }
 
 /* DARK THEME PRIMITIVES (Sonny Studio Signature) */
@@ -231,6 +232,7 @@
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
+
 }
 
 .no-scrollbar {
