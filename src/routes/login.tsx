@@ -45,10 +45,10 @@ export const Route = createFileRoute("/login")({
   },
   head: () => ({
     meta: [
-      { title: "Sign in — Sonny" },
+      { title: "Sign in — M I M O" },
       {
         name: "description",
-        content: "Sign in to your Sonny design studio account.",
+        content: "Sign in to your M I M O design studio account.",
       },
     ],
   }),

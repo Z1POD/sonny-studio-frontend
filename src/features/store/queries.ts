@@ -6,6 +6,7 @@
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import { storeProductApi } from "./api";
 import { walletApi } from "@/features/wallet/api";
+import type { StoreStats } from "@/shared/api/types";
 
 //     Keys                                                                      
 
@@ -57,12 +58,7 @@ export const storeStatsQuery = () =>
     queryKey: ["store-stats"],
     queryFn: () =>
       import("@/shared/api/client").then(({ api }) =>
-        api.get<{
-          total_products: number;
-          total_sales: number;
-          total_revenue: number;
-          rating: number | null;
-        }>("/store/stats/"),
+        api.get<StoreStats>("/store/stats/"),
       ),
     staleTime: 60_000,
   });

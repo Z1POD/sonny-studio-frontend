@@ -37,7 +37,7 @@ export const Route = createRootRouteWithContext<{
       },
 
       // Primary
-      { title: "Sonny Studio — Customized Apparel" },
+      { title: "M I M O — Customized Apparel" },
       {
         name: "description",
         content:
@@ -50,7 +50,7 @@ export const Route = createRootRouteWithContext<{
       { name: "robots", content: "index, follow, max-image-preview:large" },
 
       // Open Graph
-      { property: "og:title", content: "Sonny Studio — Customized Apparel" },
+      { property: "og:title", content: "M I M O — Customized Apparel" },
       {
         property: "og:description",
         content: "Configure premium apparel in 3D. Quietly luxurious.",
@@ -60,13 +60,13 @@ export const Route = createRootRouteWithContext<{
       { property: "og:image", content: OG_IMAGE },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
-      { property: "og:site_name", content: "Sonny Studio" },
+      { property: "og:site_name", content: "M I M O" },
       { property: "og:locale", content: "en_US" },
 
       // Twitter
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Sonny Studioapp" },
-      { name: "twitter:title", content: "Sonny Studio — Customized Apparel" },
+      { name: "twitter:site", content: "@M_I_M_Oapp" },
+      { name: "twitter:title", content: "M I M O — Customized Apparel" },
       {
         name: "twitter:description",
         content: "Configure premium apparel in 3D. Quietly luxurious.",
@@ -79,7 +79,7 @@ export const Route = createRootRouteWithContext<{
         name: "apple-mobile-web-app-status-bar-style",
         content: "black-translucent",
       },
-      { name: "apple-mobile-web-app-title", content: "Sonny Studio" },
+      { name: "apple-mobile-web-app-title", content: "M I M O" },
       { name: "format-detection", content: "telephone=no" },
 
       // Microsoft
@@ -106,7 +106,7 @@ export const Route = createRootRouteWithContext<{
           "@type": "WebApplication",
           name: "Zonic",
           description:
-            "Design and sell premium custom apparel in 3D. A quiet, luxurious creator studio for fashion entrepreneurs.",
+            "Design and sell premium custom apparel in flash. A quiet, luxurious creator studio for fashion entrepreneurs.",
           url: APP_URL,
           applicationCategory: "DesignApplication",
           operatingSystem: "Any",
@@ -117,7 +117,7 @@ export const Route = createRootRouteWithContext<{
           },
           author: {
             "@type": "Organization",
-            name: "Sonny Studio",
+            name: "M I M O",
             url: APP_URL,
           },
         }),

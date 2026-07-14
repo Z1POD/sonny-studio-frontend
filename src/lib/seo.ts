@@ -21,7 +21,7 @@ interface ProductHeadMeta {
 export function productHead(loaderData: unknown) {
   const p = loaderData as ProductDetail | undefined;
 
-  const title = p?.title ? `${p.title} — Sonny Studio` : "Product — Sonny Studio";
+  const title = p?.title ? `${p.title} — M I M O` : "Product — M I M O";
   const description = p?.description ?? "Configure this piece in 3D. Quietly luxurious.";
   const image = p?.thumbnail_url;
   const price = p?.pricing?.retail_price;

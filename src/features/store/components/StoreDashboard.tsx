@@ -1,12 +1,5 @@
 // src/features/store/components/StoreDashboard.tsx
 
-// Aligned to real API contract:
-//  - pricing is { currency: {code,symbol,name}, base_price, markup_price, retail_price }
-//  - Action buttons always visible (not hover-only) — mobile friendly
-//  - Custom ConfirmModal replaces window.confirm
-//  - "Suggested next step" is now adaptive via DiscountSuggestionCard
-//  - ShareDrawer calls now include price, currencySymbol, and flags for Telegram Story
-
 "use client";
 
 import { useState } from "react";
@@ -30,14 +23,18 @@ import { EditProductModal } from "./EditProductModal";
 import { useConfirm } from "../../../shared/components/ConfirmModal";
 import { useShareDrawer } from "@/shared/components/ShareDrawer";
 import { DiscountSuggestionCard } from "./DiscountSuggestionCard";
+import { formatPrice } from "@/lib/format";
 
 //     Stat tile                                                                 
 
-function StatTile({ label, value }: { label: string; value: string }) {
+function StatTile({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-2xl border border-border bg-surface px-5 py-4">
       <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="mt-2 text-2xl font-semibold tracking-tight">{value}</div>
+      <div className="mt-2 flex items-baseline gap-1.5">
+        <span className="text-2xl font-semibold tracking-tight">{value}</span>
+        {sub && <span className="text-xs text-muted-foreground">{sub}</span>}
+      </div>
     </div>
   );
 }
@@ -285,11 +282,23 @@ export function StoreDashboard() {
           </Button>
         </div>
 
-        <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <StatTile label="Products" value={String(stats.data?.total_products ?? "—")} />
           <StatTile label="Sales" value={String(stats.data?.total_sales ?? "—")} />
-          <StatTile label="Revenue" value={stats.data?.total_revenue != null ? `${wallet.data.currency.symbol} ${stats.data.total_revenue.toLocaleString()}` : "—"} />
-          <StatTile label="Rating" value={stats.data?.rating != null ? stats.data.rating.toFixed(1) : "—"} />
+          <StatTile
+            label="Revenue"
+            value={
+              stats.data?.revenue
+                ? formatPrice(stats.data.revenue.amount, stats.data.revenue.currency)
+                : "—"
+            }
+          />
+          <StatTile label="Pending orders" value={String(stats.data?.pending_orders ?? "—")} />
+          <StatTile
+            label="Rating"
+            value={stats.data?.rating != null ? stats.data.rating.toFixed(1) : "—"}
+            sub={stats.data?.review_count ? `(${stats.data.review_count})` : undefined}
+          />
         </div>
       </motion.section>
 
@@ -309,13 +318,13 @@ export function StoreDashboard() {
             <div className="mt-4">
               <div className="text-3xl font-semibold tracking-tight">
                 {wallet.data?.data
-                  ? `${wallet.data.data.currency.symbol} ${wallet.data.data.available}`
+                  ? formatPrice(wallet.data.data.available, wallet.data.data.currency)
                   : "—"}
               </div>
               <div className="mt-1 text-xs text-muted-foreground">
                 Pending <span className="text-foreground">
                   {wallet.data?.data
-                    ? `${wallet.data.data.currency.symbol}${wallet.data.data.pending}`
+                    ? formatPrice(wallet.data.data.pending, wallet.data.data.currency)
                     : "0.00"}
                 </span>
               </div>

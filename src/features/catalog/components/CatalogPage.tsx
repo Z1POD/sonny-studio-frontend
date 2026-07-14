@@ -12,12 +12,8 @@ import { useLightbox } from "@/shared/hooks/use-overlays";
 import { catalogListQuery, catalogCategoriesQuery } from "../queries";
 import type { CatalogBlank, Category } from "../api";
 import { haptics } from "@/shared/lib/haptics";
+import { formatPrice } from "@/lib/format";
 
-function formatPrice(pricing: CatalogBlank["pricing"]): string {
-  const symbol = pricing.currency.symbol;
-  const base = parseFloat(pricing.base_price) || 0;
-  return `${symbol}${base.toFixed(2)}`;
-}
 
 function getCategorySlug(category: Category | string): string {
   if (typeof category === "string") return category;
@@ -193,7 +189,7 @@ export function CatalogPage() {
 
                 <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/40 via-black/10 to-transparent pt-8 text-white transition-opacity duration-300 group-hover:opacity-0 pointer-events-none">
                   <p className="truncate text-sm font-semibold tracking-tight">{b.name}</p>
-                  <p className="text-xs text-white/80 mt-0.5">{formatPrice(b.pricing)}</p>
+                  <p className="text-xs text-white/80 mt-0.5">{formatPrice(b.pricing.base_price, b.pricing.currency)}</p>
                 </div>
 
                 {/* Blur Fadeup Interactive Overlay */}
@@ -250,7 +246,7 @@ export function CatalogPage() {
                             {b.name}
                           </h5>
                           <p className="text-base sm:text-lg font-bold tracking-tight text-white/95">
-                            {formatPrice(b.pricing)}
+                            {formatPrice(b.pricing.base_price, b.pricing.currency)}
                           </p>
                         </div>
 

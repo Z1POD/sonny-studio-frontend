@@ -2,7 +2,7 @@
 
 
 /**
- * Auth feature — thin API wrappers around the external Sonny backend.
+ * Auth feature — thin API wrappers around the external M I M O backend.
  * Supports OTP-based auth (browser) and Telegram Mini App init data exchange.
  *
  * All endpoints that return AuthTokenResponse unwrap `.data` so callers

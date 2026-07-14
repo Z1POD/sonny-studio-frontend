@@ -55,7 +55,7 @@ export function LoginCard() {
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-[17px] font-semibold tracking-tight leading-tight text-white">Sonny</h1>
+              <h1 className="text-[17px] font-semibold tracking-tight leading-tight text-white">M I M O</h1>
               <p className="text-[11px] text-white/40 leading-tight">Design Studio</p>
             </div>
           </div>

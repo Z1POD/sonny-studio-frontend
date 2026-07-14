@@ -1,5 +1,5 @@
 /**
- * Typed HTTP client for the external Sonny API.
+ * Typed HTTP client for the external M I M O API.
  * Base URL is configurable via VITE_API_BASE_URL.
  * Token is read from localStorage (browser only) — see auth store.
  */
@@ -124,7 +124,7 @@ async function request<T>(
     } | null;
 
     const msg =
-      // Sonny API envelope: { error: { message } }
+      // M I M O API envelope: { error: { message } }
       d?.error?.message ||
       // DRF field validation details: { error: { details: { field: ["msg"] } } }
       (d?.error?.details

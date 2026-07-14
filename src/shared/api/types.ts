@@ -44,11 +44,22 @@ export interface StoreSummary {
   rating?: number | null;
 }
 
+export interface Currency {
+  code: string;
+  symbol: string;
+  name?: string;
+}
+
 export interface StoreStats {
-  products_count: number;
+  total_products: number;
   total_sales: number;
-  total_revenue: number;
+  revenue: {
+    amount: number;
+    currency: Currency;
+  };
+  pending_orders: number;
   rating: number | null;
+  review_count: number;
 }
 
 export interface Product {
