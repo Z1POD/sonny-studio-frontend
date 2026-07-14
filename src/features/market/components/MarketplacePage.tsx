@@ -111,10 +111,7 @@ export function MarketplacePage() {
   const heroImgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
-    // If the browser already has this image cached, `onLoad` may never fire
-    // again (this is what left the pulsing skeleton stuck forever after
-    // swiping back to an already-seen product inside the Mini App webview).
-    // Check synchronously on mount and skip the skeleton if it's already loaded.
+
     const img = heroImgRef.current;
     setHeroImageLoaded(!!img?.complete && img.naturalWidth > 0);
   }, [featured?.id]);
@@ -142,9 +139,6 @@ export function MarketplacePage() {
     }
   }, []);
 
-  // Guards against the click-after-drag problem: a swipe ends with a
-  // pointerup in the same place a tap's pointerup would land, so without
-  // this flag every swipe would also fire the tap-to-open-PDP handler.
   const justDraggedRef = useRef(false);
 
   const handleDragStart = useCallback(() => {
@@ -171,8 +165,6 @@ export function MarketplacePage() {
     [goToNextSlide, goToPrevSlide],
   );
 
-  // Programmatic navigation on tap — only fires for a genuine tap, gated by
-  // justDraggedRef so a swipe never opens the product detail page.
   const handleCardTap = useCallback(() => {
     if (justDraggedRef.current) return;
     if (featured) {
@@ -181,10 +173,6 @@ export function MarketplacePage() {
     }
   }, [featured, navigate]);
 
-  // Direction-aware slide, transform-only — no opacity/fade. The opacity
-  // animation doesn't composite correctly inside the Telegram Mini App
-  // webview (visible flicker/double-layer artifacts on exit), so the slide
-  // relies on translateX alone, which renders reliably there.
   const slideVariants = {
     enter: (dir: 1 | -1) => ({ x: dir > 0 ? "100%" : "-100%" }),
     center: { x: 0 },

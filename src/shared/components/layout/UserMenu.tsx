@@ -27,11 +27,7 @@ const RESTRICTED_NAV = [
 ] as const;
 
 interface UserMenuProps {
-  /** "header" opens the panel below the trigger; "tab" opens it above
-   *  (for the bottom tab bar, where there's no room below). */
   anchor?: "header" | "tab";
-  /** Classes for the trigger button — lets the header and bottom-nav each
-   *  lay out their own trigger (icon-only chip vs icon+label tab). */
   className?: string;
   children: ReactNode;
 }
@@ -39,9 +35,7 @@ interface UserMenuProps {
 export function UserMenu({ anchor = "header", className, children }: UserMenuProps) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  // NOTE: assumes `useAuthStore` exposes `openSheet` to open the sign-in
-  // sheet (same assumption made in CartDrawer). Rename if the real action
-  // is named differently.
+
   const openAuth = useOverlayStore((s) => s.openSheet);
   const { isTelegram } = useTelegram();
   const hasVerifiedStore = useHasVerifiedStore();
