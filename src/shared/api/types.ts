@@ -44,9 +44,10 @@ export interface StoreSummary {
   rating?: number | null;
 }
 
-export interface StoreStatsCurrency {
+export interface Currency {
   code: string;
   symbol: string;
+  name?: string;
 }
 
 export interface StoreStats {
@@ -54,7 +55,7 @@ export interface StoreStats {
   total_sales: number;
   revenue: {
     amount: number;
-    currency: StoreStatsCurrency;
+    currency: Currency;
   };
   pending_orders: number;
   rating: number | null;

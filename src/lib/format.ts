@@ -1,6 +1,6 @@
 // src/lib/format.ts
 
-import type { Currency } from "@/types/api";
+import type { Currency } from "@/shared/api/types";
 
 export const formatPrice = (amount: number | string, currency?: Currency) => {
   const n = typeof amount === "string" ? parseFloat(amount) : amount;
