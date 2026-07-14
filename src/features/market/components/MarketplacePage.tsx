@@ -246,7 +246,7 @@ export function MarketplacePage() {
             </div>
 
             {featured && (
-              <div className="relative select-none max-h-[80dvh] overflow-hidden rounded-[2rem] md:aspect-[4/5]">
+              <div className="relative select-none max-h-[80dvh] overflow-hidden rounded-[2.8rem] md:aspect-[4/5]">
                 <AnimatePresence mode="popLayout" custom={slideDirection} initial={false}>
                   <motion.div
                     key={featured.id}
@@ -262,7 +262,7 @@ export function MarketplacePage() {
                     onDragStart={handleDragStart}
                     onDragEnd={handleDragEnd}
                     onClick={handleCardTap}
-                    className="relative block aspect-square w-full cursor-grab overflow-hidden rounded-[2rem] border border-border bg-surface apple-shadow active:cursor-grabbing md:aspect-[4/5]"
+                    className="relative block aspect-square w-full cursor-grab overflow-hidden rounded-[2.8rem] border border-border bg-surface apple-shadow active:cursor-grabbing md:aspect-[4/5]"
                     style={{ touchAction: "pan-y" }}
                   >
                     {!heroImageLoaded && (
