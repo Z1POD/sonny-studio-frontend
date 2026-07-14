@@ -37,7 +37,7 @@ export const Route = createRootRouteWithContext<{
       },
 
       // Primary
-      { title: "M I M O — Personalized Lifestyle Products" },
+      { title: "M I M O — Personalized Apparel & Products" },
       {
         name: "description",
         content:
@@ -50,7 +50,7 @@ export const Route = createRootRouteWithContext<{
       { name: "robots", content: "index, follow, max-image-preview:large" },
 
       // Open Graph
-      { property: "og:title", content: "M I M O — Personalized Lifestyle Products" },
+      { property: "og:title", content: "M I M O — Personalized Apparel & Products" },
       {
         property: "og:description",
         content: "Configure premium apparel in 3D. Quietly luxurious.",
@@ -66,7 +66,7 @@ export const Route = createRootRouteWithContext<{
       // Twitter
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@M_I_M_Oapp" },
-      { name: "twitter:title", content: "M I M O — Personalized Lifestyle Products" },
+      { name: "twitter:title", content: "M I M O — Personalized Apparel & Products" },
       {
         name: "twitter:description",
         content: "Configure premium apparel in 3D. Quietly luxurious.",
