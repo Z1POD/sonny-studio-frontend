@@ -65,7 +65,7 @@ export const Route = createRootRouteWithContext<{
 
       // Twitter
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@M I M Oapp" },
+      { name: "twitter:site", content: "@M_I_M_Oapp" },
       { name: "twitter:title", content: "M I M O — Customized Apparel" },
       {
         name: "twitter:description",
@@ -106,7 +106,7 @@ export const Route = createRootRouteWithContext<{
           "@type": "WebApplication",
           name: "Zonic",
           description:
-            "Design and sell premium custom apparel in 3D. A quiet, luxurious creator studio for fashion entrepreneurs.",
+            "Design and sell premium custom apparel in flash. A quiet, luxurious creator studio for fashion entrepreneurs.",
           url: APP_URL,
           applicationCategory: "DesignApplication",
           operatingSystem: "Any",

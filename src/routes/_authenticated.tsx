@@ -21,11 +21,6 @@ import { BrandLoader } from "@/components/ui/loader";
 
 export const Route = createFileRoute("/_authenticated")({
   beforeLoad: ({ location }) => {
-    // Cheap presence check only — no network call here. If a token exists
-    // but is actually invalid, that's discovered below via hydrate() in
-    // the component (which shows its own loading state and redirects
-    // with the same `redirect` param, so the intended destination is
-    // never lost regardless of which check catches the invalid token).
     if (typeof window !== "undefined" && !getStoredToken()) {
       throw redirect({
         to: "/login",
@@ -54,10 +49,6 @@ function AuthenticatedLayout() {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      // hydrate() found the stored token invalid (401/403) and cleared it.
-      // Preserve where the user was trying to go — same `redirect` param
-      // beforeLoad uses — so /login's Telegram bounce -> splash ->
-      // useTelegramAutoLogin can send them back here once signed in.
       navigate({
         to: "/login",
         search: { redirect: pathname },
