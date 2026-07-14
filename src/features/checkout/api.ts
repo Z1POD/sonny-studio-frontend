@@ -15,7 +15,7 @@ import type {
 
 /*     Backend field-error mapping                                            */
 
-// Sonny API validation envelope:
+// M I M O API validation envelope:
 //   { success: false, error: { code, message, details: { field: ["msg", ...] } } }
 // `details` keys are backend/snake_case field names — map them onto the
 // FieldErrors keys the checkout UI actually renders against (fieldErrors.coupon,

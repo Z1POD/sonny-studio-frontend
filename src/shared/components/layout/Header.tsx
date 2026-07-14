@@ -74,7 +74,7 @@ export function Header({ variant = "full" }: HeaderProps) {
             <span className="grid h-7 w-7 place-items-center rounded-lg bg-foreground text-background">
               <span className="text-[11px] font-bold">S</span>
             </span>
-            <span className="text-base font-semibold tracking-tight">Sonny</span>
+            <span className="text-base font-semibold tracking-tight">M I M O</span>
           </Link>
         )}
 

@@ -13,11 +13,11 @@ export const Route = createFileRoute("/")({
   }),
   head: () => ({
     meta: [
-      { title: "Sonny — Design Studio" },
+      { title: "M I M O — Design Studio" },
       {
         name: "description",
         content:
-          "Sonny is a creator studio for designing and selling custom apparel.",
+          "M I M O is a creator studio for designing and selling custom apparel.",
       },
     ],
   }),

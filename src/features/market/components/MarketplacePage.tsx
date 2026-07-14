@@ -205,7 +205,7 @@ export function MarketplacePage() {
             <div>
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/5 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-gold">
                     <Sparkles className="h-3 w-3" />
-                    {heroCollection?.name ?? "Sonny | Marketplace"}
+                    {heroCollection?.name ?? "M I M O | Marketplace"}
                 </span>
 
                 <h1 className="mt-5 text-4xl font-semibold leading-[1.02] tracking-[-0.04em] md:text-6xl">

@@ -5,7 +5,7 @@
 /* 👇 Correct Tailwind v4 dark selector */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Sonny Studio — Apple-inspired design system */
+/* M I M O — Apple-inspired design system */
 
 @theme inline {
   /* --- Radii Mapping --- */
@@ -136,7 +136,7 @@
   --tg-header-height: 3.5rem
 }
 
-/* DARK THEME PRIMITIVES (Sonny Studio Signature) */
+/* DARK THEME PRIMITIVES (M I M O Signature) */
 .dark {
   color-scheme: dark;
 
