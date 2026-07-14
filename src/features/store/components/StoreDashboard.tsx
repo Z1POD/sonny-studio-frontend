@@ -23,6 +23,7 @@ import { EditProductModal } from "./EditProductModal";
 import { useConfirm } from "../../../shared/components/ConfirmModal";
 import { useShareDrawer } from "@/shared/components/ShareDrawer";
 import { DiscountSuggestionCard } from "./DiscountSuggestionCard";
+import { formatPrice } from "@/lib/format";
 
 //     Stat tile                                                                 
 
@@ -288,7 +289,7 @@ export function StoreDashboard() {
             label="Revenue"
             value={
               stats.data?.revenue
-                ? `${stats.data.revenue.currency.symbol}${stats.data.revenue.amount.toLocaleString()}`
+                ? formatPrice(stats.data.revenue.amount, stats.data.revenue.currency)
                 : "—"
             }
           />
@@ -317,13 +318,13 @@ export function StoreDashboard() {
             <div className="mt-4">
               <div className="text-3xl font-semibold tracking-tight">
                 {wallet.data?.data
-                  ? `${wallet.data.data.currency.symbol} ${wallet.data.data.available}`
+                  ? formatPrice(wallet.data.data.available, wallet.data.data.currency)
                   : "—"}
               </div>
               <div className="mt-1 text-xs text-muted-foreground">
                 Pending <span className="text-foreground">
                   {wallet.data?.data
-                    ? `${wallet.data.data.currency.symbol}${wallet.data.data.pending}`
+                    ? formatPrice(wallet.data.data.pending, wallet.data.data.currency)
                     : "0.00"}
                 </span>
               </div>
