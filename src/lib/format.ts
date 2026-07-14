@@ -14,7 +14,7 @@ export const formatPrice = (amount: number | string, currency?: Currency) => {
   else if (sym === "ETB"){
     return `${sym} ${n.toFixed(1)}`;
   }
-  else if (sym == "$") {
+  else if (sym === "$") {
     return `${sym}${n.toFixed(1)}`;
   }
 
