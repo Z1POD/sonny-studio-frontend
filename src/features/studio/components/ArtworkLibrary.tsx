@@ -153,7 +153,7 @@ function PanelBody({
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border/40 px-4 py-3">
+      <div className="flex items-center justify-between text-muted-foreground border-b border-border/40 px-4 py-3">
         <div>
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Library</p>
           <h3 className="text-sm font-semibold">Your Artworks</h3>
