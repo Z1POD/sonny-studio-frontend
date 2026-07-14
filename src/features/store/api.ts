@@ -8,6 +8,7 @@
  *  - storeProductDetailQuery exported here to avoid circular deps
  */
 
+import { formatPrice } from "@/lib/format";
 import { api } from "@/shared/api/client";
 
 //     Shared shapes                                                             
@@ -64,9 +65,8 @@ export interface ProductListItem {
 
 export function getRetailPrice(item: ProductListItem): string {
   if (!item.pricing) return "—";
-  const p   = item.pricing;
-  const sym = typeof p.currency === "object" ? p.currency.symbol : "$";
-  return `${sym}${p.retail_price}`;
+
+  return formatPrice(item.pricing.retail_price, item.pricing.currency);
 }
 
 export interface ProductListResponse {
