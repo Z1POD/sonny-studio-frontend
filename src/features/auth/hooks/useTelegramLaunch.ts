@@ -8,21 +8,7 @@ import { getStoredToken } from "@/shared/api/client";
 import { authApi } from "../api";
 import { useAuthStore } from "../store";
 
-/**
- * Root-mounted. Runs once per app load inside the Telegram Mini App.
- *
- * Two responsibilities that are intentionally decoupled:
- *   1. Navigation — happens immediately, synchronously with this effect.
- *      Marketplace / product pages are public, so we never block the user
- *      on auth resolving first.
- *   2. Sign-in — runs in the background (fire-and-forget). Whichever
- *      component is on screen (splash, marketplace, product page) reads
- *      auth state reactively from useAuthStore once it settles.
- *
- * `useTelegramAutoLogin` (used on the splash page) is the safety net for
- * cases where this hook's background sign-in hasn't resolved yet, or a
- * guarded route bounced the user back to `/login` -> `/`.
- */
+
 export function useTelegramLaunch() {
   const { tg } = useTelegram();
   const navigate = useNavigate();
