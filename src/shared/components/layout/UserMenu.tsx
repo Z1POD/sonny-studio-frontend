@@ -98,9 +98,9 @@ export function UserMenu({ anchor = "header", className, children }: UserMenuPro
                 <p className="truncate text-sm font-medium leading-tight">
                 {user.display_name ?? "—"}
                 </p>
-                <p className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                {/* <p className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
                 {user.role ?? "guest"}
-                </p>
+                </p> */}
             </div>
 
             <ThemeToggle className="bg-muted/60" />
