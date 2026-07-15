@@ -18,7 +18,7 @@ import {
   storeStatsQuery, storeSummaryQuery, walletQuery, storeProductsQuery, storeProductKeys,
 } from "../queries";
 import { storeProductApi, getRetailPrice, type ProductListItem } from "../api";
-import { ProductListSheet } from "./ProductList";
+import { ProductListSheet, ProductListModal } from "./ProductList";
 import { EditProductModal } from "./EditProductModal";
 import { useConfirm } from "../../../shared/components/ConfirmModal";
 import { useShareDrawer } from "@/shared/components/ShareDrawer";
@@ -238,6 +238,7 @@ export function StoreDashboard() {
   const qc = useQueryClient();
 
   const [editTarget, setEditTarget] = useState<ProductListItem | null>(null);
+  const [productListOpen, setProductListOpen] = useState(false);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: storeProductKeys.lists() });
@@ -375,8 +376,12 @@ export function StoreDashboard() {
               Publish one of your designs or customize something new to start selling.
             </p>
             <div className="mt-4 flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
-              <Button asChild variant="outline" className="rounded-full">
-                <Link to="/designs"><Sparkles className="mr-2 h-4 w-4" /> Publish from designs</Link>
+              <Button
+                variant="outline"
+                className="rounded-full"
+                onClick={() => setProductListOpen(true)}
+              >
+                <Sparkles className="mr-2 h-4 w-4" /> Publish from designs
               </Button>
               <Button asChild className="rounded-full">
                 <Link to="/catalog"><Plus className="mr-2 h-4 w-4" /> Customize new</Link>
@@ -391,6 +396,9 @@ export function StoreDashboard() {
           </div>
         )}
       </section>
+
+      {/* Product list modal — opened via "Publish from designs" */}
+      <ProductListModal open={productListOpen} onOpenChange={setProductListOpen} />
 
       {/* Edit modal */}
       <AnimatePresence>

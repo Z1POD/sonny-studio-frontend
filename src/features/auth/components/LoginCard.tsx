@@ -51,9 +51,6 @@ export function LoginCard() {
         {/* Header */}
         <div className="px-7 pt-8 pb-2">
           <div className="flex items-center gap-3">
-            <div className="inline-flex h-10 w-10 items-center justify-center rounded-[0.75rem] bg-white text-[oklch(0.08_0.02_280)]">
-              <Sparkles className="h-5 w-5" />
-            </div>
             <div>
               <h1 className="text-[17px] font-semibold tracking-tight leading-tight text-white">M I M O</h1>
               <p className="text-[11px] text-white/40 leading-tight">Design Studio</p>

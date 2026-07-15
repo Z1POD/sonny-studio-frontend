@@ -1,10 +1,4 @@
-/**
- * src/features/store/components/ProductList.tsx
- *
- * Changes:
- *  - Shows "Not production ready" tag on products where production_ready is false/absent
- *  - Share button now passes price, currencySymbol, and flags for Telegram Story
- */
+// src/features/store/components/ProductList.tsx
 
 "use client";
 
@@ -32,7 +26,7 @@ import { useConfirm } from "../../../shared/components/ConfirmModal";
 import { useShareDrawer } from "@/shared/components/ShareDrawer";
 import { BrandLoader } from "@/components/ui/loader";
 
-//     Status badge                                                              
+// Status badge                                                              
 
 function StatusBadge({ status, is_published }: { status: string; is_published: boolean }) {
   const published = is_published || status === "published";
@@ -58,7 +52,7 @@ function NotReadyBadge() {
   );
 }
 
-//     Row action button                                                         
+// Row action button                                                         
 
 function ActionBtn({
   onClick, title, loading, danger, children,
@@ -85,7 +79,7 @@ function ActionBtn({
   );
 }
 
-//     Product row                                                               
+// Product row                                                               
 
 function ProductRow({
   product, onEdit, onMutated,
@@ -219,7 +213,7 @@ function ProductRow({
   );
 }
 
-//     ProductList                                                          
+// ProductList                                                          
 
 export function ProductList({ onClose }: { onClose: () => void }) {
   const [editTarget, setEditTarget] = useState<ProductListItem | null>(null);
@@ -322,8 +316,35 @@ export function ProductList({ onClose }: { onClose: () => void }) {
   );
 }
 
-//     Sheet trigger                                                             
+// Sheet / modal                                                            
 
+export function ProductListModal({
+  open, onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="bottom"
+        className="h-[90dvh] gap-0 overflow-hidden rounded-t-3xl border border-border/60 bg-surface p-0 shadow-2xl [&>button]:hidden md:inset-x-auto md:left-1/2 md:bottom-auto md:top-1/2 md:h-[80dvh] md:w-[680px] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-3xl"
+      >
+        <SheetHeader className="sr-only">
+          <SheetTitle>All Products</SheetTitle>
+          <SheetDescription>Browse, edit, publish, and manage your products.</SheetDescription>
+        </SheetHeader>
+
+        <div className="flex justify-center pt-3 md:hidden">
+          <div className="h-1 w-10 rounded-full bg-border" />
+        </div>
+        <ProductList onClose={() => onOpenChange(false)} />
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+/** "View all" trigger + its own modal instance — used in the Products section header. */
 export function ProductListSheet() {
   const [open, setOpen] = useState(false);
   return (
@@ -335,22 +356,7 @@ export function ProductListSheet() {
         View all
       </button>
 
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent
-          side="bottom"
-          className="h-[90dvh] gap-0 overflow-hidden rounded-t-3xl border border-border/60 bg-surface p-0 shadow-2xl [&>button]:hidden md:inset-x-auto md:left-1/2 md:bottom-auto md:top-1/2 md:h-[80dvh] md:w-[680px] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-3xl"
-        >
-          <SheetHeader className="sr-only">
-            <SheetTitle>All Products</SheetTitle>
-            <SheetDescription>Browse, edit, publish, and manage your products.</SheetDescription>
-          </SheetHeader>
-
-          <div className="flex justify-center pt-3 md:hidden">
-            <div className="h-1 w-10 rounded-full bg-border" />
-          </div>
-          <ProductList onClose={() => setOpen(false)} />
-        </SheetContent>
-      </Sheet>
+      <ProductListModal open={open} onOpenChange={setOpen} />
     </>
   );
 }
