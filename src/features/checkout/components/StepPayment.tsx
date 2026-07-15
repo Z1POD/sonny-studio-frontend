@@ -20,7 +20,7 @@ import {
   FailedState,
 } from "./payment";
 import { haptics } from "@/shared/lib/haptics";
-import { useConfirm } from "@/features/store/components/ConfirmModal";
+import { useConfirm } from "@/shared/components/ConfirmModal";
 
 export function StepPayment() {
   const {
