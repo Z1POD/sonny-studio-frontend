@@ -34,7 +34,7 @@ export const Route = createFileRoute("/_authenticated")({
 const steps = [
   { icon: Shirt, label: "Pick" },
   { icon: Palette, label: "Customize" },
-  { icon: ShoppingBag, label: "Sell/Order" },
+  { icon: ShoppingBag, label: "Sell / Order" },
 ];
 
 function AuthenticatedLayout() {

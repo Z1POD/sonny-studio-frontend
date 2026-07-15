@@ -39,7 +39,7 @@ export const Route = createFileRoute("/login")({
       // straight into a page that immediately 403s with no recovery.
       await useAuthStore.getState().hydrate().catch(() => {});
       if (useAuthStore.getState().status === "authenticated") {
-        throw redirect({ to: search.redirect || "/marketplace" });
+        throw redirect({ to: search.redirect || "/designs" });
       }
     }
   },
