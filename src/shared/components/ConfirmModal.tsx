@@ -4,6 +4,7 @@ import { useState, useCallback, useRef } from "react";
 import { AlertTriangle, Info } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 import {
@@ -20,22 +21,33 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
+interface ConfirmInputOptions {
+  label?: string;
+  placeholder?: string;
+  required?: boolean;
+  defaultValue?: string;
+}
+
 interface ConfirmOptions {
   title: string;
   description?: string;
   confirmLabel?: string;
   cancelLabel?: string;
   danger?: boolean;
+  input?: ConfirmInputOptions;
 }
 
-type Resolver = (confirmed: boolean) => void;
+type ConfirmResult = { confirmed: boolean; value: string };
 
 interface ConfirmBodyProps {
   opts: ConfirmOptions;
-  resolve: (value: boolean) => void;
+  resolve: (confirmed: boolean, value?: string) => void;
 }
 
 function ConfirmBody({ opts, resolve }: ConfirmBodyProps) {
+  const [value, setValue] = useState(opts.input?.defaultValue ?? "");
+  const isInvalid = !!opts.input?.required && value.trim().length === 0;
+
   return (
     <div className="px-6 pb-8 pt-2">
       <div
@@ -60,17 +72,37 @@ function ConfirmBody({ opts, resolve }: ConfirmBodyProps) {
         </DialogDescription>
       )}
 
+      {opts.input && (
+        <div className="mt-4 text-left">
+          {opts.input.label && (
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+              {opts.input.label}
+              {opts.input.required && <span className="text-red-500"> *</span>}
+            </label>
+          )}
+          <Textarea
+            autoFocus
+            rows={3}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={opts.input.placeholder}
+            className="resize-none"
+          />
+        </div>
+      )}
+
       <div className="mt-6 flex flex-col gap-2">
         <Button
-          onClick={() => resolve(true)}
+          onClick={() => resolve(true, value)}
           variant={opts.danger ? "destructive" : "default"}
           className="w-full"
+          disabled={isInvalid}
         >
           {opts.confirmLabel ?? (opts.danger ? "Delete" : "Confirm")}
         </Button>
 
         <Button
-          onClick={() => resolve(false)}
+          onClick={() => resolve(false, value)}
           variant="ghost"
           className="w-full text-muted-foreground"
         >
@@ -81,28 +113,40 @@ function ConfirmBody({ opts, resolve }: ConfirmBodyProps) {
   );
 }
 
-export function useConfirm(): [
-  (opts: ConfirmOptions) => Promise<boolean>,
-  React.ReactElement,
-] {
+// Overloads: plain confirm() -> boolean (unchanged behavior for existing callers).
+// confirm() with `input` -> { confirmed, value } so the reason text comes back too.
+interface ConfirmFn {
+  (options: ConfirmOptions & { input?: undefined }): Promise<boolean>;
+  (options: ConfirmOptions & { input: ConfirmInputOptions }): Promise<ConfirmResult>;
+}
+
+export function useConfirm(): [ConfirmFn, React.ReactElement] {
   const isMobile = useIsMobile();
 
   const [opts, setOpts] = useState<ConfirmOptions | null>(null);
-  const resolverRef = useRef<Resolver | null>(null);
+  const resolverRef = useRef<((confirmed: boolean, value?: string) => void) | null>(null);
 
-  const confirm = useCallback((options: ConfirmOptions): Promise<boolean> => {
+  const confirmImpl = useCallback((options: ConfirmOptions): Promise<boolean | ConfirmResult> => {
     setOpts(options);
 
-    return new Promise<boolean>((resolve) => {
-      resolverRef.current = resolve;
+    return new Promise((resolvePromise) => {
+      resolverRef.current = (confirmed: boolean, value?: string) => {
+        if (options.input) {
+          resolvePromise({ confirmed, value: (value ?? "").trim() });
+        } else {
+          resolvePromise(confirmed);
+        }
+      };
     });
   }, []);
 
-  const resolve = (value: boolean) => {
-    resolverRef.current?.(value);
+  const resolve = (confirmed: boolean, value?: string) => {
+    resolverRef.current?.(confirmed, value);
     resolverRef.current = null;
     setOpts(null);
   };
+
+  const confirm = confirmImpl as unknown as ConfirmFn;
 
   if (isMobile) {
     return [
