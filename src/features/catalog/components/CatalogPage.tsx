@@ -75,7 +75,7 @@ export function CatalogPage() {
       >
         <div>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            Apparel catalog
+            Products
           </h1>
           <p className="mt-1 max-w-md text-sm text-muted-foreground">
             Pick a premium blank apparel and personalize it with your own unique designs. 
