@@ -20,6 +20,7 @@ import {
   FailedState,
 } from "./payment";
 import { haptics } from "@/shared/lib/haptics";
+import { useConfirm } from "@/shared/components/ConfirmModal";
 
 export function StepPayment() {
   const {
@@ -43,6 +44,7 @@ export function StepPayment() {
   const navigate = useNavigate();
   const { copiedField, copy } = useClipboardCopy();
   const { startPolling, stopPolling } = usePaymentPolling();
+  const [confirm, confirmModal] = useConfirm();
 
   const invoice = order?.invoice;
   const methods = invoice?.payment?.methods ?? [];
@@ -149,9 +151,26 @@ export function StepPayment() {
 
   const handleCancelOrder = async () => {
     if (!order || isCanceling) return;
+
+    const { confirmed, value } = await confirm({
+      title: "Cancel this order?",
+      description:
+        "This cannot be undone. A refund will be processed if payment was already made.",
+      confirmLabel: "Cancel Order",
+      cancelLabel: "Keep Order",
+      danger: true,
+      input: {
+        label: "Reason for cancelling",
+        placeholder: "e.g. Changed my mind, found a better price…",
+        required: true,
+      },
+    });
+
+    if (!confirmed) return;
+
     setIsCanceling(true);
     try {
-      await orderApi.cancel(order.id, "User cancelled from payment step");
+      await orderApi.cancel(order.id, value || "User cancelled from payment step");
       toast.success("Order cancelled");
       reset();
       navigate({ to: "/marketplace" });
@@ -173,9 +192,11 @@ export function StepPayment() {
     clearErrors();
   };
 
-  // Guards
+  // ---- Determine which content to render ----
+  let content: React.ReactNode;
+
   if (!invoice) {
-    return (
+    content = (
       <div className="flex h-full flex-col items-center justify-center py-12 text-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         <p className="mt-4 text-sm text-muted-foreground">
@@ -183,31 +204,23 @@ export function StepPayment() {
         </p>
       </div>
     );
-  }
-
-  const sym = invoice.amount?.currency?.symbol ?? "Br";
-  const total = invoice.amount?.total ?? "0";
-
-  // State branches
-  if (verifyState && !verifyState.isTerminal &&
-      (verifyState.status === "submitted" || verifyState.status === "verifying")) {
-    return (
+  } else if (
+    verifyState &&
+    !verifyState.isTerminal &&
+    (verifyState.status === "submitted" || verifyState.status === "verifying")
+  ) {
+    content = (
       <VerifyingState
         statusDisplay={verifyState.statusDisplay}
         transactionId={verifyState.transactionId}
       />
     );
-  }
-
-  if (verifyState && (verifyState.isVerified || verifyState.status === "verified")) {
+  } else if (verifyState && (verifyState.isVerified || verifyState.status === "verified")) {
     haptics.impactOccurred('heavy')
-
-    return <SuccessState orderNumber={order?.orderNumber} />;
-  }
-
-  if (verifyState && verifyState.isTerminal) {
+    content = <SuccessState orderNumber={order?.orderNumber} />;
+  } else if (verifyState && verifyState.isTerminal) {
     haptics.impactOccurred('light')
-    return (
+    content = (
       <FailedState
         isMismatch={verifyState.status === "mismatch"}
         errorMessage={verifyState.errorMessage}
@@ -216,87 +229,97 @@ export function StepPayment() {
         isCanceling={isCanceling}
       />
     );
+  } else {
+    // Default: payment instructions
+    const sym = invoice.amount?.currency?.symbol ?? "Br";
+    const total = invoice.amount?.total ?? "0";
+
+    const refLabel =
+      selectedMethod?.reference?.label ??
+      selectedMethod?.referenceLabel ??
+      "Transaction ID / Receipt";
+
+    const refPlaceholder =
+      selectedMethod?.reference?.placeholder ??
+      selectedMethod?.referencePlaceholder ??
+      "";
+
+    const refHelpText =
+      selectedMethod?.reference?.help_text ??
+      selectedMethod?.referenceHelpText ??
+      "";
+
+    const payerAccountLabel =
+      selectedMethod?.payer_account_label ??
+      selectedMethod?.payerAccountLabel ??
+      "Your account number (last 8 digits)";
+
+    content = (
+      <motion.div
+        key="instructions"
+        initial={{ opacity: 0, x: 40 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        className="flex h-full flex-col"
+      >
+        <div className="flex-1 overflow-y-auto space-y-4 pb-6 no-scrollbar">
+          <AmountBanner invoice={invoice} />
+
+          <BankSelector
+            methods={methods}
+            selectedProviderCode={selectedProviderCode}
+            onSelect={setSelectedProviderCode}
+            onCopy={copy}
+            copiedField={copiedField}
+            sym={sym}
+            total={total}
+          />
+
+          <ReceiptSubmission
+            onSubmit={handleSubmitReceipt}
+            receiptIdentifier={receiptIdentifier}
+            setReceiptIdentifier={(v) => {
+              setReceiptIdentifier(v);
+              if (receiptError) setReceiptError(null);
+            }}
+            payerAccount={payerAccount}
+            setPayerAccount={(v) => {
+              setPayerAccount(v);
+              if (payerError) setPayerError(null);
+            }}
+            receiptError={receiptError}
+            payerError={payerError}
+            refLabel={refLabel}
+            refPlaceholder={refPlaceholder}
+            refHelpText={refHelpText}
+            requiresAccountNumber={requiresAccountNumber}
+            payerAccountLabel={payerAccountLabel}
+            submittingReceipt={submittingReceipt}
+            clearErrors={clearErrors}
+          />
+
+          <div className="flex justify-center pt-1">
+            <button
+              onClick={handleCancelOrder}
+              disabled={isCanceling}
+              className={`text-xs transition-colors ${
+                isCanceling
+                  ? "text-muted-foreground/50 cursor-not-allowed"
+                  : "text-muted-foreground hover:text-destructive"
+              }`}
+            >
+              {isCanceling ? "Canceling order..." : "Cancel order"}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    );
   }
 
-  // Default: payment instructions
-  const refLabel =
-    selectedMethod?.reference?.label ??
-    selectedMethod?.referenceLabel ??
-    "Transaction ID / Receipt";
-
-  const refPlaceholder =
-    selectedMethod?.reference?.placeholder ??
-    selectedMethod?.referencePlaceholder ??
-    "";
-
-  const refHelpText =
-    selectedMethod?.reference?.help_text ??
-    selectedMethod?.referenceHelpText ??
-    "";
-
-  const payerAccountLabel =
-    selectedMethod?.payer_account_label ??
-    selectedMethod?.payerAccountLabel ??
-    "Your account number (last 8 digits)";
-
   return (
-    <motion.div
-      key="instructions"
-      initial={{ opacity: 0, x: 40 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="flex h-full flex-col"
-    >
-      <div className="flex-1 overflow-y-auto space-y-4 pb-6 no-scrollbar">
-        <AmountBanner invoice={invoice} />
-
-        <BankSelector
-          methods={methods}
-          selectedProviderCode={selectedProviderCode}
-          onSelect={setSelectedProviderCode}
-          onCopy={copy}
-          copiedField={copiedField}
-          sym={sym}
-          total={total}
-        />
-
-        <ReceiptSubmission
-          onSubmit={handleSubmitReceipt}
-          receiptIdentifier={receiptIdentifier}
-          setReceiptIdentifier={(v) => {
-            setReceiptIdentifier(v);
-            if (receiptError) setReceiptError(null);
-          }}
-          payerAccount={payerAccount}
-          setPayerAccount={(v) => {
-            setPayerAccount(v);
-            if (payerError) setPayerError(null);
-          }}
-          receiptError={receiptError}
-          payerError={payerError}
-          refLabel={refLabel}
-          refPlaceholder={refPlaceholder}
-          refHelpText={refHelpText}
-          requiresAccountNumber={requiresAccountNumber}
-          payerAccountLabel={payerAccountLabel}
-          submittingReceipt={submittingReceipt}
-          clearErrors={clearErrors}
-        />
-
-        <div className="flex justify-center pt-1">
-          <button
-            onClick={handleCancelOrder}
-            disabled={isCanceling}
-            className={`text-xs transition-colors ${
-              isCanceling
-                ? "text-muted-foreground/50 cursor-not-allowed"
-                : "text-muted-foreground hover:text-destructive"
-            }`}
-          >
-            {isCanceling ? "Canceling order..." : "Cancel order"}
-          </button>
-        </div>
-      </div>
-    </motion.div>
+    <>
+      {content}
+      {confirmModal}
+    </>
   );
 }

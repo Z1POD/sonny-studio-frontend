@@ -46,19 +46,28 @@ const slideVariants = {
 const ETH_PHONE_RE = /^\+251[79]\d{8}$/;
 
 const normalizePhone = (phone: string) => {
-  let p = phone.trim().replace(/[\s-]/g, "");
+  let p = phone.trim();
 
-  // 09XXXXXXXX or 07XXXXXXXX → 9XXXXXXXX or 7XXXXXXXX
+  // Reject leading/trailing hyphens
+  if (/^-|-$/.test(p)) {
+    return null;
+  }
+
+  // Only allow digits, spaces, hyphens, and an optional leading +
+  if (!/^\+?\d[\d\s-]*$/.test(p)) {
+    return null;
+  }
+
+  p = p.replace(/[\s-]/g, "");
+
   if (p.startsWith("09") || p.startsWith("07")) {
     p = p.substring(1);
   }
 
-  // 9XXXXXXXX or 7XXXXXXXX → convert to +251
   if (/^[79]\d{8}$/.test(p)) {
     p = "+251" + p;
   }
 
-  // 00251... → +251...
   if (p.startsWith("00251")) {
     p = "+251" + p.slice(5);
   }
@@ -66,13 +75,14 @@ const normalizePhone = (phone: string) => {
   return p;
 };
 
+
 function validatePhone(phone: string): { valid: boolean; message?: string } {
   const trimmed = phone.trim();
   if (!trimmed) return { valid: false, message: "Phone number is required" };
 
   const normalized = normalizePhone(trimmed);
 
-  if (!ETH_PHONE_RE.test(normalized)) {
+  if (!normalized || !ETH_PHONE_RE.test(normalized)) {
     return {
       valid: false,
       message: "Enter a valid Ethiopian phone (09..., 07..., or +251...)",
