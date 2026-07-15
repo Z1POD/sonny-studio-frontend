@@ -8,9 +8,7 @@ import { useCart } from "@/features/market/store";
 import { cn } from "@/lib/utils";
 import { UserMenu } from "./UserMenu";
 
-// Same three core destinations as the desktop header nav — kept in parity
-// so the IA doesn't shift between devices. Cart and Account fill out the
-// remaining two of the five HIG-recommended tab slots.
+
 const TABS = [
   { to: "/marketplace", label: "Market", icon: StoreIcon },
   { to: "/catalog", label: "Customize", icon: Palette },
