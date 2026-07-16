@@ -60,9 +60,8 @@ export function useTelegramAutoLogin({
 
       setTgLoading(true);
       try {
-        const data = await authApi.loginTelegram(initData);
+        await useAuthStore.getState().loginWithTelegram(initData);
         if (cancelled || !stillOwnsRoute()) return;
-        setToken(data.token, data.user);
         navigate({ to: redirectTo, replace: true });
       } catch (err) {
         if (!cancelled) {
