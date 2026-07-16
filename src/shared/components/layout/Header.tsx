@@ -52,7 +52,7 @@ export function Header({ variant = "full" }: HeaderProps) {
           "z-50 h-14 transition-colors duration-300 md:h-20",
           isMinimal
             ? "fixed inset-x-0 top-[var(--tg-safe-area-top,0px)] md:top-0"
-            : "sticky top-[var(--tg-safe-area-top,0px)] hidden md:block md:mx-auto md:w-[800px]",
+            : "sticky top-[var(--tg-safe-area-top,0px)] hidden md:top-2 md:block md:mx-auto md:w-[800px]",
           isHome && !isExpanded && !isMinimal ? "border-none bg-transparent" : "rounded-2xl",
         )}
       >
