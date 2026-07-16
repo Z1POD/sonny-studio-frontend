@@ -134,18 +134,29 @@ interface TelegramWindow extends Window {
   };
 }
 
+function hasTelegramLaunchSignal(): boolean {
+  if (typeof window === "undefined") return false;
+  if ((window as unknown as TelegramWindow).Telegram?.WebApp) return true;
+  return (
+    window.location.hash.includes("tgWebApp") ||
+    window.location.search.includes("tgWebApp")
+  );
+}
 // Hook
 
 export function useTelegram() {
   const [tg, setTg] = useState<TelegramWebApp | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isTelegram, setIsTelegram] = useState(false);
+  const [isTelegram, setIsTelegram] = useState(() => hasTelegramLaunchSignal());
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const telegram = (window as unknown as TelegramWindow).Telegram?.WebApp;
-    if (!telegram) return;
+    if (!telegram) {
+      setIsTelegram(false);
+      return;
+    }
 
     setTg(telegram);
     telegram.ready();
@@ -156,7 +167,6 @@ export function useTelegram() {
     const hasInitDataString = !!telegram.initData && telegram.initData.length > 0;
     setIsTelegram(hasInitData || hasInitDataString);
 
-    // Bot API 7.7+ fullscreen state, kept in sync with the native event.
     setIsFullscreen(!!telegram.isFullscreen);
     const onFullscreenChanged = () => setIsFullscreen(!!telegram.isFullscreen);
     telegram.onEvent?.("fullscreenChanged", onFullscreenChanged);
