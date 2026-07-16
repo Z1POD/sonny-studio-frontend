@@ -103,7 +103,7 @@ export function MarketplacePage() {
   useEffect(() => {
     if (showSwipeHint && hasMultipleSlides && !hintHapticFiredRef.current) {
       hintHapticFiredRef.current = true;
-      haptics.impactOccurred("heavy");
+      haptics.impactOccurred("light");
     }
   }, [showSwipeHint, hasMultipleSlides]);
 

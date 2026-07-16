@@ -229,7 +229,7 @@ export function StepPayment() {
       />
     );
   } else if (verifyState && (verifyState.isVerified || verifyState.status === "verified")) {
-    haptics.impactOccurred('heavy')
+    haptics.impactOccurred('light')
     content = (
       <SuccessState
         orderNumber={order?.orderNumber}
@@ -247,7 +247,7 @@ export function StepPayment() {
       />
     );
   } else if (verifyState && verifyState.isTerminal) {
-    haptics.impactOccurred('light')
+    haptics.impactOccurred('heavy')
     content = (
       <FailedState
         isMismatch={verifyState.status === "mismatch"}
