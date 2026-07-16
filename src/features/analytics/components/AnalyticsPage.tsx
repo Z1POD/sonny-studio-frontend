@@ -145,13 +145,13 @@ function RevenueChart({ series, loading }: { series: RevenueSeries[]; loading: b
     const w = 800;
     const h = 200;
     const pad = 16;
-    const max = Math.max(...series.map((s) => s.revenue));
-    const min = Math.min(...series.map((s) => s.revenue));
+    const max = Math.max(...series.map((s) => s.earnings));
+    const min = Math.min(...series.map((s) => s.earnings));
     const range = Math.max(1, max - min);
     const xStep = (w - pad * 2) / Math.max(1, series.length - 1);
     const pts = series.map((s, i) => ({
       x: pad + i * xStep,
-      y: h - pad - ((s.revenue - min) / range) * (h - pad * 2),
+      y: h - pad - ((s.earnings - min) / range) * (h - pad * 2),
       ...s,
     }));
     const p = pts.map((p, i) => (i === 0 ? `M ${p.x},${p.y}` : `L ${p.x},${p.y}`)).join(" ");
@@ -240,7 +240,7 @@ function RevenueChart({ series, loading }: { series: RevenueSeries[]; loading: b
             <p className="font-medium">{formatDate(hovPt.date)}</p>
             <p className="text-muted-foreground">{hovPt.orders} orders</p>
             <p className="text-primary font-semibold">
-              {hovPt.revenue}
+              {hovPt.earnings}
             </p>
           </motion.div>
         )}
