@@ -60,6 +60,8 @@ export function useTelegramLaunch() {
     // Navigate immediately — do not wait on auth for public destinations.
     if (target?.type === "product") {
       navigate({ to: "/p/$slug", params: { slug: target.id }, replace: true });
+    } else if (target?.type === "route") {
+      navigate({ to: "/", search: { redirect: target.path }, replace: true });
     } else if (pathnameRef.current === "/") {
       navigate({ to: "/marketplace", replace: true });
     }
