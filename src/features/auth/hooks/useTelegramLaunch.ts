@@ -29,30 +29,21 @@ export function useTelegramLaunch() {
 
     const signIn = async () => {
       if (getStoredToken()) {
-        // A stored token isn't proof of a valid session — the backend
-        // decides. hydrate() clears it if it's stale/rejected (401/403).
         await hydrate().catch(() => {});
         if (useAuthStore.getState().status === "authenticated") return;
-        // token was invalid and has now been cleared — fall through to a
-        // fresh Telegram sign-in below
       }
 
       if (!initData) {
-        // Nothing to sign in with — settle status to "unauthenticated" so
-        // consumers (e.g. guarded routes) stop waiting.
         await hydrate().catch(() => {});
         return;
       }
 
-      try {
-        const data = await authApi.loginTelegram(initData);
-        setToken(data.token, data.user);
-      } catch {
+      await useAuthStore.getState().loginWithTelegram(initData).catch(() => {
         // Swallowed — user keeps browsing unauthenticated. Splash /
         // marketplace fall back to showing a login CTA. Guarded pages will
         // redirect to /login, which bounces Telegram users back to splash
         // where useTelegramAutoLogin retries.
-      }
+      });
     };
 
     const target = parseStartParam(tg.initDataUnsafe?.start_param);
