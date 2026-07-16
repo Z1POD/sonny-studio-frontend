@@ -309,11 +309,6 @@ function OrderDetailContent({
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
                 <div>
                   <p className="text-sm font-medium text-amber-600">Payment required</p>
-                  {order.invoice?.payment?.warning && (
-                    <p className="mt-1 text-xs font-medium text-emerald-600">
-                      {order.invoice.payment.warning}
-                    </p>
-                  )}
                 </div>
               </div>
 
