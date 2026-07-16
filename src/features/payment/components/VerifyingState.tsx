@@ -1,4 +1,4 @@
-// src/features/checkout/components/payment/VerifyingState.tsx
+// src/features/payment/components/VerifyingState.tsx
 
 import { motion } from "framer-motion";
 import { Loader2, Clock, Wifi } from "lucide-react";

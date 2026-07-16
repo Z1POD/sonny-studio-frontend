@@ -1,27 +1,31 @@
-/**
- * src/features/orders/components/OrderDetailSheet.tsx
- *
- * Bottom sheet for full order detail: invoice, items, shipping, payment info,
- * receipt submission, live verification polling, and cancel.
- */
+// src/features/orders/components/OrderDetailSheet.tsx
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  X, ChevronDown, Truck, MapPin, Copy, CheckCircle2,
-  Clock, Loader2, AlertCircle, ExternalLink, FileText,
-  XCircle, Package,
+  X, Truck, MapPin, CheckCircle2,
+  Loader2, AlertCircle, ExternalLink,
+  Package,
 } from "lucide-react";
 import { appToast as toast } from "@/lib/toaster";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { orderDetailQuery, orderKeys } from "../queries";
 import { ordersApi } from "../api";
-import type { OrderDetail, PaymentMethod } from "../api";
+import type { OrderDetail } from "../api";
 import { useConfirm } from "@/shared/components/ConfirmModal";
 import { BrandLoader } from "@/components/ui/loader";
+
+import { usePaymentVerification } from "@/features/payment/hooks/usePaymentVerification";
+import { useClipboardCopy } from "@/features/payment/hooks/useClipboardCopy";
+import {
+  AmountBanner,
+  BankSelector,
+  ReceiptSubmission,
+  VerifyingState,
+  SuccessState,
+  FailedState,
+} from "@/features/payment/components";
 
 //     Status helpers                                                             
 
@@ -33,13 +37,6 @@ const STATUS_LABELS: Record<string, string> = {
   shipped: "Shipped",
   delivered: "Delivered",
   cancelled: "Cancelled",
-};
-
-const PAYMENT_LABELS: Record<string, string> = {
-  pending: "Awaiting Payment",
-  pending_verification: "Verifying Payment",
-  paid: "Paid",
-  failed: "Payment Failed",
 };
 
 function statusColor(status: string) {
@@ -108,235 +105,6 @@ function TimelineStep({
   );
 }
 
-//     Payment method card                                                       
-
-function PaymentMethodCard({
-  method,
-  selected,
-  onSelect,
-}: {
-  method: PaymentMethod;
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  const [copied, setCopied] = useState(false);
-
-  const copyAccount = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(method.account_number).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  };
-
-  return (
-    <button
-      onClick={onSelect}
-      className={`w-full text-left rounded-2xl border-2 p-4 transition ${
-        selected ? "border-emerald-400/20 bg-primary/5" : "border-border bg-surface hover:border-border/60"
-      }`}
-    >
-      <div className="flex items-center gap-3">
-        {method.provider_logo && (
-          <img
-            src={method.provider_logo}
-            alt={method.provider_name}
-            className="h-8 w-8 rounded-lg object-contain"
-            onError={(e) => (e.currentTarget.style.display = "none")}
-          />
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium">{method.provider_name}</p>
-          <p className="text-xs text-muted-foreground">{method.account_type}</p>
-        </div>
-        <div
-          className={`h-4 w-4 rounded-full border-2 transition ${
-            selected ? "border-primary bg-primary" : "border-border"
-          }`}
-        />
-      </div>
-
-      {selected && (
-        <div className="mt-3 space-y-2 border-t border-border/60 pt-3">
-          <div className="flex items-center justify-between rounded-xl bg-muted/50 px-3 py-2">
-            <div>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Account</p>
-              <p className="font-mono text-sm">{method.account_number}</p>
-            </div>
-            <button
-              onClick={copyAccount}
-              className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
-            >
-              {copied ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-            </button>
-          </div>
-          <p className="text-xs text-muted-foreground">{method.reference.help_text}</p>
-        </div>
-      )}
-    </button>
-  );
-}
-
-//     Receipt submission form                                                    
-
-function ReceiptForm({
-  orderId,
-  methods,
-  onSuccess,
-}: {
-  orderId: string;
-  methods: PaymentMethod[];
-  onSuccess: (txRef: string) => void;
-}) {
-  const [provider, setProvider] = useState(methods[0]?.provider_code ?? "");
-  const [receiptId, setReceiptId] = useState("");
-  const [payerAccount, setPayerAccount] = useState("");
-
-  const selectedMethod = methods.find((m) => m.provider_code === provider);
-
-  const submitMutation = useMutation({
-    mutationFn: () =>
-      ordersApi.submitReceipt({
-        order_id: orderId,
-        provider,
-        receipt_identifier: receiptId,
-        payer_account: selectedMethod?.requires_payer_account ? payerAccount : undefined,
-      }),
-    onSuccess: (data) => {
-      toast.success("Receipt submitted. Verifying payment…");
-      onSuccess(data.transaction_id);
-    },
-    onError: (e: any) => {
-      toast.error(e?.data?.error?.message ?? "Failed to submit receipt");
-    },
-  });
-
-  return (
-    <div className="space-y-4">
-      <p className="text-sm font-medium">Select your bank</p>
-      <div className="space-y-2">
-        {methods.map((m) => (
-          <PaymentMethodCard
-            key={m.provider_code}
-            method={m}
-            selected={provider === m.provider_code}
-            onSelect={() => setProvider(m.provider_code)}
-          />
-        ))}
-      </div>
-
-      {selectedMethod && (
-        <div className="space-y-3 rounded-2xl border border-border bg-surface p-4">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            {selectedMethod.reference.label}
-          </p>
-          <Input
-            placeholder={selectedMethod.reference.placeholder}
-            value={receiptId}
-            onChange={(e) => setReceiptId(e.target.value)}
-            className="font-mono text-sm"
-          />
-
-          {selectedMethod.requires_payer_account && (
-            <>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                {selectedMethod.payer_account_label}
-              </p>
-              <Input
-                placeholder="e.g., 12345678"
-                value={payerAccount}
-                onChange={(e) => setPayerAccount(e.target.value)}
-                className="font-mono text-sm"
-              />
-            </>
-          )}
-        </div>
-      )}
-
-      <Button
-        className="w-full"
-        disabled={
-          !receiptId ||
-          (!!selectedMethod?.requires_payer_account && !payerAccount) ||
-          submitMutation.isPending
-        }
-        onClick={() => submitMutation.mutate()}
-      >
-        {submitMutation.isPending ? (
-          <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Submitting…</>
-        ) : (
-          "Submit Receipt"
-        )}
-      </Button>
-    </div>
-  );
-}
-
-//     Verification poller                                                       
-
-function VerificationPoller({
-  txRef,
-  onVerified,
-  onFailed,
-}: {
-  txRef: string;
-  onVerified: () => void;
-  onFailed: (msg: string) => void;
-}) {
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [status, setStatus] = useState<"verifying" | "verified" | "failed">("verifying");
-  const [errorMsg, setErrorMsg] = useState("");
-
-  useEffect(() => {
-    intervalRef.current = setInterval(async () => {
-      try {
-        const res = await ordersApi.verifyPayment(txRef);
-        setStatus(res.status as any);
-        if (res.is_verified) {
-          clearInterval(intervalRef.current!);
-          onVerified();
-        } else if (res.status === "mismatch" || res.status === "failed") {
-          clearInterval(intervalRef.current!);
-          setErrorMsg(res.error_message);
-          onFailed(res.error_message);
-        }
-      } catch {
-        // keep polling
-      }
-    }, 4000);
-
-    return () => clearInterval(intervalRef.current!);
-  }, [txRef, onVerified, onFailed]);
-
-  if (status === "verified") {
-    return (
-      <div className="flex flex-col items-center gap-3 py-8 text-center">
-        <CheckCircle2 className="h-10 w-10 text-green-500" />
-        <p className="font-medium text-green-600">Payment confirmed!</p>
-        <p className="text-sm text-muted-foreground">Your order is now being processed.</p>
-      </div>
-    );
-  }
-
-  if (status === "failed" || status === "mismatch") {
-    return (
-      <div className="flex flex-col items-center gap-3 py-8 text-center">
-        <XCircle className="h-10 w-10 text-destructive" />
-        <p className="font-medium text-destructive">Verification failed</p>
-        <p className="text-sm text-muted-foreground">{errorMsg || "Payment could not be verified."}</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col items-center gap-3 py-8 text-center">
-      <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      <p className="font-medium">Verifying your payment…</p>
-      <p className="text-sm text-muted-foreground">This usually takes 1–2 minutes. Don't close this page.</p>
-    </div>
-  );
-}
-
 //     Main sheet                                                                
 
 export function OrderDetailSheet({
@@ -348,8 +116,6 @@ export function OrderDetailSheet({
 }) {
   const queryClient = useQueryClient();
   const [confirm, ConfirmModal] = useConfirm();
-  const [paymentOpen, setPaymentOpen] = useState(false);
-  const [txRef, setTxRef] = useState<string | null>(null);
   const [section, setSection] = useState<"items" | "shipping" | "timeline">("items");
 
   const { data: order, isLoading } = useQuery({
@@ -376,15 +142,6 @@ export function OrderDetailSheet({
     if (ok) cancelMutation.mutate("Changed my mind");
   };
 
-  const handleInvoice = async () => {
-    try {
-      const inv = await ordersApi.invoice(orderId!);
-      window.open(inv.invoice_url, "_blank");
-    } catch {
-      toast.error("Failed to load invoice");
-    }
-  };
-
   return (
     <>
       <Sheet open={!!orderId} onOpenChange={(open) => !open && onClose()}>
@@ -392,17 +149,27 @@ export function OrderDetailSheet({
           side="bottom"
           className="inset-x-0 bottom-0 top-auto flex h-auto max-h-[92dvh] w-full flex-col gap-0 overflow-hidden rounded-t-3xl border-t border-border/60 bg-background p-0 shadow-2xl [&>button]:hidden sm:max-w-none"
         >
+          <SheetHeader className="sr-only">
+            <SheetTitle>
+              Order {order?.order_number ?? ""}
+            </SheetTitle>
+            <SheetDescription>
+              View order details, payment status, and available actions.
+            </SheetDescription>
+          </SheetHeader>
+
           {/* Handle */}
           <div className="flex shrink-0 justify-center pt-3 pb-1">
             <div className="h-1 w-10 rounded-full bg-border" />
           </div>
 
-          {/* Title bar */}
+          {/* Visible title bar */}
           <div className="flex shrink-0 items-center justify-between px-5 pb-3">
             <div>
               <p className="text-xs text-muted-foreground">Order</p>
               <p className="font-semibold">{order?.order_number ?? "—"}</p>
             </div>
+
             <button
               onClick={onClose}
               className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-muted/80"
@@ -422,12 +189,7 @@ export function OrderDetailSheet({
                 order={order}
                 section={section}
                 setSection={setSection}
-                paymentOpen={paymentOpen}
-                setPaymentOpen={setPaymentOpen}
-                txRef={txRef}
-                setTxRef={setTxRef}
                 onCancel={handleCancel}
-                onInvoice={handleInvoice}
                 cancelPending={cancelMutation.isPending}
                 onPaymentVerified={() => {
                   queryClient.invalidateQueries({ queryKey: orderKeys.all });
@@ -437,6 +199,7 @@ export function OrderDetailSheet({
           </div>
         </SheetContent>
       </Sheet>
+
       {ConfirmModal}
     </>
   );
@@ -448,34 +211,45 @@ function OrderDetailContent({
   order,
   section,
   setSection,
-  paymentOpen,
-  setPaymentOpen,
-  txRef,
-  setTxRef,
   onCancel,
-  onInvoice,
   cancelPending,
   onPaymentVerified,
 }: {
   order: OrderDetail;
   section: "items" | "shipping" | "timeline";
   setSection: (s: "items" | "shipping" | "timeline") => void;
-  paymentOpen: boolean;
-  setPaymentOpen: (v: boolean) => void;
-  txRef: string | null;
-  setTxRef: (v: string | null) => void;
   onCancel: () => void;
-  onInvoice: () => void;
   cancelPending: boolean;
   onPaymentVerified: () => void;
 }) {
   const sym = order.pricing.currency.symbol;
   const needsPayment =
-    order.payment_status === "pending" || order.payment_status === "failed";
-  const isVerifying = order.payment_status === "pending_verification";
+    (order.payment_status === "pending" || order.payment_status === "failed") &&
+    order.status !== "cancelled";
+  // True only when the order is stuck "verifying" from a previous session —
+  // there's no stored transaction id to resume polling against, so this is
+  // just an informational banner (matches the pre-refactor behavior).
+  const isVerifyingFromPriorSession =
+    order.payment_status === "pending_verification";
 
-  const paymentMethods =
-    order.invoice?.payment?.methods ?? [];
+  const paymentMethods = order.invoice?.payment?.methods ?? [];
+
+  const { copiedField, copy } = useClipboardCopy();
+  const payment = usePaymentVerification({
+    orderId: order.id,
+    methods: paymentMethods,
+    fallbackAmount: order.pricing.total,
+    fallbackCurrency: order.pricing.currency.code,
+    onVerified: onPaymentVerified,
+  });
+
+  const handleSubmitReceipt = async () => {
+    try {
+      await payment.submitReceipt();
+    } catch (e: any) {
+      toast.error(e?.data?.error?.message ?? e?.message ?? "Failed to submit receipt");
+    }
+  };
 
   const orderSteps = [
     { label: "Order placed", key: "created", date: order.timeline.created },
@@ -505,67 +279,80 @@ function OrderDetailContent({
         </div>
       </div>
 
-      {/* Payment action */}
-      {needsPayment && paymentMethods.length > 0 && order.status != 'cancelled'  && (
-        <div className="rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-900/30 via-emerald-800/10 to-emerald-950/40 p-4    ">
-          <div className="mb-3 flex items-start gap-2">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-            <div>
-              <p className="text-sm font-medium text-amber-600">Payment required</p>
-              {/* <p className="mt-0.5 text-xs text-muted-foreground">
-                {order.invoice?.payment?.instructions}
-              </p> */}
-              {order.invoice?.payment?.warning && (
-                <p className="mt-1 text-xs font-medium text-emerald-600">
-                  {order.invoice.payment.warning}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Amount highlight */}
-          <div className="mb-3 rounded-xl bg-emerald-500/10 px-4 py-2 text-center">
-            <p className="text-xs text-muted-foreground">Amount to send</p>
-            <p className="text-2xl font-bold text-emerald-100">
-              {sym}{order.pricing.total}
-            </p>
-          </div>
-
-          <button
-            onClick={() => setPaymentOpen(!paymentOpen)}
-            className="flex w-full items-center justify-between rounded-xl border border-amber-500/20 bg-background px-4 py-2.5 text-sm font-medium"
-          >
-            Submit payment receipt
-            <ChevronDown
-              className={`h-4 w-4 text-muted-foreground transition-transform ${paymentOpen ? "rotate-180" : ""}`}
+      {/* Payment action — same components/flow as checkout's payment step */}
+      {needsPayment && paymentMethods.length > 0 && (
+        <>
+          {payment.verifyState &&
+          !payment.verifyState.isTerminal &&
+          (payment.verifyState.status === "submitted" || payment.verifyState.status === "verifying") ? (
+            <VerifyingState
+              statusDisplay={payment.verifyState.statusDisplay}
+              transactionId={payment.verifyState.transactionId}
             />
-          </button>
+          ) : payment.verifyState?.isVerified ? (
+            <SuccessState
+              orderNumber={order.order_number}
+              primaryLabel="Done"
+              onPrimary={() => setSection("timeline")}
+            />
+          ) : payment.verifyState?.isTerminal ? (
+            <FailedState
+              isMismatch={payment.verifyState.status === "mismatch"}
+              errorMessage={payment.verifyState.errorMessage}
+              onRetry={payment.retry}
+              onCancel={onCancel}
+              isCanceling={cancelPending}
+            />
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-start gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                <div>
+                  <p className="text-sm font-medium text-amber-600">Payment required</p>
+                  {order.invoice?.payment?.warning && (
+                    <p className="mt-1 text-xs font-medium text-emerald-600">
+                      {order.invoice.payment.warning}
+                    </p>
+                  )}
+                </div>
+              </div>
 
-          {paymentOpen && (
-            <div className="mt-3">
-              {txRef ? (
-                <VerificationPoller
-                  txRef={txRef}
-                  onVerified={() => {
-                    setTxRef(null);
-                    setPaymentOpen(false);
-                    onPaymentVerified();
-                  }}
-                  onFailed={() => setTxRef(null)}
-                />
-              ) : (
-                <ReceiptForm
-                  orderId={order.id}
-                  methods={paymentMethods}
-                  onSuccess={(ref) => setTxRef(ref)}
-                />
-              )}
+              <AmountBanner invoice={order.invoice} />
+
+              <BankSelector
+                methods={paymentMethods}
+                selectedProviderCode={payment.selectedProviderCode}
+                onSelect={payment.setSelectedProviderCode}
+                onCopy={copy}
+                copiedField={copiedField}
+                sym={sym}
+                total={order.pricing.total}
+              />
+
+              <ReceiptSubmission
+                onSubmit={handleSubmitReceipt}
+                receiptIdentifier={payment.receiptIdentifier}
+                setReceiptIdentifier={payment.setReceiptIdentifier}
+                payerAccount={payment.payerAccount}
+                setPayerAccount={payment.setPayerAccount}
+                receiptError={payment.receiptError}
+                payerError={payment.payerError}
+                refLabel={payment.selectedMethod?.referenceLabel ?? "Transaction ID / Receipt"}
+                refPlaceholder={payment.selectedMethod?.referencePlaceholder ?? ""}
+                refHelpText={payment.selectedMethod?.referenceHelpText ?? ""}
+                requiresAccountNumber={payment.selectedMethod?.requiresPayerAccount ?? false}
+                payerAccountLabel={
+                  payment.selectedMethod?.payerAccountLabel ?? "Your account number (last 8 digits)"
+                }
+                submittingReceipt={payment.submittingReceipt}
+                clearErrors={payment.clearErrors}
+              />
             </div>
           )}
-        </div>
+        </>
       )}
 
-      {isVerifying && (
+      {isVerifyingFromPriorSession && !payment.verifyState && (
         <div className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3">
           <Loader2 className="h-4 w-4 animate-spin text-primary" />
           <p className="text-sm">Verifying your payment…</p>
@@ -726,10 +513,6 @@ function OrderDetailContent({
 
       {/* Action buttons */}
       <div className="flex gap-2">
-        {/* <Button variant="outline" className="flex-1 gap-1.5 text-sm" onClick={onInvoice}>
-          <FileText className="h-4 w-4" />
-          Invoice
-        </Button> */}
         {order.can_cancel && (
           <Button
             variant="destructive"

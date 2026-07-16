@@ -1,4 +1,4 @@
-// src/features/checkout/components/payment/index.ts
+// src/features/payment/components/index.ts
 
 export { AmountBanner } from "./AmountBanner";
 export { BankSelector } from "./BankSelector";

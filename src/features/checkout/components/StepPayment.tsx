@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Loader2 } from "lucide-react";
+import { Loader2, FileCheck } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useCheckoutStore } from "../store";
 import { orderApi, paymentApi } from "../api";
 import { appToast as toast } from "@/lib/toaster";
-import { useClipboardCopy } from "../hooks/useClipboardCopy";
+import { useClipboardCopy } from "@/features/payment/hooks/useClipboardCopy";
 import { usePaymentPolling } from "../hooks/usePaymentPolling";
-import { useReceiptValidation } from "../hooks/useReceiptValidation";
+import { useReceiptValidation } from "@/features/payment/hooks/useReceiptValidation";
 import type { ReceiptFieldType } from "../lib/paymentValidation";
 import {
   AmountBanner,
@@ -18,9 +18,10 @@ import {
   VerifyingState,
   SuccessState,
   FailedState,
-} from "./payment";
+} from "@/features/payment/components";
 import { haptics } from "@/shared/lib/haptics";
 import { useConfirm } from "@/shared/components/ConfirmModal";
+import { useTelegram } from "@/shared/hooks/use-telegram";
 
 export function StepPayment() {
   const {
@@ -75,6 +76,18 @@ export function StepPayment() {
     setReceiptError,
     setPayerError,
   } = useReceiptValidation(fieldType, requiresAccountNumber);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+    const { enableClosingConfirmation, disableClosingConfirmation } = useTelegram();
+  
+    useEffect(() => {
+      enableClosingConfirmation();
+  
+      return () => {
+        disableClosingConfirmation();
+      };
+    }, [enableClosingConfirmation, disableClosingConfirmation]);
 
   // Auto-select first provider
   useEffect(() => {
@@ -217,7 +230,22 @@ export function StepPayment() {
     );
   } else if (verifyState && (verifyState.isVerified || verifyState.status === "verified")) {
     haptics.impactOccurred('heavy')
-    content = <SuccessState orderNumber={order?.orderNumber} />;
+    content = (
+      <SuccessState
+        orderNumber={order?.orderNumber}
+        primaryLabel="Track order"
+        primaryIcon={<FileCheck className="mr-2 h-4 w-4" />}
+        onPrimary={() => {
+          reset();
+          navigate({ to: "/orders" });
+        }}
+        secondaryLabel="Continue shopping"
+        onSecondary={() => {
+          reset();
+          navigate({ to: "/marketplace" });
+        }}
+      />
+    );
   } else if (verifyState && verifyState.isTerminal) {
     haptics.impactOccurred('light')
     content = (

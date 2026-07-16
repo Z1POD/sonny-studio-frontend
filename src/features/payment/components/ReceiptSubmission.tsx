@@ -1,4 +1,4 @@
-// src/features/checkout/components/payment/ReceiptSubmission.tsx
+// src/features/payment/components/ReceiptSubmission.tsx
 
 import { useState } from "react";
 import { Shield } from "lucide-react";

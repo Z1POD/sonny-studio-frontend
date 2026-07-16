@@ -1,4 +1,9 @@
-// src/features/checkout/api.ts — v2
+// src/features/checkout/api.ts — v3
+//
+// `paymentApi` now lives in src/features/payment/api.ts (shared with the
+// order-detail payment-verification flow) and is re-exported here so nothing
+// else in checkout has to change its import path. Everything else
+// (shipping, order creation, field-error mapping) is unchanged.
 
 import { api, ApiError } from "@/shared/api/client";
 import type {
@@ -7,11 +12,15 @@ import type {
   FulfillmentType,
   OrderResponse,
   PickupLocation,
-  ReceiptSubmission,
   ShippingAddress,
   ShippingOptions,
-  VerificationStatus,
 } from "./types";
+import { paymentApi } from "@/features/payment/api";
+import type { ReceiptSubmissionResult } from "@/features/payment/types";
+
+export { paymentApi };
+/** @deprecated import ReceiptSubmissionResult from "@/features/payment/types" instead. Kept as an alias for existing imports. */
+export type ReceiptSubmissionFull = ReceiptSubmissionResult;
 
 /*     Backend field-error mapping                                            */
 
@@ -208,125 +217,5 @@ export const orderApi = {
   },
   cancel: async (orderId: string, reason: string): Promise<void> => {
     await api.post(`/orders/${orderId}/cancel/`, { body: { reason } });
-  },
-};
-
-/*     Payment                                                                */
-
-interface SubmitReceiptPayload {
-  order_id: string;
-  provider: string;
-  receipt_identifier: string;
-  payer_account?: string;
-}
-
-//    Full response from POST /payment/submit-receipt/                          
-// Backend verifies synchronously and returns the ACTUAL result straight away.
-// is_terminal = true  → show result immediately, skip polling
-// is_terminal = false → still processing, start polling
-interface SubmitReceiptApiResponse {
-  success: boolean;
-  data: {
-    transaction_id: string;
-    status: string;
-    status_display: string;
-    is_verified: boolean;
-    is_terminal: boolean;       // ← KEY: skip polling when true
-    message: string;
-    error_message: string | null;
-    amount: string;
-    currency: string;
-    provider: string;
-    submitted_at: string;
-    verified_at: string | null;
-    order_status: string;
-    order_payment_status: string;
-  };
-}
-
-// Extended ReceiptSubmission carries all terminal-decision fields
-export interface ReceiptSubmissionFull extends ReceiptSubmission {
-  isVerified:  boolean;
-  isTerminal:  boolean;
-  errorMessage?: string;
-  verifiedAt?:  string;
-  orderStatus?: string;
-  orderPaymentStatus?: string;
-}
-
-interface VerifyApiResponse {
-  success: boolean;
-  data: {
-    transaction_id: string;
-    status: "submitted" | "verifying" | "verified" | "mismatch" | "failed";
-    status_display: string;
-    is_verified: boolean;
-    is_terminal: boolean;
-    amount: string; currency: string; provider: string;
-    receipt_identifier: string;
-    error_message?: string;
-    submitted_at: string;
-    verified_at?: string;
-    order_status?: string;
-    order_payment_status?: string;
-  };
-}
-
-export const paymentApi = {
-  /**
-   * POST /api/v1/payment/submit-receipt/
-   *
-   * Backend verifies synchronously. The response includes is_terminal so
-   * the frontend can skip polling entirely when it's already resolved.
-   */
-  submitReceipt: async (payload: SubmitReceiptPayload): Promise<ReceiptSubmissionFull> => {
-    const res = await api.post<SubmitReceiptApiResponse>("/payment/submit-receipt/", {
-      body: payload,
-    });
-    const d = res.data;
-    return {
-      // Base ReceiptSubmission fields
-      transactionId: d.transaction_id,
-      status:        d.status,
-      statusDisplay: d.status_display,
-      message:       d.message,
-      amount:        d.amount,
-      currency:      d.currency,
-      provider:      d.provider,
-      submittedAt:   d.submitted_at,
-      // Extended fields for immediate terminal decision
-      isVerified:    d.is_verified,
-      isTerminal:    d.is_terminal,
-      errorMessage:  d.error_message ?? undefined,
-      verifiedAt:    d.verified_at   ?? undefined,
-      orderStatus:   d.order_status,
-      orderPaymentStatus: d.order_payment_status,
-    };
-  },
-
-  /**
-   * POST /api/v1/payment/verify/
-   * Polling endpoint — only called when submit returned is_terminal = false.
-   * Stop polling as soon as response.isTerminal = true.
-   */
-  verify: async (txRef: string): Promise<VerificationStatus> => {
-    const res = await api.post<VerifyApiResponse>("/payment/verify/", {
-      body: { tx_ref: txRef },
-    });
-    const d = res.data;
-    return {
-      transactionId:     d.transaction_id,
-      status:            d.status,
-      statusDisplay:     d.status_display,
-      isVerified:        d.is_verified,
-      isTerminal:        d.is_terminal,
-      amount:            d.amount,
-      currency:          d.currency,
-      provider:          d.provider,
-      receiptIdentifier: d.receipt_identifier,
-      errorMessage:      d.error_message,
-      submittedAt:       d.submitted_at,
-      verifiedAt:        d.verified_at,
-    };
   },
 };

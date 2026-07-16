@@ -1,4 +1,4 @@
-// src/features/checkout/components/payment/BankMethodCard.tsx
+// src/features/payment/components/BankMethodCard.tsx
 
 import { DetailRow } from "./DetailRow";
 

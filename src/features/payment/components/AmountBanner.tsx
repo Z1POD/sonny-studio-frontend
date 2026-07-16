@@ -1,8 +1,9 @@
-// src/features/checkout/components/payment/AmountBanner.tsx
+// src/features/payment/components/AmountBanner.tsx
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ReceiptText } from "lucide-react";
+import { normalizeInvoiceDates } from "../lib/normalize";
 
 interface AmountBannerProps {
   invoice: any;
@@ -10,6 +11,7 @@ interface AmountBannerProps {
 
 export function AmountBanner({ invoice }: AmountBannerProps) {
   const [showDetails, setShowDetails] = useState(false);
+  const { createdAt, expiresAt } = normalizeInvoiceDates(invoice);
 
   return (
     <div
@@ -77,9 +79,9 @@ export function AmountBanner({ invoice }: AmountBannerProps) {
             <div className="space-y-3 p-4">
               <div className="flex items-center justify-between text-[11px] text-emerald-700/70 dark:text-emerald-300/60">
                 <span>Invoice {invoice?.number}</span>
-                {invoice?.createdAt && (
+                {createdAt && (
                   <span>
-                    {new Date(invoice.createdAt).toLocaleDateString()}
+                    {new Date(createdAt).toLocaleDateString()}
                   </span>
                 )}
               </div>
@@ -176,10 +178,10 @@ export function AmountBanner({ invoice }: AmountBannerProps) {
                 </p>
               )}
 
-              {invoice?.expiresAt && (
+              {expiresAt && (
                 <p className="text-[11px] text-emerald-700/60 dark:text-emerald-300/50">
                   Invoice expires at{" "}
-                  {new Date(invoice.expiresAt).toLocaleString()}
+                  {new Date(expiresAt).toLocaleString()}
                 </p>
               )}
             </div>
