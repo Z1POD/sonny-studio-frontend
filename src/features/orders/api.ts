@@ -304,6 +304,13 @@ export const ordersApi = {
     return res.data;
   },
 
+  /**
+   * @deprecated Predates the backend's `is_terminal` field, so it always
+   * assumes polling is needed. OrderDetailSheet now goes through
+   * `usePaymentVerification` (src/features/payment/hooks), which calls the
+   * canonical `paymentApi` from src/features/payment/api.ts instead. Kept
+   * here only in case other code still references it directly.
+   */
   submitReceipt: async (
     payload: SubmitReceiptPayload,
   ): Promise<SubmitReceiptResponse> => {
@@ -314,6 +321,7 @@ export const ordersApi = {
     return res.data;
   },
 
+  /** @deprecated see submitReceipt above — prefer `paymentApi.verify` from src/features/payment/api.ts. */
   verifyPayment: async (txRef: string): Promise<VerifyPaymentResponse> => {
     const res = await api.post<{ success: boolean; data: VerifyPaymentResponse }>(
       "/payment/verify/",

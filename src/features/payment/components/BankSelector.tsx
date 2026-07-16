@@ -1,4 +1,4 @@
-// src/features/checkout/components/payment/BankSelector.tsx
+// src/features/payment/components/BankSelector.tsx
 
 import { BankMethodCard } from "./BankMethodCard";
 

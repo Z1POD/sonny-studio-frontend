@@ -1,4 +1,4 @@
-// src/features/checkout/components/payment/ReceiptDialog.tsx
+// src/features/payment/components/ReceiptDialog.tsx
 
 import { Shield, Upload, Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";

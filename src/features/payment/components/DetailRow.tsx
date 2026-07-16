@@ -1,4 +1,4 @@
-// src/features/checkout/components/payment/DetailRow.tsx
+// src/features/payment/components/DetailRow.tsx
 
 import { Copy, CheckCircle2 } from "lucide-react";
 

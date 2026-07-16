@@ -1,4 +1,4 @@
-// src/features/checkout/components/payment/FailedState.tsx
+// src/features/payment/components/FailedState.tsx
 
 import { motion } from "framer-motion";
 import { AlertTriangle, RefreshCw, X, Loader2 } from "lucide-react";
