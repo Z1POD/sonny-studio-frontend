@@ -225,18 +225,20 @@ function ProductRow({
 
         {/* Publish — full width, brand-colored, only for drafts */}
         {isDraft && (
-          <button
-            onClick={handlePublish}
-            disabled={publishMutation.isPending}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#054236] via-[#0a6b57] to-[#054236] py-2.5 text-xs font-semibold text-white shadow-[0_0_16px_rgba(5,66,54,0.5)] transition hover:shadow-[0_0_24px_rgba(5,66,54,0.7)] disabled:opacity-50"
-          >
-            {publishMutation.isPending ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Globe className="h-3.5 w-3.5" />
-            )}
-            Publish to Marketplace
-          </button>
+          <div className="flex justify-end">
+            <button
+              onClick={handlePublish}
+              disabled={publishMutation.isPending}
+              className="flex w-50 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#054236] via-[#0a6b57] to-[#054236] py-2.5 text-xs font-semibold text-white shadow-[0_0_16px_rgba(5,66,54,0.5)] transition hover:shadow-[0_0_24px_rgba(5,66,54,0.7)] disabled:opacity-50"
+            >
+              {publishMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Globe className="h-3.5 w-3.5" />
+              )}
+              Publish to Marketplace
+            </button>
+          </div>
         )}
       </motion.div>
 
