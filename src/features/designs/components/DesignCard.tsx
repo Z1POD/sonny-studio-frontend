@@ -165,7 +165,7 @@ export function DesignCard({ design, onOpenDetail, onOpenEdit, onMutated }: Desi
             </span>
           </div> */}
 
-          <div className="mt-3 flex gap-1.5">
+          <div className="mt-3 flex flex-col md:flex-row gap-1.5">
             <button
               onClick={(e) => { e.stopPropagation(); onOpenDetail(design); }}
               className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-muted/50 py-2 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
