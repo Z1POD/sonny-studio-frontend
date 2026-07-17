@@ -12,14 +12,14 @@ export const formatPrice = (amount: number | string, currency?: Currency) => {
     return `${n.toFixed(1)} ${sym}`;
   }
   else if (sym === "ETB"){
-    return `${sym} ${n.toFixed(1)}`;
+    return `${sym} ${n.toFixed(0)}`;
   }
   else if (sym === "$") {
-    return `${sym}${n.toFixed(1)}`;
+    return `${sym}${n.toFixed(0)}`;
   }
 
   // Fallback for all other standard international currency configurations
-  return `${sym} ${n.toFixed(2)}`;
+  return `${sym} ${n.toFixed(0)}`;
 };
 
 export const formatDate = (iso: string) =>
