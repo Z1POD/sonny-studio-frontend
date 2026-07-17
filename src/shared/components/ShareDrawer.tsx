@@ -410,7 +410,7 @@ export function ShareDrawerContent({ target, onClose }: ShareDrawerContentProps)
         <p className="text-[17px] font-semibold tracking-tight text-foreground leading-snug line-clamp-2">
           {target.title}
         </p>
-        <p className="mt-0.5 text-[12px] text-muted-foreground truncate">{target.url}</p>
+        <p className="mt-0.5 text-[12px] text-muted-foreground truncate">{target.title}</p>
       </div>
 
       {/* Telegram Story CTA */}
