@@ -4,7 +4,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, Loader2, Plus } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, Plus } from "lucide-react";
 import { appToast as toast } from "@/lib/toaster";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,11 +20,18 @@ export function AddMethodModal({ onClose }: { onClose: () => void }) {
   const paymentMethods = pmData?.data ?? [];
 
   const [selectedPmId, setSelectedPmId] = useState<string>("");
+  const [pmExpanded, setPmExpanded] = useState(false);
   const [label, setLabel] = useState("");
   const [isDefault, setIsDefault] = useState(false);
   const [details, setDetails] = useState<Record<string, string>>({});
 
   const selectedPm = paymentMethods.find((p) => p.id === selectedPmId);
+
+  const selectPm = (id: string) => {
+    setSelectedPmId(id);
+    setDetails({});
+    setPmExpanded(false);
+  };
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -51,39 +58,62 @@ export function AddMethodModal({ onClose }: { onClose: () => void }) {
       {/* Payment method selection */}
       <div className="space-y-2">
         <Label>Payment method</Label>
-        <div className="space-y-2">
-          {paymentMethods.map((pm) => (
-            <button
-              key={pm.id}
-              type="button"
-              onClick={() => {
-                setSelectedPmId(pm.id);
-                setDetails({});
-              }}
-              className={
-                "flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition " +
-                (selectedPmId === pm.id
-                  ? "border-primary bg-primary/5"
-                  : "border-border bg-surface hover:border-primary/40")
-              }
-            >
-              {pm.logo_url ? (
-                <img src={pm.logo_url} alt="" className="h-8 w-8 rounded-lg object-cover" />
-              ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-overlay text-muted-foreground">
-                  {categoryIcon(pm.category)}
-                </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium">{pm.name}</div>
-                <div className="text-[11px] text-muted-foreground">
-                  {pm.category_display} · Min {formatMoney(pm.min_withdrawal)} · {pm.estimated_processing_hours}h
-                </div>
+        {selectedPm && !pmExpanded ? (
+          <button
+            type="button"
+            onClick={() => setPmExpanded(true)}
+            className="flex w-full items-center gap-3 rounded-xl border border-primary bg-primary/5 px-3 py-2.5 text-left transition hover:border-primary/70"
+          >
+            {selectedPm.logo_url ? (
+              <img src={selectedPm.logo_url} alt="" className="h-8 w-8 rounded-lg object-cover" />
+            ) : (
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-overlay text-muted-foreground">
+                {categoryIcon(selectedPm.category)}
               </div>
-              {selectedPmId === pm.id && <Check className="h-4 w-4 text-primary" />}
-            </button>
-          ))}
-        </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-medium">{selectedPm.name}</div>
+              <div className="text-[11px] text-muted-foreground">
+                {selectedPm.category_display} · Min {formatMoney(selectedPm.min_withdrawal)} ·{" "}
+                {selectedPm.estimated_processing_hours}h
+              </div>
+            </div>
+            <span className="flex shrink-0 items-center gap-1 text-[11px] font-medium text-primary">
+              <ChevronsUpDown className="h-3 w-3" /> Change
+            </span>
+          </button>
+        ) : (
+          <div className="space-y-2">
+            {paymentMethods.map((pm) => (
+              <button
+                key={pm.id}
+                type="button"
+                onClick={() => selectPm(pm.id)}
+                className={
+                  "flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition " +
+                  (selectedPmId === pm.id
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-surface hover:border-primary/40")
+                }
+              >
+                {pm.logo_url ? (
+                  <img src={pm.logo_url} alt="" className="h-8 w-8 rounded-lg object-cover" />
+                ) : (
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-overlay text-muted-foreground">
+                    {categoryIcon(pm.category)}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium">{pm.name}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {pm.category_display} · Min {formatMoney(pm.min_withdrawal)} · {pm.estimated_processing_hours}h
+                  </div>
+                </div>
+                {selectedPmId === pm.id && <Check className="h-4 w-4 text-primary" />}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {selectedPm && (
