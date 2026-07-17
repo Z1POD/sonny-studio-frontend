@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Pencil, Box, Trash2, ImageIcon, ShoppingCart } from "lucide-react";
+import { Pencil, Box, Trash2, ImageIcon, ShoppingCart, Globe, Loader2 } from "lucide-react";
 import { appToast as toast } from "@/lib/toaster";
 import { useNavigate } from "@tanstack/react-router";
 import type { ProductListItem } from "@/features/store/api";
@@ -28,6 +28,8 @@ export function DesignCard({ design, onOpenDetail, onOpenEdit, onMutated }: Desi
   const [confirm, ConfirmModal] = useConfirm();
   const [lightbox, setLightbox] = useState(false);
 
+  const isPublished = (design as any).is_published || (design as any).status === "published";
+
   const deleteMutation = useMutation({
     mutationFn: () => storeProductApi.deleteProduct(design.id),
     onSuccess: () => {
@@ -36,6 +38,16 @@ export function DesignCard({ design, onOpenDetail, onOpenEdit, onMutated }: Desi
       onMutated();
     },
     onError: (e: any) => toast.error(e?.message ?? "Failed to delete"),
+  });
+
+  const publishMutation = useMutation({
+    mutationFn: () => storeProductApi.publish(design.id),
+    onSuccess: () => {
+      toast.success("Design published!");
+      queryClient.invalidateQueries({ queryKey: designKeys.all });
+      onMutated();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Failed to publish"),
   });
 
   const handleDelete = async (e: React.MouseEvent) => {
@@ -53,6 +65,29 @@ export function DesignCard({ design, onOpenDetail, onOpenEdit, onMutated }: Desi
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
     onOpenEdit(design);
+  };
+
+  const handlePublish = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const d = design as any;
+    const ok = await confirm({
+      title: "Publish this design?",
+      description:
+        "Once published, it's live in the marketplace for everyone. Make sure the mockup, name, description, and color/variant all look right.",
+      confirmLabel: "Publish",
+      preview: {
+        imageUrl: design.thumbnail_url,
+        title: design.title,
+        subtitle: getRetailPrice(design),
+        details: [
+          ...(d.description ? [{ label: "Description", value: d.description }] : []),
+          ...(d.color || d.variant_name || d.variant?.name
+            ? [{ label: "Variant", value: d.color ?? d.variant_name ?? d.variant?.name }]
+            : []),
+        ],
+      },
+    });
+    if (ok) publishMutation.mutate();
   };
 
   const handle3D = (e: React.MouseEvent) => {
@@ -130,13 +165,30 @@ export function DesignCard({ design, onOpenDetail, onOpenEdit, onMutated }: Desi
             </span>
           </div> */}
 
-          <button
-            onClick={(e) => { e.stopPropagation(); onOpenDetail(design); }}
-            className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-muted/50 py-2 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
-          >
-            <ShoppingCart className="h-3.5 w-3.5" />
-            {design.sold_quantity > 0 ? "Order" : "Order Now"}
-          </button>
+          <div className="mt-3 flex gap-1.5">
+            <button
+              onClick={(e) => { e.stopPropagation(); onOpenDetail(design); }}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-muted/50 py-2 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            >
+              <ShoppingCart className="h-3.5 w-3.5" />
+              {design.sold_quantity > 0 ? "Order" : "Order Now"}
+            </button>
+
+            {!isPublished && (
+              <button
+                onClick={handlePublish}
+                disabled={publishMutation.isPending}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#054236] to-[#0a6b57] py-2 text-xs font-medium text-white shadow-[0_0_12px_rgba(5,66,54,0.45)] transition hover:shadow-[0_0_18px_rgba(5,66,54,0.65)] disabled:opacity-50"
+              >
+                {publishMutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Globe className="h-3.5 w-3.5" />
+                )}
+                Publish
+              </button>
+            )}
+          </div>
         </div>
       </motion.div>
 

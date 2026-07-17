@@ -28,6 +28,18 @@ interface ConfirmInputOptions {
   defaultValue?: string;
 }
 
+interface ConfirmPreviewDetail {
+  label: string;
+  value: string;
+}
+
+interface ConfirmPreviewOptions {
+  imageUrl?: string;
+  title?: string;
+  subtitle?: string;
+  details?: ConfirmPreviewDetail[];
+}
+
 interface ConfirmOptions {
   title: string;
   description?: string;
@@ -35,6 +47,8 @@ interface ConfirmOptions {
   cancelLabel?: string;
   danger?: boolean;
   input?: ConfirmInputOptions;
+  /** Optional product/design preview shown above the description — thumbnail + key details, e.g. for a "review before publishing" confirmation. */
+  preview?: ConfirmPreviewOptions;
 }
 
 type ConfirmResult = { confirmed: boolean; value: string };
@@ -70,6 +84,36 @@ function ConfirmBody({ opts, resolve }: ConfirmBodyProps) {
         <DialogDescription className="mt-2 text-center text-sm text-muted-foreground">
           {opts.description}
         </DialogDescription>
+      )}
+
+      {opts.preview && (
+        <div className="mt-4 flex gap-3 rounded-2xl border border-border bg-muted/40 p-3 text-left">
+          {opts.preview.imageUrl ? (
+            <img
+              src={opts.preview.imageUrl}
+              alt={opts.preview.title ?? ""}
+              className="h-14 w-14 flex-shrink-0 rounded-xl object-cover"
+            />
+          ) : null}
+          <div className="min-w-0 flex-1">
+            {opts.preview.title && (
+              <p className="truncate text-sm font-medium leading-snug">{opts.preview.title}</p>
+            )}
+            {opts.preview.subtitle && (
+              <p className="mt-0.5 text-xs text-muted-foreground">{opts.preview.subtitle}</p>
+            )}
+            {opts.preview.details && opts.preview.details.length > 0 && (
+              <dl className="mt-1.5 space-y-0.5">
+                {opts.preview.details.map((d) => (
+                  <div key={d.label} className="flex gap-1 text-[11px] leading-snug">
+                    <dt className="shrink-0 text-muted-foreground">{d.label}:</dt>
+                    <dd className="truncate font-medium text-foreground">{d.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </div>
+        </div>
       )}
 
       {opts.input && (

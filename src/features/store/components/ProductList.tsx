@@ -144,6 +144,29 @@ function ProductRow({
     if (ok) deleteMutation.mutate();
   };
 
+  const handlePublish = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const p = product as any;
+    const ok = await confirm({
+      title: "Publish this design?",
+      description:
+        "Once published, it's live in the marketplace for everyone. Make sure the mockup, name, description, and color/variant all look right.",
+      confirmLabel: "Publish",
+      preview: {
+        imageUrl: product.thumbnail_url,
+        title: product.title,
+        subtitle: getRetailPrice(product),
+        details: [
+          ...(p.description ? [{ label: "Description", value: p.description }] : []),
+          ...(p.color || p.variant_name || p.variant?.name
+            ? [{ label: "Variant", value: p.color ?? p.variant_name ?? p.variant?.name }]
+            : []),
+        ],
+      },
+    });
+    if (ok) publishMutation.mutate();
+  };
+
   return (
     <>
       <motion.div
@@ -151,61 +174,70 @@ function ProductRow({
         initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.97 }}
-        className="flex items-center gap-3 rounded-2xl border border-border/50 bg-surface p-3 transition hover:border-border"
+        className="flex flex-col gap-2 rounded-2xl border border-border/50 bg-surface p-3 transition hover:border-border"
       >
-        {/* Thumbnail */}
-        <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-surface-overlay">
-          {product.thumbnail_url ? (
-            <img src={product.thumbnail_url} alt={product.title} className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full items-center justify-center text-muted-foreground/40">
-              <ImageIcon className="h-5 w-5" />
+        <div className="flex items-center gap-3">
+          {/* Thumbnail */}
+          <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-surface-overlay">
+            {product.thumbnail_url ? (
+              <img src={product.thumbnail_url} alt={product.title} className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full items-center justify-center text-muted-foreground/40">
+                <ImageIcon className="h-5 w-5" />
+              </div>
+            )}
+          </div>
+
+          {/* Info */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="truncate text-sm font-medium">{product.title}</p>
+              <StatusBadge status={product.status} is_published={product.is_published} />
+              {/* Show "Not production ready" tag only for draft products that aren't ready */}
+              {isDraft && !isProductionReady && <NotReadyBadge />}
             </div>
-          )}
+            <div className="mt-0.5 flex items-center gap-3 text-[11px] text-muted-foreground">
+              <span className="font-semibold text-foreground">{getRetailPrice(product)}</span>
+              {product.sold_quantity > 0 && <span>{product.sold_quantity} sold</span>}
+              <span>{new Date(product.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex flex-shrink-0 items-center gap-1.5">
+            {!isPublished && (
+              <ActionBtn onClick={(e) => { e.stopPropagation(); onEdit(product); }} title="Edit">
+                <Pencil className="h-3.5 w-3.5" />
+              </ActionBtn>
+            )}
+            {isPublished && (
+              <ActionBtn onClick={handleShare} title="Share">
+                <Share2 className="h-3.5 w-3.5" />
+              </ActionBtn>
+            )}
+            {!isPublished && (
+              <ActionBtn onClick={handleDelete} title="Delete" loading={deleteMutation.isPending} danger>
+                <Trash2 className="h-3.5 w-3.5" />
+              </ActionBtn>
+            )}
+          </div>
         </div>
 
-        {/* Info */}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="truncate text-sm font-medium">{product.title}</p>
-            <StatusBadge status={product.status} is_published={product.is_published} />
-            {/* Show "Not production ready" tag only for draft products that aren't ready */}
-            {isDraft && !isProductionReady && <NotReadyBadge />}
-          </div>
-          <div className="mt-0.5 flex items-center gap-3 text-[11px] text-muted-foreground">
-            <span className="font-semibold text-foreground">{getRetailPrice(product)}</span>
-            {product.sold_quantity > 0 && <span>{product.sold_quantity} sold</span>}
-            <span>{new Date(product.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex flex-shrink-0 items-center gap-1.5">
-          {isDraft && (
-            <ActionBtn
-              onClick={(e) => { e.stopPropagation(); publishMutation.mutate(); }}
-              title="Publish"
-              loading={publishMutation.isPending}
-            >
+        {/* Publish — full width, brand-colored, only for drafts */}
+        {isDraft && (
+          <button
+            onClick={handlePublish}
+            disabled={publishMutation.isPending}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#054236] via-[#0a6b57] to-[#054236] py-2.5 text-xs font-semibold text-white shadow-[0_0_16px_rgba(5,66,54,0.5)] transition hover:shadow-[0_0_24px_rgba(5,66,54,0.7)] disabled:opacity-50"
+          >
+            {publishMutation.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
               <Globe className="h-3.5 w-3.5" />
-            </ActionBtn>
-          )}
-          {!isPublished && (
-            <ActionBtn onClick={(e) => { e.stopPropagation(); onEdit(product); }} title="Edit">
-              <Pencil className="h-3.5 w-3.5" />
-            </ActionBtn>
-          )}
-          {isPublished && (
-            <ActionBtn onClick={handleShare} title="Share">
-              <Share2 className="h-3.5 w-3.5" />
-            </ActionBtn>
-          )}
-          {!isPublished && (
-            <ActionBtn onClick={handleDelete} title="Delete" loading={deleteMutation.isPending} danger>
-              <Trash2 className="h-3.5 w-3.5" />
-            </ActionBtn>
-          )}
-        </div>
+            )}
+            Publish to Marketplace
+          </button>
+        )}
       </motion.div>
 
       {ConfirmModal}
