@@ -1,221 +1,190 @@
-// src/features/checkout/api.ts — v3
+// src/features/checkout/api.ts
 //
-// `paymentApi` now lives in src/features/payment/api.ts (shared with the
-// order-detail payment-verification flow) and is re-exported here so nothing
-// else in checkout has to change its import path. Everything else
-// (shipping, order creation, field-error mapping) is unchanged.
+//   GET  /shipping/destinations/          cities + delivery options + pickup locations (cache per session)
+//   POST /orders/checkout/validate/       authoritative totals (dry run)
+//   POST /orders/                         create order (idempotent via `idempotency_key` in the body)
 
-import { api, ApiError } from "@/shared/api/client";
-import type {
-  City,
-  FieldErrors,
-  FulfillmentType,
-  OrderResponse,
-  PickupLocation,
-  ShippingAddress,
-  ShippingOptions,
-} from "./types";
-import { paymentApi } from "@/features/payment/api";
-import type { ReceiptSubmissionResult } from "@/features/payment/types";
+import { api } from "@/shared/api/client";
+import type { City, CheckoutQuote, DeliveryOption, OrderResponse, PickupLocation, ShippingOptions } from "./types";
+import { shortOrderRef } from "@/features/orders/api";
 
-export { paymentApi };
-/** @deprecated import ReceiptSubmissionResult from "@/features/payment/types" instead. Kept as an alias for existing imports. */
-export type ReceiptSubmissionFull = ReceiptSubmissionResult;
+//     Destinations                                                              
 
-/*     Backend field-error mapping                                            */
+interface RawDeliveryOption {
+  id: string;
+  name: string;
+  code: string;
+  kind: "delivery" | "pickup";
+  base_fee: string;
+  currency_code: string;
+  min_days: number;
+  max_days: number;
+}
 
-// M I M O API validation envelope:
-//   { success: false, error: { code, message, details: { field: ["msg", ...] } } }
-// `details` keys are backend/snake_case field names — map them onto the
-// FieldErrors keys the checkout UI actually renders against (fieldErrors.coupon,
-// fieldErrors.phone, etc.) so any step can surface the right inline error.
-const BACKEND_FIELD_MAP: Record<string, keyof FieldErrors> = {
-  coupon_code: "coupon",
-  full_name: "fullName",
-  phone: "phone",
-  street: "street",
-  city_id: "city",
-  shipping_vendor: "vendor",
-  shipping_service_level: "vendor",
-  pickup_location_id: "pickupLocation",
-  receipt_identifier: "receipt",
-  payer_account: "payerAccount",
+interface RawPickupLocation {
+  id: string;
+  name: string;
+  code: string;
+  address: string;
+  phone: string;
+  opening_hours?: Record<string, { start: string; end: string }[]>;
+}
+
+interface RawDestination {
+  id: string;
+  name: string;
+  region: string;
+  country_code: string;
+  delivery_options: RawDeliveryOption[];
+  pickup_locations: RawPickupLocation[];
+}
+
+let destinations: Promise<RawDestination[]> | null = null;
+/** One request per checkout session. */
+const loadDestinations = () => {
+  destinations ??= api.get<RawDestination[]>("/shipping/destinations/", { auth: false }).catch((e) => {
+    destinations = null;
+    throw e;
+  });
+  return destinations;
 };
 
-/**
- * Extracts field-level validation errors from an ApiError thrown by the
- * shared api client, mapped onto the checkout FieldErrors shape. Returns an
- * empty object for non-validation errors (network failures, 5xx, etc.) or
- * when the response has no `error.details`.
- */
-export function getFieldErrorsFromApiError(error: unknown): FieldErrors {
-  if (!(error instanceof ApiError)) return {};
+const days = (o: { min_days: number; max_days: number }) =>
+  o.max_days <= 1 && o.min_days === 0 ? "Same day – 1 day" : o.min_days === o.max_days ? `${o.max_days} days` : `${o.min_days}-${o.max_days} days`;
 
-  const details = (error.data as {
-    error?: { details?: Record<string, string[]> };
-  } | null)?.error?.details;
+const hours = (oh?: RawPickupLocation["opening_hours"]) => {
+  const names: Record<string, string> = { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" };
+  return Object.entries(oh ?? {})
+    .filter(([, v]) => v.length)
+    .map(([d, v]) => `${names[d] ?? d} ${v.map((r) => `${r.start}–${r.end}`).join(", ")}`)
+    .join(" · ");
+};
 
-  if (!details) return {};
-
-  const out: FieldErrors = {};
-  for (const [backendKey, messages] of Object.entries(details)) {
-    const mapped = BACKEND_FIELD_MAP[backendKey];
-    if (mapped && Array.isArray(messages) && messages.length > 0 && !out[mapped]) {
-      out[mapped] = messages[0];
-    }
-  }
-  return out;
+export function mapDestination(d: RawDestination): { city: City; options: ShippingOptions } {
+  const delivery: DeliveryOption[] = d.delivery_options
+    .filter((o) => o.kind === "delivery")
+    .map((o) => ({
+      vendorCode: o.id, // the delivery option id is what checkout sends
+      vendorName: o.name,
+      serviceName: o.name,
+      serviceLevel: o.code === "express" ? "express" : "standard",
+      cost: o.base_fee,
+      currency: o.currency_code,
+      estimatedDays: days(o),
+      isFree: parseFloat(o.base_fee) === 0,
+    }));
+  const pickupOpt = d.delivery_options.filter((o) => o.kind === "pickup");
+  const pickup: PickupLocation[] = pickupOpt.length
+    ? d.pickup_locations.map((l) => {
+        // Prefer the pickup option named after this location (e.g. "pickup-bole" ↔ "bole"), else the first.
+        const opt = pickupOpt.find((o) => o.code.includes(l.code)) ?? pickupOpt[0]!;
+        return {
+          locationId: l.id,
+          deliveryOptionId: opt.id,
+          name: l.name,
+          address: l.address,
+          phone: l.phone,
+          instructions: hours(l.opening_hours),
+          estimatedDays: days(opt),
+          cost: opt.base_fee,
+          currency: opt.currency_code,
+          isFree: parseFloat(opt.base_fee) === 0,
+        };
+      })
+    : [];
+  return { city: { id: d.id, name: d.name, state: d.region, countryCode: d.country_code }, options: { delivery, pickup } };
 }
 
-/*     Shipping                                                               */
+//     Validate & create                                                         
 
-interface ShippingCitiesResponse {
-  success: boolean;
-  data: Array<{ id: string; name: string; state: string }>;
-}
-
-interface ShippingOptionsApiResponse {
-  success: boolean;
-  data: {
-    delivery: Array<{
-      vendor_code: string; vendor_name: string; service_name: string;
-      service_level: "standard" | "express"; cost: string; currency: string;
-      estimated_days: string; is_free: boolean;
-    }>;
-    pickup: Array<{
-      location_id: string; name: string; address: string;
-      landmark?: string; phone?: string; instructions?: string;
-      estimated_days: string; is_free: boolean;
-    }>;
+export interface CheckoutBody {
+  schema_version: "1.0";
+  currency_id?: string;
+  items: { design_id: string; variant_id: string; quantity: number }[];
+  contact: { full_name: string; phone: string; email?: string };
+  delivery_option_id: string;
+  pickup_location_id?: string;
+  shipping_address?: {
+    full_name: string;
+    phone: string;
+    line1: string;
+    line2: string;
+    city: string;
+    state: string;
+    postal_code: string;
+    country_code: string;
   };
+  notes: string;
+}
+
+interface RawValidate {
+  currency_code: string;
+  subtotal_amount: string;
+  tax_amount: string;
+  shipping_amount: string;
+  discount_amount: string;
+  total_amount: string;
+  items: {
+    design_id: string;
+    variant_id: string;
+    quantity: number;
+    price_breakdown: {
+      currency_symbol: string;
+      currency_decimal_places: number;
+      unit_price: string;
+      line_total: string;
+    };
+  }[];
+}
+
+interface RawOrderCreated {
+  id: string;
+  order_number?: string;
+  status: string;
+  currency_code_snapshot: string;
+  currency_symbol_snapshot: string;
+  currency_decimal_places_snapshot: number;
+  total_amount: string;
 }
 
 export const checkoutApi = {
-  getCities: async (): Promise<City[]> => {
-    const res = await api.get<ShippingCitiesResponse>("/shipping/cities/");
-    return res.data.map((c) => ({ id: c.id, name: c.name, state: c.state }));
+  getCities: async (): Promise<City[]> => (await loadDestinations()).map((d) => mapDestination(d).city),
+
+  /** Options are already scoped to the city — no extra request. */
+  getShippingOptions: async (cityId: string): Promise<ShippingOptions> => {
+    const d = (await loadDestinations()).find((x) => x.id === cityId);
+    return d ? mapDestination(d).options : { delivery: [], pickup: [] };
   },
 
-  getShippingOptions: async (
-    cityId: string,
-    itemCount: number,
-    subtotal: number,
-  ): Promise<ShippingOptions> => {
-    const res = await api.get<ShippingOptionsApiResponse>("/shipping/options/", {
-      params: { city_id: cityId, item_count: itemCount, subtotal: subtotal.toString() },
-    });
+  validate: async (body: CheckoutBody): Promise<CheckoutQuote> => {
+    const r = await api.post<RawValidate>("/orders/checkout/validate/", { body });
+    const pb = r.items[0]?.price_breakdown;
     return {
-      delivery: res.data.delivery.map((d) => ({
-        vendorCode: d.vendor_code, vendorName: d.vendor_name,
-        serviceName: d.service_name, serviceLevel: d.service_level,
-        cost: d.cost, currency: d.currency,
-        estimatedDays: d.estimated_days, isFree: d.is_free,
-      })),
-      pickup: res.data.pickup.map((p) => ({
-        locationId: p.location_id, name: p.name, address: p.address,
-        landmark: p.landmark, phone: p.phone, instructions: p.instructions,
-        estimatedDays: p.estimated_days, isFree: p.is_free,
+      currency: { code: r.currency_code, symbol: pb?.currency_symbol ?? r.currency_code, decimal_places: pb?.currency_decimal_places ?? 2 },
+      subtotal: r.subtotal_amount,
+      shipping: r.shipping_amount,
+      tax: r.tax_amount,
+      discount: r.discount_amount,
+      total: r.total_amount,
+      lines: r.items.map((i) => ({
+        designId: i.design_id,
+        variantId: i.variant_id,
+        quantity: i.quantity,
+        unitPrice: i.price_breakdown.unit_price,
+        lineTotal: i.price_breakdown.line_total,
       })),
     };
   },
-};
 
-/*     Orders                                                                 */
-
-interface CreateOrderPayload {
-  items: Array<{ product_id: string; size: string; color_name: string; quantity: number }>;
-  delivery_type: FulfillmentType;
-  shipping_address?: ShippingAddress;
-  shipping_vendor?: string;
-  shipping_service_level?: string;
-  pickup_location_id?: string;
-  coupon_code?: string;
-  customer_note?: string;
-  currency: string;
-}
-
-interface CreateOrderApiResponse {
-  success: boolean;
-  data: {
-    id: string; order_number: string; status: string; payment_status: string;
-    delivery_type: FulfillmentType;
-    invoice: {
-      number: string; order_number: string; order_id: string;
-      created_at: string; expires_at: string; expires_in_seconds: number;
-      status: string;
-      store: { name: string; logo_url?: string };
-      amount: {
-        subtotal: string; shipping: string; tax: string; discount: string;
-        total: string; currency: { code: string; symbol: string };
-      };
-      items: Array<{
-        product_name: string; size: string; color: string; quantity: number;
-        unit_price: string; subtotal: string; mockup_url?: string;
-      }>;
-      payment: {
-        instructions: string; warning?: string; note?: string;
-        methods: Array<{
-          provider_code: string; provider_name: string; provider_logo?: string;
-          account_name: string; account_number: string; account_type: string;
-          reference: { label: string; placeholder: string; help_text: string };
-          requires_payer_account: boolean; payer_account_label?: string;
-        }>;
-      };
+  /** 201 = new order, 200 = replay of the same idempotency key. */
+  createOrder: async (body: CheckoutBody, idempotencyKey: string): Promise<OrderResponse> => {
+    const o = await api.post<RawOrderCreated>("/orders/", { body: { ...body, idempotency_key: idempotencyKey } });
+    return {
+      id: o.id,
+      orderNumber: o.order_number || shortOrderRef(o.id),
+      status: o.status,
+      total: o.total_amount,
+      currency: { code: o.currency_code_snapshot, symbol: o.currency_symbol_snapshot, decimal_places: o.currency_decimal_places_snapshot },
     };
-    pricing: {
-      subtotal: string; shipping_cost: string; discount: string;
-      total: string; currency: { code: string; symbol: string };
-    };
-    shipping: {
-      delivery_type: FulfillmentType; vendor?: string; service_level?: string;
-      address?: ShippingAddress; pickup_location?: PickupLocation;
-    };
-    tracking_number?: string; tracking_url?: string; can_cancel: boolean;
-    timeline: { created: string; paid?: string; shipped?: string; delivered?: string };
-  };
-}
-
-function mapOrderResponse(raw: CreateOrderApiResponse["data"]): OrderResponse {
-  return {
-    id:            raw.id,
-    orderNumber:   raw.order_number,
-    status:        raw.status,
-    paymentStatus: raw.payment_status,
-    deliveryType:  raw.delivery_type,
-    invoice: {
-      number:          raw.invoice.number,
-      orderNumber:     raw.invoice.order_number,
-      orderId:         raw.invoice.order_id,
-      createdAt:       raw.invoice.created_at,
-      expiresAt:       raw.invoice.expires_at,
-      expiresInSeconds: raw.invoice.expires_in_seconds,
-      status:          raw.invoice.status,
-      store:           raw.invoice.store,
-      amount:          raw.invoice.amount,
-      items:           raw.invoice.items,
-      payment:         raw.invoice.payment,
-    },
-    pricing: {
-      subtotal:     raw.pricing.subtotal,
-      shippingCost: raw.pricing.shipping_cost,
-      discount:     raw.pricing.discount,
-      total:        raw.pricing.total,
-      currency:     raw.pricing.currency,
-    },
-    shipping:       raw.shipping,
-    trackingNumber: raw.tracking_number,
-    trackingUrl:    raw.tracking_url,
-    canCancel:      raw.can_cancel,
-    timeline:       raw.timeline,
-  };
-}
-
-export const orderApi = {
-  create: async (payload: CreateOrderPayload): Promise<OrderResponse> => {
-    const res = await api.post<CreateOrderApiResponse>("/orders/", { body: payload });
-    return mapOrderResponse(res.data);
-  },
-  cancel: async (orderId: string, reason: string): Promise<void> => {
-    await api.post(`/orders/${orderId}/cancel/`, { body: { reason } });
   },
 };

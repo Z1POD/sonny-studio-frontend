@@ -9,22 +9,22 @@ import {
   Palette,
   Moon,
   LayoutGrid,
-  ShoppingBag,
   Store as StoreIcon,
+  Wallet as WalletIcon,
   Sun,
   User as UserIcon,
 } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store";
-import { useCart } from "@/features/market/store";
 import { useTheme } from "@/shared/stores/theme-store";
 import { cn } from "@/lib/utils";
 import { UserMenu } from "./UserMenu";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const NAV = [
-  { to: "/marketplace", label: "Market", icon: StoreIcon },
-  { to: "/catalog", label: "Customize", icon: Palette },
+  { to: "/catalog", label: "Catalog", icon: Palette },
   { to: "/designs", label: "Designs", icon: LayoutGrid },
+  { to: "/store", label: "Dashboard", icon: StoreIcon },
+  { to: "/wallet", label: "Earnings", icon: WalletIcon },
 ] as const;
 
 
@@ -35,8 +35,6 @@ interface HeaderProps {
 
 export function Header({ variant = "full" }: HeaderProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const cartCount = useCart((s) => s.items.reduce((a, b) => a + b.quantity, 0));
-  const openCart = useCart((s) => s.openDrawer);
   const user = useAuthStore((s) => s.user);
 
   const [isExpanded, setIsExpanded] = useState(false);
@@ -44,7 +42,7 @@ export function Header({ variant = "full" }: HeaderProps) {
 
   useEffect(() => setIsExpanded(false), [pathname]);
 
-  const isHome = pathname === "/" || pathname === "/marketplace";
+  const isHome = pathname === "/" || pathname === "/catalog";
 
   return (
     <header
@@ -68,7 +66,7 @@ export function Header({ variant = "full" }: HeaderProps) {
       >
         {!isMinimal && (
           <Link
-            to="/marketplace"
+            to="/catalog"
             className={cn("items-center gap-2", isExpanded ? "flex" : "hidden md:flex")}
           >
             <span className="grid h-7 w-7 place-items-center rounded-lg bg-foreground text-background">
@@ -116,19 +114,6 @@ export function Header({ variant = "full" }: HeaderProps) {
 
           <div className="flex items-center gap-1.5">
             {isMinimal ? <ThemeToggle /> : ""}
-
-            <button
-              aria-label="Open cart"
-              onClick={openCart}
-              className="relative grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <ShoppingBag className="h-4 w-4" />
-              {cartCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-gold px-1 text-[10px] font-bold text-gold-foreground">
-                  {cartCount}
-                </span>
-              )}
-            </button>
 
             {!isMinimal && (
               <UserMenu

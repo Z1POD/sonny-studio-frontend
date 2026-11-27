@@ -1,19 +1,19 @@
-import { queryOptions } from "@tanstack/react-query";
+import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import { catalogApi } from "./api";
 
 export const catalogKeys = {
   all: ["catalog"] as const,
-  list: (params: Record<string, unknown> = {}) =>
-    [...catalogKeys.all, "list", params] as const,
+  list: (params: { search?: string; category?: string }) => [...catalogKeys.all, "list", params] as const,
   categories: () => [...catalogKeys.all, "categories"] as const,
 };
 
-export const catalogListQuery = (
-  params: Record<string, string | number> = {},
-) =>
-  queryOptions({
+/** Blanks, searched and filtered by the server and paged with "Load more". */
+export const catalogListInfiniteQuery = (params: { search?: string; category?: string } = {}) =>
+  infiniteQueryOptions({
     queryKey: catalogKeys.list(params),
-    queryFn: () => catalogApi.list(params),
+    queryFn: ({ pageParam }) => catalogApi.list({ ...params, page: pageParam }),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.hasNext ? last.page + 1 : undefined),
     staleTime: 60_000,
   });
 

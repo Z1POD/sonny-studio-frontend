@@ -2,6 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { LoginCard } from "@/features/auth/components/LoginCard";
 import { getStoredToken } from "@/shared/api/client";
 import { useAuthStore } from "@/features/auth/store";
+import { parseHref } from "@/lib/nav";
 
 /**
  * Plain module-level check — we're outside React here, so we can't use the
@@ -39,16 +40,16 @@ export const Route = createFileRoute("/login")({
       // straight into a page that immediately 403s with no recovery.
       await useAuthStore.getState().hydrate().catch(() => {});
       if (useAuthStore.getState().status === "authenticated") {
-        throw redirect({ to: search.redirect || "/designs" });
+        throw redirect({ ...(parseHref(search.redirect || "/designs") as any) });
       }
     }
   },
   head: () => ({
     meta: [
-      { title: "Sign in — M I M O" },
+      { title: "Sign in — M I M O Creator" },
       {
         name: "description",
-        content: "Sign in to your M I M O design studio account.",
+        content: "Sign in to your M I M O creator account.",
       },
     ],
   }),
@@ -56,18 +57,7 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  return (
-    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-[#083b32] px-4 safe-top safe-bottom">
-      {/* Subtle ambient glow */}
-      <div
-        className="pointer-events-none absolute inset-0 -z-10"
-        aria-hidden
-        style={{
-          background:
-            "radial-gradient(ellipse 50% 40% at 30% 45%, oklch(0.45 0.18 280 / 0.2), transparent 60%), radial-gradient(ellipse 40% 35% at 70% 55%, oklch(0.4 0.16 320 / 0.15), transparent 55%)",
-        }}
-      />
-      <LoginCard />
-    </div>
-  );
+  const { redirect: redirectTo } = Route.useSearch();
+  // LoginCard is a full-screen surface that shares the splash design.
+  return <LoginCard redirectTo={redirectTo || "/designs"} />;
 }

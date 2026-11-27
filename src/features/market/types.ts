@@ -12,13 +12,14 @@ export interface Currency {
   code: string;
   symbol: string;
   name?: string;
+  decimal_places?: number;
 }
 
 export interface ProductListItem {
   id: string;
   title: string;
   slug: string;
-  thumbnail_url: string;
+  thumbnail_url?: string | null;
   mockup_url?: string | null;
   retail_price: string;
   currency: Currency;
@@ -28,6 +29,12 @@ export interface ProductListItem {
   sold_quantity: number;
   is_limited_edition: boolean;
   created_at: string;
+  /** "blank" = unprinted base the buyer customizes (no detail page, card goes straight to the studio). */
+  available_quantity?: number | null;
+  kind?: "published" | "blank";
+  /** Published products: whether the creator allows customizing on top of the design. */
+  allows_customization_on_top?: boolean;
+  blank_product_id?: string;
 }
 
 export interface HomepageCollection {

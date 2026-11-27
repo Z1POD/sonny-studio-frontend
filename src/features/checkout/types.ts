@@ -1,6 +1,14 @@
 // src/features/checkout/types.ts
 
-import type { ArtworkState, PrintArea } from "@/features/studio/store";
+/** Minimal print-area / artwork info checkout needs for its review summary (no 3D data). */
+export interface CheckoutPrintArea {
+  id: string;
+  name: string;
+}
+export interface CheckoutArtwork {
+  /** Preview image of what is printed in the area (an artwork URL, or the design mockup). */
+  decalUrl: string;
+}
 
 //     Checkout Step State                                                     
 
@@ -20,6 +28,9 @@ export type CheckoutOrigin = "studio" | "cart";
  *  going through color/size selection again. */
 export interface CartCheckoutLine {
   productId: string;
+  designId: string;
+  /** Contract `variant_id` (whitelisted combination). */
+  variantId: string;
   title: string;
   thumbnailUrl?: string;
   colorName: string;
@@ -43,6 +54,8 @@ export interface CheckoutVariant {
 
 export interface CheckoutItem {
   productId: string;
+  /** Contract `design_id`: the published design, or the design saved from the studio. */
+  designId: string;
   variantId: string;
   size: string;
   colorName: string;
@@ -52,7 +65,7 @@ export interface CheckoutItem {
   printAreas: Array<{
     areaId: string;
     areaName: string;
-    artwork: ArtworkState;
+    artwork: CheckoutArtwork;
   }>;
 }
 
@@ -71,6 +84,7 @@ export interface City {
   id: string;
   name: string;
   state: string;
+  countryCode?: string;
 }
 
 export interface DeliveryOption {
@@ -86,6 +100,10 @@ export interface DeliveryOption {
 
 export interface PickupLocation {
   locationId: string;
+  /** The city's `kind: "pickup"` delivery option, required by checkout together with the location. */
+  deliveryOptionId: string;
+  cost?: string;
+  currency?: string;
   name: string;
   address: string;
   landmark?: string;
@@ -150,36 +168,24 @@ export interface InvoiceData {
   };
 }
 
+/** The slice of an order checkout needs after `POST /orders/`. */
 export interface OrderResponse {
   id: string;
   orderNumber: string;
   status: string;
-  paymentStatus: string;
-  deliveryType: FulfillmentType;
-  invoice: InvoiceData;
-  pricing: {
-    subtotal: string;
-    shippingCost: string;
-    discount: string;
-    total: string;
-    currency: { code: string; symbol: string };
-  };
-  shipping: {
-    deliveryType: FulfillmentType;
-    vendor?: string;
-    serviceLevel?: string;
-    address?: ShippingAddress;
-    pickupLocation?: PickupLocation;
-  };
-  trackingNumber?: string;
-  trackingUrl?: string;
-  canCancel: boolean;
-  timeline: {
-    created: string;
-    paid?: string;
-    shipped?: string;
-    delivered?: string;
-  };
+  total: string;
+  currency: { code: string; symbol: string; decimal_places?: number };
+}
+
+/** Server-computed totals from `POST /orders/checkout/validate/` (never computed client-side). */
+export interface CheckoutQuote {
+  currency: { code: string; symbol: string; decimal_places: number };
+  subtotal: string;
+  shipping: string;
+  tax: string;
+  discount: string;
+  total: string;
+  lines: Array<{ designId: string; variantId: string; quantity: number; unitPrice: string; lineTotal: string }>;
 }
 
 export interface ReceiptSubmission {
@@ -219,8 +225,8 @@ export interface CheckoutDraft {
   thumbnailUrl?: string;
   mockupUrl?: string;
   variants: CheckoutVariant[];
-  artworks: Record<string, ArtworkState>;
-  printAreas: PrintArea[];
+  artworks: Record<string, CheckoutArtwork>;
+  printAreas: CheckoutPrintArea[];
   step: CheckoutStep;
   shipping?: {
     address?: ShippingAddress;

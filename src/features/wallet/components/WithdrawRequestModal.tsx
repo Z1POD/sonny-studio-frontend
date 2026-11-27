@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Banknote, Check, ChevronsUpDown, Loader2, Star } from "lucide-react";
 import { appToast as toast } from "@/lib/toaster";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { myWithdrawalMethodsQuery, walletKeys } from "../queries";
-import { walletApi } from "../api";
+import { walletApi, withdrawalErrorMessage } from "../api";
 import { formatMoney, categoryIcon } from "../lib/wallet-format";
 
 export function WithdrawRequestModal({
@@ -18,11 +18,11 @@ export function WithdrawRequestModal({
   walletData,
 }: {
   onClose: () => void;
-  walletData: { balance: { available: string }; currency: { symbol: string } } | null;
+  walletData: { balance: { available: string }; currency: { symbol: string; decimal_places?: number } } | null;
 }) {
   const qc = useQueryClient();
   const { data: methodsData } = useQuery(myWithdrawalMethodsQuery());
-  const methods = methodsData?.data ?? [];
+  const methods = methodsData ?? [];
 
   const [selectedMethodId, setSelectedMethodId] = useState<string>("");
   const [methodsExpanded, setMethodsExpanded] = useState(false);
@@ -30,15 +30,17 @@ export function WithdrawRequestModal({
   const [notes, setNotes] = useState("");
 
   const available = parseFloat(walletData?.balance?.available ?? "0");
-  const symbol = walletData?.currency?.symbol ?? "$";
+  const symbol = walletData?.currency ?? "$";
   const selectedMethod = methods.find((m) => m.id === selectedMethodId);
-  const minW = selectedMethod ? parseFloat(selectedMethod.payment_method.min_withdrawal) : 0;
-  const maxW = selectedMethod ? parseFloat(selectedMethod.payment_method.max_withdrawal) : Infinity;
+  // Rail limits are informational (the platform may override them); the server has the final say.
+  const minW = selectedMethod ? parseFloat(selectedMethod.payment_method.min_withdrawal) || 0 : 0;
+  const maxRaw = selectedMethod?.payment_method.max_withdrawal;
+  const maxW = maxRaw ? parseFloat(maxRaw) : Infinity;
   const val = parseFloat(amount) || 0;
 
   const amountValid = val > 0 && val >= minW && val <= maxW && val <= available;
   const methodSelected = !!selectedMethod;
-  const methodVerified = !!selectedMethod?.is_verified;
+  const methodVerified = !!selectedMethod && (selectedMethod.is_verified || selectedMethod.status === "active");
   const valid = amountValid && methodSelected && methodVerified;
 
   const selectMethod = (id: string) => {
@@ -46,20 +48,32 @@ export function WithdrawRequestModal({
     setMethodsExpanded(false);
   };
 
+  // One key per (method, amount) intent, so a retry after a network failure can't double-request.
+  const keyRef = useRef<{ sig: string; key: string }>({ sig: "", key: "" });
+  const [serverError, setServerError] = useState<string | null>(null);
+
   const mutation = useMutation({
-    mutationFn: () =>
-      walletApi.requestWithdrawal({
+    mutationFn: () => {
+      const sig = `${selectedMethodId}|${val.toFixed(2)}|${notes}`;
+      if (keyRef.current.sig !== sig) keyRef.current = { sig, key: `wd-${crypto.randomUUID()}` };
+      return walletApi.requestWithdrawal({
         method_id: selectedMethodId,
         amount: val.toFixed(2),
         notes: notes || undefined,
-      }),
-    onSuccess: () => {
-      toast.success("Withdrawal requested successfully");
+        idempotency_key: keyRef.current.key,
+      });
+    },
+    onSuccess: (w) => {
+      toast.success(`Withdrawal requested — you'll receive ${formatMoney(w.net_amount, symbol)}`);
       qc.invalidateQueries({ queryKey: walletKeys.all });
       onClose();
     },
     onError: (e: any) => {
-      toast.error(e?.message ?? "Failed to request withdrawal");
+      // A rejected request never completed, so the next attempt must be a fresh one.
+      keyRef.current = { sig: "", key: "" };
+      const msg = withdrawalErrorMessage(e, "Failed to request withdrawal");
+      setServerError(msg);
+      toast.error(msg);
     },
   });
 
@@ -67,7 +81,7 @@ export function WithdrawRequestModal({
     <div className="space-y-5">
       {/* Amount */}
       <div className="space-y-2">
-        <Label htmlFor="w-amount">Amount ({symbol})</Label>
+        <Label htmlFor="w-amount">Amount ({typeof symbol === "string" ? symbol : symbol.symbol})</Label>
         <Input
           id="w-amount"
           type="number"
@@ -75,7 +89,7 @@ export function WithdrawRequestModal({
           max={Math.min(available, maxW)}
           step="0.01"
           value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          onChange={(e) => { setAmount(e.target.value); setServerError(null); }}
           placeholder="0.00"
           className="rounded-xl bg-surface text-lg"
         />
@@ -83,7 +97,7 @@ export function WithdrawRequestModal({
           <span>Available: {formatMoney(available, symbol)}</span>
           {selectedMethod && (
             <span>
-              Min {formatMoney(minW, symbol)} · Max {formatMoney(maxW, symbol)}
+              Min {formatMoney(minW, symbol)}{Number.isFinite(maxW) ? ` · Max ${formatMoney(maxW, symbol)}` : ""}
             </span>
           )}
         </div>
@@ -93,7 +107,7 @@ export function WithdrawRequestModal({
               ? "Amount exceeds your available balance."
               : selectedMethod && val < minW
               ? `Amount is below the minimum of ${formatMoney(minW, symbol)} for this method.`
-              : selectedMethod && val > maxW
+              : selectedMethod && Number.isFinite(maxW) && val > maxW
               ? `Amount is above the maximum of ${formatMoney(maxW, symbol)} for this method.`
               : "Enter a valid amount."}
           </p>
@@ -139,8 +153,7 @@ export function WithdrawRequestModal({
                 )}
               </div>
               <div className="text-[11px] text-muted-foreground">
-                {selectedMethod.payment_method.name} · Fee {selectedMethod.payment_method.fee_percentage}% +{" "}
-                {formatMoney(selectedMethod.payment_method.fee_fixed, symbol)}
+                {selectedMethod.payment_method.name} · Fee shown on request
               </div>
             </div>
             <span className="flex shrink-0 items-center gap-1 text-[11px] font-medium text-primary">
@@ -182,7 +195,7 @@ export function WithdrawRequestModal({
                     )}
                   </div>
                   <div className="text-[11px] text-muted-foreground">
-                    {m.payment_method.name} · Fee {m.payment_method.fee_percentage}% + {formatMoney(m.payment_method.fee_fixed, symbol)}
+                    {m.payment_method.name}
                   </div>
                 </div>
                 {m.is_default && <Star className="h-3.5 w-3.5 text-amber-400" />}
@@ -196,16 +209,24 @@ export function WithdrawRequestModal({
           <p className="text-xs text-amber-400">Select a withdrawal method to continue.</p>
         )}
 
-        {selectedMethod && !selectedMethod.is_verified && (
+        {selectedMethod && !methodVerified && (
           <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-400">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <span>
-              This method is still being verified. Please wait until verification completes before
-              withdrawing, or contact support if this is taking longer than expected.
+              This method is waiting for staff approval. You can withdraw to it once it's approved.
             </span>
           </div>
         )}
       </div>
+
+      {selectedMethod && (
+        <p className="rounded-xl bg-surface-overlay px-3 py-2 text-xs text-muted-foreground">
+          The withdrawal fee may be platform-configured — the exact fee and the amount you'll receive are
+          confirmed when you request. For reference this rail lists {selectedMethod.payment_method.fee_percentage}% +{" "}
+          {formatMoney(selectedMethod.payment_method.fee_fixed, symbol)}.
+        </p>
+      )}
+      {serverError && <p role="alert" className="rounded-xl bg-red-500/10 px-3 py-2 text-xs text-red-400">{serverError}</p>}
 
       {/* Notes */}
       <div className="space-y-2">

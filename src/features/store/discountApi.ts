@@ -1,7 +1,7 @@
 /**
  * src/features/store/discountApi.ts
  *
- * Discount & Coupon API — aligned to /api/v1/studio/ contract.
+ * Discount & Coupon API — aligned to the shared contract (bare JSON, readable errors).
  */
 
 import { api } from "@/shared/api/client";
@@ -21,13 +21,16 @@ export interface DiscountRule {
   value: string;
   value_display: string;
   max_uses: number | null;
+  max_uses_per_user?: number | null;
   current_uses: number;
+  new_customers_only?: boolean;
   is_active: boolean;
-  is_stackable: boolean;
   starts_at: string | null;
   ends_at: string | null;
   product_count: number;
   coupon_count: number;
+  /** Same number as `current_uses`, kept for readability next to product_count / coupon_count. */
+  redemption_count?: number;
   created_at: string;
 }
 
@@ -37,18 +40,39 @@ export interface CreateDiscountRulePayload {
   value: string;
   scope?: DiscountScope;
   max_uses?: number | null;
-  max_uses_per_user?: number;
+  max_uses_per_user?: number | null;
   starts_at?: string | null;
   ends_at?: string | null;
-  is_stackable?: boolean;
   min_order_amount?: string;
   max_discount_amount?: string;
+  new_customers_only?: boolean;
+}
+
+export interface Redemption {
+  id: string;
+  order_id: string;
+  order_number: string;
+  order_status: string;
+  buyer_username: string;
+  /** coupon (a generated code) or product_link (the rule's own code from a product link). */
+  source: "coupon" | "product_link";
+  coupon_code: string | null;
+  product_title: string | null;
+  amount: string;
+  created_at: string;
+}
+
+export interface RedemptionPage {
+  count: number;
+  page: number;
+  page_size: number;
+  results: Redemption[];
 }
 
 export interface Coupon {
   id: string;
   code: string;
-  status: "active" | "used" | "disabled";
+  status: "active" | "used" | "revoked";
   status_display: string;
   is_single_use: boolean;
   used_at: string | null;
@@ -95,57 +119,62 @@ export interface PublicLink {
 
 export const discountApi = {
   // Discount Rules
-  listRules: (): Promise<{ success: boolean; data: DiscountRule[] }> =>
+  listRules: (): Promise<DiscountRule[]> =>
     api.get("/store/discounts/"),
 
-  createRule: (payload: CreateDiscountRulePayload): Promise<{ success: boolean; data: DiscountRule }> =>
+  createRule: (payload: CreateDiscountRulePayload): Promise<DiscountRule> =>
     api.post("/store/discounts/", { body: payload }),
 
   updateRule: (
     id: string,
-    payload: Partial<CreateDiscountRulePayload & { is_active: boolean }>,
-  ): Promise<{ success: boolean; data: Partial<DiscountRule> }> =>
-    api.put(`/store/discounts/${id}/`, { body: payload }),
+    payload: Partial<Omit<CreateDiscountRulePayload, "discount_type">> & { is_active?: boolean },
+  ): Promise<DiscountRule> =>
+    api.patch(`/store/discounts/${id}/`, { body: payload }),
 
   deleteRule: (id: string): Promise<void> =>
     api.delete(`/store/discounts/${id}/`),
 
+  /** Who used the rule, on which order, for how much (owner-only, paginated). */
+  redemptions: (ruleId: string, params?: { page?: number; page_size?: number }): Promise<RedemptionPage> =>
+    api.get(`/store/discounts/${ruleId}/redemptions/`, { params }),
+
   // Coupons
-  listCoupons: (ruleId: string): Promise<{ success: boolean; data: Coupon[] }> =>
+  listCoupons: (ruleId: string): Promise<Coupon[]> =>
     api.get(`/store/discounts/${ruleId}/coupons/`),
 
   generateCoupons: (
     ruleId: string,
     payload: GenerateCouponsPayload,
-  ): Promise<{ success: boolean; data: { rule_name: string; generated: number; coupons: Pick<Coupon, "id" | "code">[] } }> =>
+  ): Promise<{ rule_name: string; generated: number; coupons: Pick<Coupon, "id" | "code">[] }> =>
     api.post(`/store/discounts/${ruleId}/coupons/generate/`, { body: payload }),
 
-  revokeCoupon: (couponId: string): Promise<{ success: boolean; data: Pick<Coupon, "id" | "code" | "status"> }> =>
+  revokeCoupon: (couponId: string): Promise<Pick<Coupon, "id" | "code" | "status">> =>
     api.post(`/store/coupons/${couponId}/revoke/`),
 
   // Product Discounts
-  listProductDiscounts: (productId: string): Promise<{ success: boolean; data: ProductDiscount[] }> =>
+  listProductDiscounts: (productId: string): Promise<ProductDiscount[]> =>
     api.get(`/store/products/${productId}/discounts/`),
 
   applyDiscountToProduct: (
     productId: string,
     payload: { discount_rule_id: string; max_uses?: number; starts_at?: string; ends_at?: string },
-  ): Promise<{ success: boolean; data: Pick<ProductDiscount, "id" | "discount_code" | "discount_link" | "created_at"> }> =>
+  ): Promise<Pick<ProductDiscount, "id" | "discount_code" | "discount_link" | "created_at">> =>
     api.post(`/store/products/${productId}/discounts/`, { body: payload }),
 
-  removeDiscountFromProduct: (discountId: string): Promise<void> =>
-    api.delete(`/store/products/discounts/${discountId}/remove/`),
+  /** Takes a rule off a product (idempotent; 204). */
+  removeDiscountFromProduct: (productId: string, ruleId: string): Promise<void> =>
+    api.delete(`/store/products/${productId}/discounts/${ruleId}/`),
 
   // Public Links
-  listLinks: (productId: string): Promise<{ success: boolean; data: PublicLink[] }> =>
+  listLinks: (productId: string): Promise<PublicLink[]> =>
     api.get(`/store/products/${productId}/links/`),
 
   createLink: (
     productId: string,
     payload: { type?: "direct" | "discount"; discount_rule_id?: string; label?: string },
-  ): Promise<{ success: boolean; data: PublicLink }> =>
+  ): Promise<PublicLink> =>
     api.post(`/store/products/${productId}/links/`, { body: payload }),
 
-  deactivateLink: (productId: string, linkId: string): Promise<{ success: boolean; data: null }> =>
+  deactivateLink: (productId: string, linkId: string): Promise<null> =>
     api.post(`/store/products/${productId}/links/${linkId}/deactivate/`),
 };

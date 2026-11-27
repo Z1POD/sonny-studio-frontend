@@ -1,49 +1,46 @@
 // src/features/auth/api.ts
+//
+// Auth for the Buyer Frontend API. The only login the contract defines is the
+// Telegram Mini App exchange: the signed `initData` goes in the Authorization
+// header (`Bearer <initData>`), the body is empty.
 
-
-/**
- * Auth feature — thin API wrappers around the external M I M O backend.
- * Supports OTP-based auth (browser) and Telegram Mini App init data exchange.
- *
- * All endpoints that return AuthTokenResponse unwrap `.data` so callers
- * always receive { token, user } directly.
- */
 import { api } from "@/shared/api/client";
-import type { AuthTokenResponse, User } from "@/shared/api/types";
+import { toUser, type AuthTokenResponse, type RawUser, type User } from "@/shared/api/types";
 
 export const authApi = {
-  requestOtp: (username: string) =>
-    api.post<{ detail: string }>("/auth/otp/request/", {
-      body: { username },
-      auth: false,
-    }),
-
-  verifyOtp: (username: string, code: string) =>
+  loginTelegram: (initData: string): Promise<{ token: string; user: User }> =>
     api
-      .post<AuthTokenResponse>("/auth/otp/verify/", {
-        body: { username, code },
+      .post<AuthTokenResponse>("/accounts/auth/telegram/", {
+        body: {},
         auth: false,
+        headers: { Authorization: `Bearer ${initData}` },
       })
-      .then((res) => res.data),
+      .then((res) => ({ token: res.token, user: toUser(res.user) })),
 
-  loginTelegram: (initData: string) =>
+  /**
+   * Browser sign-in, step 1. The response is identical whether or not the username exists
+   * (the backend never leaks account existence) — never tell the user which.
+   */
+  otpRequest: (username: string) =>
+    api.post<{ message: string; expires_in: number }>("/accounts/auth/otp/request/", { body: { username }, auth: false }),
+
+  /** Browser sign-in, step 2. 401 `otp_invalid` messages include the remaining attempts. */
+  otpVerify: (username: string, code: string): Promise<{ token: string; user: User }> =>
     api
-      .post<AuthTokenResponse>("/auth/telegram/", {
-        auth: false,
-        headers: { "X-Telegram-Init-Data": initData },
-      })
-      .then((res) => res.data),
+      .post<AuthTokenResponse>("/accounts/auth/otp/verify/", { body: { username, code }, auth: false })
+      .then((res) => ({ token: res.token, user: toUser(res.user) })),
 
-  logout: () => api.post<void>("/auth/logout/").catch(() => undefined),
+  /** Deletes the server-side token. A 401 just means it was already gone, so callers treat it as success. */
+  logout: (): Promise<null> => api.post<null>("/accounts/auth/logout/", { body: {} }),
 
-  me: () =>
-    api
-      .get<{ success: boolean; data: User } | User>("/users/me/")
-      .then((res) => {
-        // Handle both wrapped `{ success, data: User }` and bare `User` shapes.
-        if (res && typeof res === "object" && "data" in res && "success" in res) {
-          return (res as { success: boolean; data: User }).data;
-        }
-        return res as User;
-      }),
+  me: (): Promise<User> => api.get<RawUser>("/accounts/me/").then(toUser),
+
+  updateMe: (patch: {
+    full_name?: string;
+    phone?: string;
+    preferred_currency_id?: string;
+    locale?: string;
+    notify_telegram?: boolean;
+    notify_email?: boolean;
+  }): Promise<User> => api.patch<RawUser>("/accounts/me/", { body: patch }).then(toUser),
 };

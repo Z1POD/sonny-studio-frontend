@@ -4,7 +4,7 @@ const LOW_STOCK_THRESHOLD = 6;
 
 export interface StockLike {
   is_limited_edition: boolean;
-  available_quantity: number | null | undefined;
+  available_quantity?: number | null | undefined;
 }
 
 export type StockBadge =

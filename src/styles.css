@@ -269,3 +269,28 @@
 button {
   cursor: pointer;
 }
+
+/* ── Studio ─────────────────────────────────────────────────────────────── */
+.studio-stage {
+  background:
+    radial-gradient(120% 90% at 50% 0%, color-mix(in oklab, var(--color-surface-elevated) 90%, white) 0%, var(--color-surface) 55%, var(--color-background) 100%);
+}
+
+@keyframes studio-rise {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-studio-rise {
+  animation: studio-rise 0.32s var(--ease-spring) both;
+}
+
+/* Splash / sign-in shell (shared with the buyer app) */
+@keyframes splash-drift-up { from { transform: translateY(0); } to { transform: translateY(-7%); } }
+@keyframes splash-drift-down { from { transform: translateY(-7%); } to { transform: translateY(0); } }
+@keyframes splash-sweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
+.splash-drift-up { animation: splash-drift-up 18s ease-in-out infinite alternate; }
+.splash-drift-down { animation: splash-drift-down 22s ease-in-out infinite alternate; }
+.splash-sweep { animation: splash-sweep 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .splash-drift-up, .splash-drift-down, .splash-sweep { animation: none !important; }
+}

@@ -6,10 +6,10 @@ import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import type { LedgerTransaction } from "../api";
 import { formatMoney, txTypeLabel, txStatusColor } from "../lib/wallet-format";
 
-export function TransactionRow({ t }: { t: LedgerTransaction }) {
-  const isCredit = t.entry.type === "credit";
-  const amount = parseFloat(t.entry.amount);
-  const symbol = t.currency.symbol;
+export function TransactionRow({ t, currency }: { t: LedgerTransaction; currency: string | { symbol?: string; code?: string; decimal_places?: number } }) {
+  const isCredit = t.entry_type === "credit";
+  const amount = parseFloat(t.amount);
+  const symbol = currency;
 
   return (
     <li className="flex items-center justify-between gap-4 px-5 py-4">
@@ -30,7 +30,7 @@ export function TransactionRow({ t }: { t: LedgerTransaction }) {
               day: "numeric",
               year: "numeric",
             })}{" "}
-            · <span className="capitalize">{txTypeLabel(t.transaction_type)}</span>
+            · <span className="capitalize">{txTypeLabel(t.type)}</span>
             {" · "}
             <span className={txStatusColor(t.status)}>{t.status}</span>
           </div>

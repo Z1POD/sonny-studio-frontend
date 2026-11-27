@@ -1,100 +1,67 @@
-/** Shared API DTOs — mirror the backend contract. */
-
-export interface User {
-  id: string;
-  username: string;
-  first_name?: string;
-  last_name?: string;
-  display_name?: string;
-  email?: string;
-  email_verified?: boolean;
-  phone?: string;
-  phone_verified?: boolean;
-  role?: "customer" | "creator" | "admin";
-  is_creator?: boolean;
-  is_verified?: boolean;
-  photo_url?: string;
-  language_code?: string;
-  date_joined?: string;
-}
-
-export interface AuthTokenResponse {
-  success: boolean;
-  data: {
-    token: string;
-    user: User;
-  }
-}
-
-
-export interface Paginated<T> {
-  results: T[];
-  next: string | null;
-  previous: string | null;
-  count?: number;
-}
-
-export interface StoreSummary {
-  id: string | number;
-  name: string;
-  slug?: string;
-  description?: string;
-  avatar?: string | null;
-  banner?: string | null;
-  rating?: number | null;
-}
+/** Shared API DTOs — mirror the Buyer Frontend API contract. */
 
 export interface Currency {
   code: string;
   symbol: string;
   name?: string;
+  /** Fraction digits to render (contract: `decimal_places` / `currency_decimal_places`). */
+  decimal_places?: number;
 }
 
-export interface StoreStats {
-  total_products: number;
-  total_sales: number;
-  revenue: {
-    amount: number;
-    currency: Currency;
+/** `user` object returned by login and `GET /accounts/me/`. */
+export interface RawUser {
+  id: number;
+  username: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  locale: string;
+  preferred_currency: { id: string; code: string; symbol: string; decimal_places: number } | null;
+  /** Public URL of the avatar (the backend copies it from the Telegram profile); null when none. */
+  avatar_url: string | null;
+  /** How the user last signed in. Display-only — never gate behaviour on it. Read-only. */
+  auth_method: "telegram" | "otp" | "password" | "admin" | "";
+  last_active_at: string | null;
+  notify_telegram: boolean;
+  notify_email: boolean;
+  roles: string[];
+  /**
+   * Creator-side profile, present once the account has used the creator app (the backend adds the membership).
+   * `is_verified: false` means pricing/publishing is blocked (store/KYC review); absent or true = allowed.
+   */
+  creator_profile?: { is_verified: boolean; store_name?: string | null } | null;
+  telegram_identity?: {
+    telegram_id: number;
+    telegram_username: string;
+    language_code: string;
+    photo_url?: string;
+    is_premium: boolean;
+  } | null;
+  is_active: boolean;
+  date_joined: string;
+  updated_at: string;
+}
+
+/** App-level user: the raw contract fields plus a derived display name. */
+export interface User extends RawUser {
+  display_name: string;
+  /** Best available avatar: the stored avatar, else the Telegram photo. Undefined → show initials. */
+  photo_url?: string;
+}
+
+export function toUser(raw: RawUser): User {
+  const full = [raw.first_name, raw.last_name].filter(Boolean).join(" ").trim();
+  return {
+    ...raw,
+    display_name: full || raw.telegram_identity?.telegram_username || raw.username,
+    ...(raw.avatar_url || raw.telegram_identity?.photo_url
+      ? { photo_url: (raw.avatar_url || raw.telegram_identity?.photo_url) as string }
+      : {}),
   };
-  pending_orders: number;
-  rating: number | null;
-  review_count: number;
 }
 
-export interface Product {
-  id: string | number;
-  name: string;
-  status: "draft" | "published" | "archived";
-  pricing: number;
-  thumbnail?: string | null;
-  updated_at?: string;
-}
-
-export interface Wallet {
-  balance: number;
-  pending: number;
-  currency: string;
-}
-
-export interface WalletTransaction {
-  id: string | number;
-  type: "credit" | "debit" | "withdrawal" | "payout";
-  amount: number;
-  description: string;
-  created_at: string;
-  status: "pending" | "completed" | "failed";
-}
-
-export interface StudioResponse {
-  success: boolean;
-  data: {
-    apparel: any;
-    brand: any;
-    category: any;
-    variants: any[];
-    "3d_configuration": any;
-    print_areas: any[];
-    available_print_methods: any[];
-  };
+export interface AuthTokenResponse {
+  token: string;
+  user: RawUser;
 }

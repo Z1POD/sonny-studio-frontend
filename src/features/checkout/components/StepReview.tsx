@@ -1,6 +1,6 @@
 // src/features/checkout/components/StepReview.tsx
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   ShoppingBag,
@@ -22,7 +22,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCheckoutStore } from "../store";
 import { useCart } from "@/features/market/store";
-import { orderApi, getFieldErrorsFromApiError } from "../api";
+import { useQuery } from "@tanstack/react-query";
+import { checkoutApi } from "../api";
+import { buildCheckoutBody, resolveCurrencyId } from "../body";
+import { formatPrice } from "@/lib/format";
+import { ApiError } from "@/shared/api/client";
 import { appToast as toast } from "@/lib/toaster";
 import { haptics } from "@/shared/lib/haptics";
 
@@ -46,9 +50,7 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
     selectedVendorCode,
     selectedPickupId,
     shippingOptions,
-    couponCode,
-    basePrice,
-    printCost,
+    cities,
     currencySymbol,
     setOrder,
     setCreatingOrder,
@@ -56,11 +58,9 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
     fieldErrors,
     setFieldErrors,
     clearFieldError,
-    setCouponCode,
     goBack,
     getOrderItems,
     getTotalQuantity,
-    getSubtotal,
   } = useCheckoutStore();
 
   const clearCart = useCart((s) => s.clear);
@@ -68,28 +68,8 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
   const isCartOrigin = origin === "cart";
   const totalQty = getTotalQuantity();
 
-  const [isEditingCoupon, setIsEditingCoupon] = useState(false);
-  const [couponDraft, setCouponDraft] = useState(couponCode);
-
-  useEffect(() => {
-    if (fieldErrors.coupon) {
-      setIsEditingCoupon(true);
-      setCouponDraft(couponCode);
-    }
-  }, [fieldErrors.coupon]);
-
-  const applyCouponDraft = () => {
-    setCouponCode(couponDraft.trim());
-    clearFieldError("coupon");
-    setIsEditingCoupon(false);
-  };
-
-  const removeCoupon = () => {
-    setCouponCode("");
-    setCouponDraft("");
-    clearFieldError("coupon");
-    setIsEditingCoupon(false);
-  };
+  // One idempotency key per distinct order request; reused when the same request is retried.
+  const idem = useRef({ sig: "", key: "" });
 
   const primaryMockup = useMemo(
   () => mockupUrls[0] ?? mockupUrl ?? null,
@@ -99,47 +79,70 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
   const selectedItems = useMemo(() => {
     if (isCartOrigin) {
       return cartItems.map((line) => ({
-        key: `${line.productId}:${line.colorName}:${line.size}`,
+        key: `${line.designId}:${line.variantId}`,
+        designId: line.designId,
+        variantId: line.variantId,
         title: line.title,
         thumbnailUrl: line.thumbnailUrl,
         colorHex: line.colorHex,
         colorName: line.colorName,
         size: line.size,
         quantity: line.quantity,
-        lineTotal: line.unitPrice * line.quantity,
       }));
     }
     const items: Array<{
-      key: string; title: string; thumbnailUrl?: string; colorHex: string; colorName: string;
-      size: string; quantity: number; lineTotal: number;
+      key: string; designId: string; variantId: string; title: string; thumbnailUrl?: string; colorHex: string; colorName: string;
+      size: string; quantity: number;
     }> = [];
     for (const sel of selectedVariants.values()) {
       const variant = variants.find((v) => v.id === sel.variantId);
       if (variant) {
         items.push({
           key: variant.id,
+          designId: useCheckoutStore.getState().productId,
+          variantId: variant.id,
           title: productName,
           thumbnailUrl: undefined,
           colorHex: variant.color.hex,
           colorName: variant.color.name,
           size: variant.size,
           quantity: sel.quantity,
-          lineTotal: (basePrice + printCost) * sel.quantity,
         });
       }
     }
     return items;
-  }, [isCartOrigin, cartItems, selectedVariants, variants, productName, basePrice, printCost]);
+  }, [isCartOrigin, cartItems, selectedVariants, variants, productName]);
 
-  const { subtotal, shippingCost, total } = useMemo(() => {
-    const sub = getSubtotal();
-    let ship = 0;
-    if (fulfillmentType === "delivery" && shippingOptions) {
-      const opt = shippingOptions.delivery.find((d) => d.vendorCode === selectedVendorCode);
-      if (opt && !opt.isFree) ship = parseFloat(opt.cost);
-    }
-    return { subtotal: sub, shippingCost: ship, total: sub + ship };
-  }, [getSubtotal, fulfillmentType, shippingOptions, selectedVendorCode, totalQty]);
+  // Totals come from the server (`POST /orders/checkout/validate/`) — never computed here.
+  const orderItems = getOrderItems();
+  const body = useMemo(
+    () =>
+      buildCheckoutBody({
+        items: orderItems,
+        shippingAddress,
+        fulfillmentType,
+        selectedVendorCode,
+        selectedPickupId,
+        shippingOptions,
+        cities,
+        currencyId: undefined,
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [orderItems.length, JSON.stringify(orderItems.map((i) => [i.designId, i.variantId, i.quantity])), shippingAddress, fulfillmentType, selectedVendorCode, selectedPickupId, shippingOptions, cities],
+  );
+  const quoteQ = useQuery({
+    queryKey: ["checkout-quote", body],
+    queryFn: async () => checkoutApi.validate({ ...body!, currency_id: await resolveCurrencyId() }),
+    enabled: !!body,
+    staleTime: 30_000,
+    retry: false,
+  });
+  const quote = quoteQ.data;
+  const cur = quote?.currency ?? { code: "", symbol: currencySymbol, decimal_places: 2 };
+  const money = (v?: string) => (v == null ? "—" : formatPrice(v, cur));
+  const lineTotalOf = (designId: string, variantId: string) =>
+    quote?.lines.find((l) => l.designId === designId && l.variantId === variantId)?.lineTotal;
+  const quoteError = quoteQ.error instanceof Error ? quoteQ.error.message : null;
 
   const selectedDelivery = shippingOptions?.delivery.find((d) => d.vendorCode === selectedVendorCode);
   const selectedPickup = shippingOptions?.pickup.find((p) => p.locationId === selectedPickupId);
@@ -149,57 +152,23 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
     setFieldErrors({});
 
     try {
-      const items = getOrderItems();
-      const isDelivery = fulfillmentType === "delivery";
-
-      const order = await orderApi.create({
-        items: items.map((i) => ({
-          product_id: i.productId,
-          size: i.size,
-          color_name: i.colorName,
-          quantity: i.quantity,
-        })),
-        delivery_type: fulfillmentType,
-        shipping_address: isDelivery
-          ? {
-              full_name: shippingAddress.fullName,
-              phone: shippingAddress.phone,
-              street: shippingAddress.street,
-              city_id: shippingAddress.cityId,
-              state: shippingAddress.state,
-              postal_code: shippingAddress.postalCode,
-              delivery_instructions: shippingAddress.deliveryInstructions,
-            }
-          : undefined,
-        shipping_vendor: isDelivery ? selectedDelivery?.vendorCode : undefined,
-        shipping_service_level: isDelivery
-          ? selectedDelivery?.serviceLevel
-          : undefined,
-        pickup_location_id: !isDelivery ? selectedPickupId : undefined,
-        coupon_code: couponCode.trim(),
-        customer_note: shippingAddress.deliveryInstructions,
-        currency: currencySymbol === "Br" ? "ETB" : currencySymbol,
-      });
+      if (!body) throw new Error("Choose a delivery option first");
+      // Same request → same key (safe retries); a changed request gets a fresh key.
+      const sig = JSON.stringify(body);
+      if (idem.current.sig !== sig) idem.current = { sig, key: crypto.randomUUID() };
+      const order = await checkoutApi.createOrder({ ...body, currency_id: await resolveCurrencyId() }, idem.current.key);
 
       setOrder(order);
       if (isCartOrigin) clearCart();
       haptics.impactOccurred('light');
       onContinue();
     } catch (e: any) {
-      const backendErrors = getFieldErrorsFromApiError(e);
-
-      if (backendErrors.coupon) {
-        setFieldErrors({ ...fieldErrors, coupon: backendErrors.coupon });
-        setIsEditingCoupon(true);
-        setCouponDraft(couponCode);
-        toast.error(backendErrors.coupon);
-      } else if (Object.keys(backendErrors).length > 0) {
-        setFieldErrors(backendErrors);
-        toast.error(e?.message ?? "Please review your shipping details");
+      if (e instanceof ApiError && e.fields && Object.keys(e.fields).length > 0) {
+        // Field-level problems (e.g. pickup_location_id) belong on the shipping step.
+        toast.error(e.message || "Please review your delivery details");
         goBack();
       } else {
-        const msg = e?.message ?? "Failed to create order";
-        toast.error(msg);
+        toast.error(e?.message ?? "Failed to create order");
       }
     } finally {
       setCreatingOrder(false);
@@ -293,7 +262,7 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
                 </div>
               </div>
               <span className="text-sm font-medium tabular-nums">
-                {currencySymbol} {item.lineTotal.toFixed(2)}
+                {money(lineTotalOf(item.designId, item.variantId))}
               </span>
             </div>
           ))}
@@ -352,104 +321,44 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
           <div className="flex items-center gap-2 mb-2">
             <CreditCard className="h-4 w-4 text-muted-foreground" />
             <h3 className="text-sm font-semibold">Price breakdown</h3>
-            <span className="text-[10px] text-muted-foreground">(estimated)</span>
+            
           </div>
           <div className="space-y-1.5 text-sm">
             <div className="flex justify-between text-muted-foreground">
               <span>Subtotal ({totalQty} item{totalQty !== 1 ? "s" : ""})</span>
-              <span className="tabular-nums text-foreground">{currencySymbol} {subtotal.toFixed(2)}</span>
+              <span className="tabular-nums text-foreground">{quoteQ.isLoading ? "…" : money(quote?.subtotal)}</span>
             </div>
             <div className="flex justify-between text-muted-foreground">
               <span>Shipping</span>
               <span className="tabular-nums text-foreground">
-                {shippingCost === 0 ? "Free" : `${currencySymbol} ${shippingCost.toFixed(2)}`}
+                {quoteQ.isLoading ? "…" : quote ? (parseFloat(quote.shipping) === 0 ? "Free" : money(quote.shipping)) : "—"}
               </span>
             </div>
-            {(couponCode || fieldErrors.coupon) && (
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between gap-3 text-muted-foreground">
-                  <span className="flex items-center gap-1.5 flex-shrink-0">
-                    <Tag className="h-3.5 w-3.5" />
-                    Coupon
-                  </span>
-
-                  {isEditingCoupon ? (
-                    <div className="flex flex-1 items-center justify-end gap-1.5">
-                      <Input
-                        autoFocus
-                        value={couponDraft}
-                        onChange={(e) => {
-                          setCouponDraft(e.target.value);
-                          if (fieldErrors.coupon) clearFieldError("coupon");
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            applyCouponDraft();
-                          }
-                        }}
-                        placeholder="Coupon code"
-                        className={`h-8 max-w-[140px] rounded-lg border-border bg-surface text-xs ${
-                          fieldErrors.coupon ? "border-destructive" : ""
-                        }`}
-                      />
-                      <button
-                        type="button"
-                        onClick={applyCouponDraft}
-                        disabled={!couponDraft.trim() || couponDraft.trim() === couponCode}
-                        className="text-xs font-medium text-primary disabled:opacity-40"
-                      >
-                        Apply
-                      </button>
-                      <button
-                        type="button"
-                        onClick={removeCoupon}
-                        aria-label="Remove coupon"
-                        className="grid h-6 w-6 flex-shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <span className="tabular-nums text-green-600">{couponCode}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCouponDraft(couponCode);
-                          setIsEditingCoupon(true);
-                        }}
-                        className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                      >
-                        Change
-                      </button>
-                      <button
-                        type="button"
-                        onClick={removeCoupon}
-                        aria-label="Remove coupon"
-                        className="grid h-5 w-5 flex-shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {fieldErrors.coupon && (
-                  <p className="flex items-center gap-1 text-[11px] text-destructive">
-                    <AlertCircle className="h-3 w-3" />
-                    {fieldErrors.coupon}
-                  </p>
-                )}
+            {quote && parseFloat(quote.discount) > 0 && (
+              <div className="flex justify-between text-muted-foreground">
+                <span>Discount</span>
+                <span className="tabular-nums text-green-600">-{money(quote.discount)}</span>
               </div>
+            )}
+            {quote && parseFloat(quote.tax) > 0 && (
+              <div className="flex justify-between text-muted-foreground">
+                <span>Tax</span>
+                <span className="tabular-nums text-foreground">{money(quote.tax)}</span>
+              </div>
+            )}
+            {quoteError && (
+              <p className="flex items-center gap-1 text-[11px] text-destructive">
+                <AlertCircle className="h-3 w-3" />
+                {quoteError}
+              </p>
             )}
             <div className="border-t border-border/40 pt-2">
               <div className="flex justify-between text-base font-semibold">
-                <span>Estimated total</span>
-                <span className="tabular-nums">{currencySymbol} {total.toFixed(2)}</span>
+                <span>Total</span>
+                <span className="tabular-nums">{quoteQ.isLoading ? "…" : money(quote?.total)}</span>
               </div>
               <p className="text-[10px] text-muted-foreground mt-0.5">
-                Final price will be confirmed on payment after order placement.
+                Prices and delivery are calculated by our server.
               </p>
             </div>
           </div>
@@ -458,7 +367,7 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
         {/* Security note */}
         <div className="flex items-center gap-2 rounded-xl bg-green-50 px-3 py-2 text-[11px] text-green-700">
           <Shield className="h-3.5 w-3.5 flex-shrink-0" />
-          <span>Your payment will be verified automatically within 1-2 minutes.</span>
+          <span>Pay by bank transfer or mobile money, then upload your receipt to verify.</span>
         </div>
       </div>
 
@@ -466,7 +375,7 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
       <div className="sticky bottom-0 -mx-4 border-t border-border bg-background/95 px-4 py-4 backdrop-blur-xl sm:-mx-6 sm:px-6">
         <Button
           onClick={handlePlaceOrder}
-          disabled={creatingOrder}
+          disabled={creatingOrder || !quote}
           className="w-full h-12 rounded-2xl text-base font-semibold"
           size="lg"
         >
@@ -477,7 +386,7 @@ export function StepReview({ mockupUrl, mockupUrls = [], onContinue }: Props) {
             </>
           ) : (
             <>
-              Place order · {currencySymbol} {total.toFixed(2)}
+              Place order{quote ? ` · ${money(quote.total)}` : ""}
               <ChevronRight className="ml-1 h-4 w-4" />
             </>
           )}

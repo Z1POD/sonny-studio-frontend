@@ -15,7 +15,8 @@ import {
   walletKeys,
   withdrawalsInfiniteQuery,
 } from "../queries";
-import { walletApi } from "../api";
+import { walletApi, withdrawalErrorMessage } from "../api";
+import { useConfirm } from "@/shared/components/ConfirmModal";
 import { formatMoney } from "../lib/wallet-format";
 import { WalletSheet } from "./WalletSheet";
 import { WithdrawRequestModal } from "./WithdrawRequestModal";
@@ -23,10 +24,12 @@ import { AddMethodModal } from "./AddMethodModal";
 import { PayoutSettingsModal } from "./PayoutSettingsModal";
 import { TransactionRow } from "./TransactionRow";
 import { WithdrawalRow } from "./WithdrawalRow";
+import { EarningsOverview } from "./EarningsOverview";
 import { EmptyState, ErrorState, ListSkeleton } from "./WalletListStates";
 
 export function WalletPage() {
   const qc = useQueryClient();
+  const [askConfirm, ConfirmDialog] = useConfirm();
   const { data: walletRes, isLoading: walletLoading } = useQuery(walletDetailQuery());
   const { data: balanceRes } = useQuery(walletBalanceQuery());
 
@@ -52,13 +55,13 @@ export function WalletPage() {
     isFetchingNextPage: isFetchingNextWdPage,
   } = useInfiniteQuery(withdrawalsInfiniteQuery(20));
 
-  const wallet = walletRes?.data;
-  const balance = balanceRes?.data;
+  const wallet = walletRes;
+  const balance = balanceRes;
 
   // Fallback to wallet detail's recent_transactions only if the paginated
   // query genuinely came back empty (not just still loading).
   const transactions = useMemo(() => {
-    const fromPages = txData?.pages.flatMap((p) => p.data) ?? [];
+    const fromPages = txData?.pages.flatMap((p) => p.results) ?? [];
     if (fromPages.length > 0) return fromPages;
     if (!txLoading && wallet?.recent_transactions && wallet.recent_transactions.length > 0) {
       return wallet.recent_transactions;
@@ -79,13 +82,17 @@ export function WalletPage() {
       toast.success("Withdrawal cancelled");
       qc.invalidateQueries({ queryKey: walletKeys.all });
     },
-    onError: (e: any) => toast.error(e?.message ?? "Failed to cancel"),
+    onError: (e: any) => toast.error(withdrawalErrorMessage(e, "Failed to cancel")),
   });
 
-  const handleCancelWithdrawal = (id: string) => {
-    if (confirm("Cancel this withdrawal? Funds will be returned to your wallet.")) {
-      cancelMutation.mutate(id);
-    }
+  const handleCancelWithdrawal = async (id: string) => {
+    const ok = await askConfirm({
+      title: "Cancel this withdrawal?",
+      description: "The reserved amount is returned to your available balance.",
+      confirmLabel: "Cancel withdrawal",
+      danger: true,
+    });
+    if (ok) cancelMutation.mutate(id);
   };
 
   const symbol = wallet?.currency?.symbol ?? balance?.currency?.symbol ?? "$";
@@ -103,7 +110,7 @@ export function WalletPage() {
       >
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Wallet</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Earnings, transactions and withdrawals.
+          Balance, earnings, payouts and withdrawals.
         </p>
       </motion.header>
 
@@ -144,13 +151,13 @@ export function WalletPage() {
           className="rounded-3xl border border-border bg-surface p-6"
         >
           <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-            <Clock className="h-3.5 w-3.5" /> Pending
+            <Clock className="h-3.5 w-3.5" /> Pending / incoming
           </div>
           <div className="mt-3 text-2xl font-semibold tracking-tight">
             {formatMoney(pending, symbol)}
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Clears 7 days after delivery confirmation.
+            Still in escrow, in the release window, or reserved for a withdrawal in progress. It becomes available after the pending window.
           </p>
         </motion.div>
       </section>
@@ -166,14 +173,16 @@ export function WalletPage() {
           <div className="mt-1 text-lg font-semibold">{formatMoney(totalWithdrawn, symbol)}</div>
         </div>
         <div className="rounded-2xl border border-border bg-surface p-4">
-          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Methods</div>
-          <div className="mt-1 text-lg font-semibold">{wallet?.withdrawal_methods?.length ?? 0}</div>
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Platform fees paid</div>
+          <div className="mt-1 text-lg font-semibold">{formatMoney(wallet?.total_platform_fees_paid ?? "0.00", symbol)}</div>
         </div>
         <div className="rounded-2xl border border-border bg-surface p-4">
           <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Status</div>
           <div className="mt-1 text-lg font-semibold capitalize">{wallet?.status ?? "—"}</div>
         </div>
       </section>
+
+      <EarningsOverview />
 
       {/* Tabs + list */}
       <section className="mt-8">
@@ -215,7 +224,7 @@ export function WalletPage() {
             ) : (
               <ul className="divide-y divide-border">
                 {transactions.map((t) => (
-                  <TransactionRow key={t.id} t={t} />
+                  <TransactionRow key={t.id} t={t} currency={wallet?.currency ?? balance?.currency ?? symbol} />
                 ))}
               </ul>
             )
@@ -301,6 +310,7 @@ export function WalletPage() {
       >
         <PayoutSettingsModal onClose={() => setShowSettings(false)} />
       </WalletSheet>
+      {ConfirmDialog}
     </div>
   );
 }

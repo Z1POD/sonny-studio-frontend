@@ -15,7 +15,7 @@ import { motion, AnimatePresence, type PanInfo } from "framer-motion";
 import { Loader2, Search, Sparkles, Fingerprint } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { haptics } from "@/shared/lib/haptics";
-import { homepageQuery, productsInfiniteQuery } from "../queries";
+import { blanksInfiniteQuery, categoriesQuery, homepageQuery, productsInfiniteQuery } from "../queries";
 import { ProductCard } from "./ProductCard";
 import { getStockBadge } from "../stock";
 import type { ProductListItem, ProductListParams } from "../types";
@@ -42,18 +42,24 @@ export function MarketplacePage() {
     () => ({
       q: search.q || undefined,
       category: search.category || undefined,
-      store: search.store || undefined,
       sort: search.sort || "popular",
       page_size: 12,
     }),
-    [search.q, search.category, search.store, search.sort],
+    [search.q, search.category, search.sort],
   );
 
-  const isFiltered = Boolean(search.q || search.category || search.store);
+  const isFiltered = Boolean(search.q || search.category);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery(
     productsInfiniteQuery(filters),
   );
+
+  const { data: categories } = useQuery(categoriesQuery());
+  // Blank products: the "Make your own" catalog. Cards on it open the 3D studio directly.
+  const { data: blankData } = useInfiniteQuery(
+    blanksInfiniteQuery({ q: search.q || undefined, category: search.category || undefined, page_size: 8 }),
+  );
+  const blanks = blankData?.pages.flatMap((p) => p.products) ?? [];
 
   const products = data?.pages.flatMap((p) => p.products) ?? [];
   const total = data?.pages[0]?.total_results ?? 0;
@@ -196,16 +202,11 @@ export function MarketplacePage() {
                     {heroCollection?.name ?? "M I M O | Marketplace"}
                 </span>
 
-                <h1 className="mt-5 text-4xl font-semibold leading-[1.02] tracking-[-0.04em] md:text-6xl">
-                    Made to order.
+                <h1 className="mt-5 text-3xl font-semibold leading-[1.02] tracking-[-0.04em] md:text-6xl">
+                    Made
                     <br />
-                    <span className="text-gold">Designed by you.</span>
+                    <span className="text-gold text-2xl md:text-4xl">Just for You</span>
                 </h1>
-
-                <p className="mt-4 max-w-md block text-sm leading-relaxed text-muted-foreground md:mt-5 md:hidden">
-                    {heroCollection?.description ??
-                    "Design custom products, order your favorites, or sell your creations, we handle production and delivery."}
-                </p>
                 <p className="mt-5 hidden max-w-md text-base text-muted-foreground md:block">
                     {heroCollection?.description ??
                     "Customize tees, hoodies, bags, mugs, bottles and more in our design studio. Keep your creation or publish it to the marketplace, we handle production, fulfillment, and delivery."}
@@ -426,6 +427,21 @@ export function MarketplacePage() {
         </section>
       )}
 
+      {/* MAKE YOUR OWN — blank products, straight into the studio */}
+      {blanks.length > 0 && (
+        <section id="make-your-own" className="mx-auto max-w-7xl px-4 pb-16 md:px-8">
+          <div className="mb-6">
+            <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Blank products</p>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">Make your own</h2>
+          </div>
+          <div className="grid auto-rows-[300px] grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+            {blanks.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* FEATURED CREATORS */}
       {!isFiltered && homepage && homepage.top_stores.length > 0 && (
         <section className="mx-auto max-w-7xl border-t border-border px-4 py-14 md:px-8">
@@ -472,7 +488,7 @@ export function MarketplacePage() {
               {isFiltered ? "Results" : "Shop all"}
             </p>
             <h2 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
-              {search.q ? `"${search.q}"` : search.store ? "Storefront pieces" : "Every piece"}
+              {search.q ? `"${search.q}"` : "Every piece"}
             </h2>
             {total > 0 && <p className="mt-1 text-xs text-muted-foreground">{total} products</p>}
           </div>
@@ -486,6 +502,30 @@ export function MarketplacePage() {
             </Link>
           )}
         </div>
+
+        {(categories?.length ?? 0) > 0 && (
+          <div className="no-scrollbar -mx-4 mb-6 flex gap-2 overflow-x-auto px-4 md:mx-0 md:px-0" role="tablist" aria-label="Categories">
+            {[{ slug: "", name: "All" }, ...(categories ?? [])].map((c) => {
+              const active = (search.category ?? "") === c.slug;
+              return (
+                <button
+                  key={c.slug || "all"}
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => {
+                    haptics.impactOccurred("light");
+                    navigate({ to: "/marketplace", search: { ...search, category: c.slug || undefined }, hash: "shop-all" });
+                  }}
+                  className={`shrink-0 rounded-full border px-4 py-1.5 text-xs font-medium transition-colors ${
+                    active ? "border-foreground bg-foreground text-background" : "border-border bg-surface text-muted-foreground hover:border-gold"
+                  }`}
+                >
+                  {c.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {isLoading ? (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

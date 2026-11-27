@@ -44,7 +44,7 @@ export function CheckOut({ mockupUrls: mockupUrlsProp }: CheckOutProps) {
     goBack,
     goForward,
     reset,
-  } = useCheckoutStore() as ReturnType<typeof useCheckoutStore> & { origin?: "studio" | "cart" };
+  } = useCheckoutStore();
   const { isTelegram } = useTelegram();
 
   const isCartOrigin = origin === "cart";

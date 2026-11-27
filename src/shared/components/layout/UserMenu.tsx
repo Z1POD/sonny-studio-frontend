@@ -4,27 +4,16 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  BarChart3,
-  Building2,
-  LogOut,
-  Receipt,
-  Store as StoreIcon,
-  Wallet as WalletIcon,
-} from "lucide-react";
+import { BarChart3, LogOut, ShoppingBag } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store";
 import { useTelegram } from "@/shared/hooks/use-telegram";
-import { useHasVerifiedStore } from "@/shared/hooks/use-store-access";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { useOverlayStore } from "@/shared/stores/overlay-store";
 
-// Always shown, for every signed-in user.
-const ACCOUNT_NAV = [{ to: "/orders", label: "Orders", icon: Receipt }] as const;
+const ACCOUNT_NAV = [{ to: "/analytics", label: "Analytics", icon: BarChart3 }] as const;
 
-const RESTRICTED_NAV = [
-  { to: "/store", label: "My Store", icon: Building2 },
-] as const;
+// Link to the separate buyer/marketplace app (optional — set VITE_BUYER_APP_URL).
+const BUYER_APP_URL = (import.meta.env.VITE_BUYER_APP_URL as string | undefined) || "";
 
 interface UserMenuProps {
   anchor?: "header" | "tab";
@@ -36,9 +25,7 @@ export function UserMenu({ anchor = "header", className, children }: UserMenuPro
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
 
-  const openAuth = useOverlayStore((s) => s.openSheet);
   const { isTelegram } = useTelegram();
-  const hasVerifiedStore = useHasVerifiedStore();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -54,7 +41,7 @@ export function UserMenu({ anchor = "header", className, children }: UserMenuPro
 
   const handleTrigger = () => {
     if (!user) {
-      openAuth();
+      navigate({ to: "/login", search: { redirect: undefined } });
       return;
     }
     setOpen((v) => !v);
@@ -62,7 +49,7 @@ export function UserMenu({ anchor = "header", className, children }: UserMenuPro
   const handleSignIn = () => {
     if (!user) {
     setOpen(false);
-    navigate({ to: "/login" });
+    navigate({ to: "/login", search: { redirect: undefined } });
     return;
     }
     setOpen((v) => !v);
@@ -119,30 +106,19 @@ export function UserMenu({ anchor = "header", className, children }: UserMenuPro
                   {label}
                 </Link>
               ))}
-              {hasVerifiedStore &&
-                RESTRICTED_NAV.map(({ to, label, icon: Icon }) => (
-                  <Link
-                    key={to}
-                    to={to}
-                    role="menuitem"
-                    onClick={() => setOpen(false)}
-                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-muted-foreground transition hover:bg-surface-overlay hover:text-foreground"
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {label}
-                  </Link>
-                ))}
             </div>
-            {!hasVerifiedStore && (
-              <Link
-                to="/store"
+            {BUYER_APP_URL && (
+              <a
+                href={BUYER_APP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
                 role="menuitem"
                 onClick={() => setOpen(false)}
                 className="flex w-full items-center gap-2.5 border-b border-border/40 px-4 py-2.5 text-sm text-primary transition hover:bg-surface-overlay"
               >
-                <StoreIcon className="h-3.5 w-3.5" />
-                Start selling your designs
-              </Link>
+                <ShoppingBag className="h-3.5 w-3.5" />
+                Open the marketplace
+              </a>
             )}
 
             {!isTelegram && (

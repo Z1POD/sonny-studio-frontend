@@ -1,12 +1,11 @@
 // src/features/auth/components/SplashPage.tsx
 
 "use client";
-import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { ArrowRight, Shirt, Palette, ShoppingBag, Sparkles, ShoppingCart, Truck } from "lucide-react";
+import { ArrowRight, Shirt, Palette, ShoppingBag, Sparkles, Wallet } from "lucide-react";
 import { BrandLoader } from "@/components/ui/loader";
 import { getMiniAppUrl } from "../lib/miniapp";
-import { LoginDialog } from "./LoginDialog";
 
 interface SplashPageProps {
   isTelegramLaunching?: boolean;
@@ -20,7 +19,7 @@ function FeatureCard({
   x,
   y,
 }: {
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string }>;
   label: string;
   delay: number;
   x: string;
@@ -44,8 +43,8 @@ function FeatureCard({
 
 /*    Main splash page    */
 export function SplashPage({ isTelegramLaunching = false }: SplashPageProps) {
-  const [loginOpen, setLoginOpen] = useState(false);
   const miniAppUrl = getMiniAppUrl();
+  const navigate = useNavigate();
 
   return (
     <div className="relative flex min-h-dvh flex-col overflow-hidden bg-[#083b32] text-white">
@@ -94,7 +93,7 @@ export function SplashPage({ isTelegramLaunching = false }: SplashPageProps) {
           {/* Floating feature cards */}
           <FeatureCard icon={Palette} label="Design" delay={0.4} x="8%" y="18%" />
           <FeatureCard icon={Shirt} label="Mockups" delay={0.55} x="72%" y="12%" />
-          <FeatureCard icon={ShoppingCart} label="Order" delay={0.3} x="35%" y="85%" />
+          <FeatureCard icon={Wallet} label="Earn" delay={0.3} x="35%" y="85%" />
           <FeatureCard icon={ShoppingBag} label="Sell" delay={0.7} x="75%" y="65%" />
           <FeatureCard icon={Sparkles} label="Create" delay={0.85} x="12%" y="58%" />
 
@@ -166,7 +165,7 @@ export function SplashPage({ isTelegramLaunching = false }: SplashPageProps) {
                     >
                       <div className="flex items-center gap-1">
                         <div className="h-2 w-2 rounded-sm bg-emerald-300/60" />
-                        <Truck className="h-5 w-5 text-amber-300/70" />
+                        <Wallet className="h-5 w-5 text-amber-300/70" />
                       </div>
                     </motion.div>
                   </div>
@@ -189,7 +188,7 @@ export function SplashPage({ isTelegramLaunching = false }: SplashPageProps) {
 
                   <button
                     type="button"
-                    onClick={() => setLoginOpen(true)}
+                    onClick={() => navigate({ to: "/login", search: { redirect: undefined } })}
                     className="flex h-[3.25rem] w-full items-center justify-center gap-1 rounded-full border border-white/10 bg-white/[0.04] text-[15px] font-medium text-white/70 backdrop-blur-sm transition hover:bg-white/[0.08] hover:text-white"
                   >
                     Already have an account?
@@ -208,7 +207,6 @@ export function SplashPage({ isTelegramLaunching = false }: SplashPageProps) {
         </div>
       </div>
 
-      <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} />
     </div>
   );
 }

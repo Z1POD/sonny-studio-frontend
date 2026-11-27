@@ -6,16 +6,13 @@ import { useTelegram } from "@/shared/hooks/use-telegram";
 import { cn } from "@/lib/utils";
 import { Header } from "./Header";
 import { BottomNav } from "./BottomNav";
-import { CartDrawer } from "@/features/market/components/CartDrawer";
-import { CheckOut } from "@/features/checkout/components/CheckOut";
 import { useTheme, applyThemeClass } from "@/shared/stores/theme-store";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const router = useRouter();
   const isStudio = location.pathname.startsWith("/studio");
-  const isProductDetail = location.pathname.startsWith("/product/") || location.pathname.startsWith("/p/");
-  const isMinimal = isStudio || isProductDetail;
+  const isMinimal = isStudio;
 
   const {
     tg,
@@ -39,8 +36,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [isTelegram, isStudio, disableVerticalSwipes, enableVerticalSwipes]);
 
   const handleBack = useCallback(() => {
-    router.history.back();
-  }, [router]);
+    // The studio asks before discarding unsaved work.
+    if (location.pathname.startsWith("/studio")) window.dispatchEvent(new Event("studio:request-back"));
+    else router.history.back();
+  }, [router, location.pathname]);
 
   useEffect(() => {
     if (!tg?.BackButton) return;
@@ -68,7 +67,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     root.style.setProperty("--tg-safe-area-bottom", `${bottom}px`);
   }, [isFullscreen, safeAreaInset, contentSafeAreaInset]);
 
-  const applySafeAreaTop = isTelegram && isFullscreen && !isStudio && !isProductDetail;
+  const applySafeAreaTop = isTelegram && isFullscreen && !isStudio;
 
   return (
     <div
@@ -77,14 +76,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         applySafeAreaTop && "pt-[var(--tg-safe-area-top)] md:pt-0"
       )}
     >
-      <Header variant={isMinimal ? "minimal" : "full"} />
+      {/* The studio is full-screen and draws its own top bar (back / theme / save). */}
+      {!isStudio && <Header variant={isMinimal ? "minimal" : "full"} />}
 
       <main className="flex-1">{children}</main>
 
       {!isMinimal && <BottomNav />}
-
-      <CartDrawer />
-      <CheckOut />
     </div>
   );
 }

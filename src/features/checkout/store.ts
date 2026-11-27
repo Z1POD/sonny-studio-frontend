@@ -1,7 +1,6 @@
 // src/features/checkout/store.ts — v5
 
 import { create } from "zustand";
-import type { ArtworkState, PrintArea, ApparelProduct } from "@/features/studio/store";
 import type {
   CheckoutStep,
   CheckoutVariant,
@@ -17,8 +16,9 @@ import type {
   VariantSelection,
   CheckoutOrigin,
   CartCheckoutLine,
+  CheckoutArtwork,
+  CheckoutPrintArea,
 } from "./types";
-import type { ProductDetail } from "@/features/store/api";
 
 //     Open params                                                               
 
@@ -31,8 +31,8 @@ export interface CheckoutOpenParams {
   printCost: number;
   currencySymbol: string;
   variants: CheckoutVariant[];
-  artworks: Record<string, ArtworkState>;
-  printAreas: PrintArea[];
+  artworks: Record<string, CheckoutArtwork>;
+  printAreas: CheckoutPrintArea[];
   selectedColor?: string;
   preselectedVariantId?: string;
   userFullName?: string;
@@ -66,8 +66,8 @@ export interface CheckoutState {
   selectedVariants: Map<string, VariantSelection>;
 
   // Artwork / print areas
-  artworks: Record<string, ArtworkState>;
-  printAreas: PrintArea[];
+  artworks: Record<string, CheckoutArtwork>;
+  printAreas: CheckoutPrintArea[];
 
   // Pricing
   basePrice: number;
@@ -153,9 +153,6 @@ export interface CheckoutState {
   setPollInterval: (v: ReturnType<typeof setInterval> | null) => void;
   setReceiptSubmission: (v: ReceiptSubmission | null) => void;
 
-  /** Hydrate from a saved ProductDetail for the reorder / studio-restore flow */
-  loadDesign: (detail: ProductDetail, apparelProduct: ApparelProduct) => void;
-
   /** @internal — rebuild selectedVariants after color/size toggle */
   _rebuildSelections: () => void;
 }
@@ -194,8 +191,8 @@ const initial = {
   selectedColors: new Set<string>(),
   selectedSizes: new Set<string>(),
   selectedVariants: new Map<string, VariantSelection>(),
-  artworks: {} as Record<string, ArtworkState>,
-  printAreas: [] as PrintArea[],
+  artworks: {} as Record<string, CheckoutArtwork>,
+  printAreas: [] as CheckoutPrintArea[],
   basePrice: 0,
   printCost: 0,
   currencySymbol: "Br",
@@ -287,77 +284,6 @@ export const useCheckoutStore = create<CheckoutState>((set, get) => ({
       direction: 1,
       cartItems: lines,
       currencySymbol: lines[0]?.currencySymbol ?? "Br",
-    });
-  },
-
-  //    loadDesign                                                              
-  loadDesign: (detail, apparelProduct) => {
-    const pricing = detail.pricing;
-    const sym =
-      typeof pricing?.currency === "object" ? pricing.currency.symbol : "Br";
-    const basePrice = parseFloat(pricing?.base_price ?? "0");
-
-    const variants: CheckoutVariant[] = (detail.enabled_variant ?? []).map((v) => ({
-      id: v.id,
-      sku: v.sku,
-      color: v.color,
-      size: v.size,
-      stockQuantity: (v as any).stock_quantity ?? 99,
-      isInStock: (v as any).isInStock ?? (v as any).in_stock ?? true,
-      additionalPrice: "0",
-      quantity: 1,
-    }));
-
-    const snapshot = detail.snapshot as any;
-    const savedArtworks: Record<string, ArtworkState> = snapshot?.artworks ?? {};
-    const savedColor: string | null = snapshot?.selectedColor ?? apparelProduct.colors[0] ?? null;
-    const savedVariantId: string | null =
-      snapshot?.selectedVariantId ?? variants[0]?.id ?? null;
-
-    const mockupUrls = (detail.mockups ?? [])
-      .sort((a, b) => a.sort_order - b.sort_order)
-      .map((m) => m.url);
-
-    const initialColors = new Set<string>();
-    const initialSizes = new Set<string>();
-    const initialSelections = new Map<string, VariantSelection>();
-
-    if (savedVariantId) {
-      const v = variants.find((v) => v.id === savedVariantId);
-      if (v) {
-        initialColors.add(v.color.hex);
-        initialSizes.add(v.size);
-        initialSelections.set(v.id, {
-          variantId: v.id,
-          colorHex: v.color.hex,
-          colorName: v.color.name,
-          size: v.size,
-          quantity: 1,
-        });
-      }
-    } else if (savedColor) {
-      initialColors.add(savedColor);
-    }
-
-    set({
-      ...initial,
-      isOpen: true,
-      step: "variants",
-      direction: 1,
-      productId: detail.id,
-      productName: detail.title,
-      thumbnailUrl: detail.thumbnail_url,
-      mockupUrl: mockupUrls[0],
-      mockupUrls,
-      basePrice,
-      printCost: 0,
-      currencySymbol: sym,
-      variants,
-      selectedColors: initialColors,
-      selectedSizes: initialSizes,
-      selectedVariants: initialSelections,
-      artworks: savedArtworks,
-      printAreas: apparelProduct.printAreas,
     });
   },
 
@@ -498,7 +424,8 @@ export const useCheckoutStore = create<CheckoutState>((set, get) => ({
       // print areas/artwork since these are ready-made marketplace items.
       return cartItems.map((line) => ({
         productId: line.productId,
-        variantId: `${line.productId}:${line.colorName}:${line.size}`,
+        designId: line.designId,
+        variantId: line.variantId,
         size: line.size,
         colorName: line.colorName,
         colorHex: line.colorHex,
@@ -510,6 +437,7 @@ export const useCheckoutStore = create<CheckoutState>((set, get) => ({
 
     return Array.from(selectedVariants.values()).map((sel) => ({
       productId,
+      designId: productId,
       variantId: sel.variantId,
       size: sel.size,
       colorName: sel.colorName,

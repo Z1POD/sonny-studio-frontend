@@ -1,36 +1,32 @@
 // src/features/studio/queries.ts
 
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
-import { studioApi, artworkApi } from "./api";
-
-/*     Studio product                                                          */
+import { studioApi } from "./api";
+import type { ArtworkItem } from "./types";
 
 export const studioKeys = {
   all: ["studio"] as const,
-  detail: (slugOrId: string) => [...studioKeys.all, "detail", slugOrId] as const,
+  config: (slug: string, from?: string, design?: string) => [...studioKeys.all, "config", slug, from ?? null, design ?? null] as const,
+  artwork: (category: ArtworkItem["category"], product?: string) => [...studioKeys.all, "artwork", category, product ?? null] as const,
 };
 
-export const studioDetailQuery = (slugOrId: string) =>
+export const studioConfigQuery = (slug: string, from?: string, design?: string) =>
   queryOptions({
-    queryKey: studioKeys.detail(slugOrId),
-    queryFn: () => studioApi.get(slugOrId),
-    staleTime: 60_000,
+    queryKey: studioKeys.config(slug, from, design),
+    queryFn: () => studioApi.getConfig(slug, { from, design }),
+    // The config is user-specific (plan, stock) and seeds local editing state — never refetch behind the editor.
+    staleTime: Infinity,
+    gcTime: 0,
+    retry: 1,
   });
 
-/*     Artwork library                                                         */
-
-export const artworkKeys = {
-  all: ["artworks"] as const,
-  library: () => [...artworkKeys.all, "library"] as const,
-};
-
-export const artworkLibraryInfiniteQuery = (pageSize = 20) =>
+/** Always pass the product so the server composes the list from its artwork policy (tied first). */
+export const studioArtworkQuery = (category: ArtworkItem["category"], product?: string, enabled = true) =>
   infiniteQueryOptions({
-    queryKey: [...artworkKeys.library(), "infinite", pageSize] as const,
-    queryFn: ({ pageParam = 1 }) =>
-      artworkApi.list({ page: pageParam as number, page_size: pageSize }),
-    getNextPageParam: (last) =>
-      last.pagination.has_next ? last.pagination.page + 1 : undefined,
+    queryKey: studioKeys.artwork(category, product),
+    queryFn: ({ pageParam }) => studioApi.listArtwork({ category, product, page: pageParam }),
+    enabled,
     initialPageParam: 1,
-    staleTime: 30_000,
+    getNextPageParam: (last) => (last.hasNext ? last.page + 1 : undefined),
+    staleTime: 5 * 60_000,
   });

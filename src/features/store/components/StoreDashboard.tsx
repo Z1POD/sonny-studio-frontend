@@ -10,13 +10,16 @@ import {
   ArrowUpRight, ImageIcon, Shirt, Plus, Sparkles,
   Store as StoreIcon, Wallet as WalletIcon, BarChart3,
   Share2, Pencil, Check, Globe, Archive, Trash2,
-  Loader2,
+  Loader2, BadgeCheck, AlertTriangle, Tag, Eye, Settings2,
 } from "lucide-react";
 import { appToast as toast } from "@/lib/toaster";
 import { Button } from "@/components/ui/button";
 import {
-  storeStatsQuery, storeSummaryQuery, walletQuery, storeProductsQuery, storeProductKeys,
+  storeDashboardQuery, storeKeys, storeProductsQuery, storeProductKeys,
 } from "../queries";
+import { storeApi } from "../storeApi";
+import { Delta, Sparkline } from "./StatBits";
+import { StoreProfileSheet } from "./StoreProfileSheet";
 import { storeProductApi, getRetailPrice, type ProductListItem } from "../api";
 import { ProductListSheet, ProductListModal } from "./ProductList";
 import { EditProductModal } from "./EditProductModal";
@@ -35,6 +38,25 @@ function StatTile({ label, value, sub }: { label: string; value: string; sub?: s
         <span className="text-2xl font-semibold tracking-tight">{value}</span>
         {sub && <span className="text-xs text-muted-foreground">{sub}</span>}
       </div>
+    </div>
+  );
+}
+
+function HeroStat({ label, value, delta, loading }: { label: string; value: string; delta?: number | null; loading?: boolean }) {
+  return (
+    <div className="rounded-2xl border border-border/70 bg-background/40 px-4 py-3 backdrop-blur-sm">
+      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+      <div className="mt-1.5 text-xl font-semibold tabular-nums tracking-tight">{loading ? "…" : value}</div>
+      {delta !== undefined && <div className="mt-0.5"><Delta value={delta} /></div>}
+    </div>
+  );
+}
+
+function MiniFact({ label, value, icon }: { label: string; value?: number | string; icon?: React.ReactNode }) {
+  return (
+    <div>
+      <p className="flex items-center gap-1 text-muted-foreground">{icon}{label}</p>
+      <p className="mt-0.5 text-base font-semibold tabular-nums">{value ?? "—"}</p>
     </div>
   );
 }
@@ -79,7 +101,7 @@ function ProductCard({
 
   const publishMutation = useMutation({
     mutationFn: () => storeProductApi.publish(p.id),
-    onSuccess: () => { toast.success("Product published!"); onMutated(); },
+    onSuccess: (r) => { toast.success(r.is_published ? "Product published!" : "Submitted for review — it goes live once approved"); onMutated(); },
     onError: (e: any) => toast.error(e?.message ?? "Failed to publish"),
   });
 
@@ -99,25 +121,19 @@ function ProductCard({
     e.stopPropagation();
     if (!p.public_link) return;
 
-    // Extract price and currency from product data
-    const productData = p as any;
-    const price = productData.pricing?.retail_price ?? productData.retail_price;
-    const currencySymbol = productData.pricing?.currency?.symbol ?? productData.currency?.symbol;
 
     openShareDrawer({
-      id: p.id,
       title: p.title,
+      slug: p.slug,
       url: p.public_link,
-      imageUrl: p.thumbnail_url,
+      imageUrl: p.thumbnail_url ?? undefined,
       productId: p.id,
       shouldPublish: false,
-      price,
-      currencySymbol,
+      priceLabel: getRetailPrice(p),
       flags: {
         isCustom: true,
-        isPremium: productData.production_ready === true,
-        isTrending: (productData.sold_quantity ?? 0) > 10,
-        lowStock: productData.stock_quantity != null && productData.stock_quantity < 10,
+        isPremium: p.production_ready,
+        isTrending: p.sold_quantity > 10,
       },
     });
   };
@@ -227,9 +243,7 @@ function ProductCard({
 //     StoreDashboard                                                            
 
 export function StoreDashboard() {
-  const summary = useQuery(storeSummaryQuery());
-  const stats = useQuery(storeStatsQuery());
-  const wallet = useQuery(walletQuery());
+  const dash = useQuery(storeDashboardQuery());
   const products = useQuery(storeProductsQuery({ page: 1, page_size: 8 }));
   // Dashboard grid only ever shows published products — filtered server-side
   const publishedProducts = useQuery(
@@ -239,16 +253,30 @@ export function StoreDashboard() {
 
   const [editTarget, setEditTarget] = useState<ProductListItem | null>(null);
   const [productListOpen, setProductListOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  const d = dash.data;
+  const money = (v?: string) => (v == null ? "—" : formatPrice(v, d?.currency));
+
+  const toggleAccepting = useMutation({
+    mutationFn: (on: boolean) => storeApi.updateProfile({ is_accepting_orders: on }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: storeKeys.dashboard });
+      qc.invalidateQueries({ queryKey: storeKeys.profile });
+    },
+    onError: (e: Error) => toast.error(e.message || "Couldn't update your store"),
+  });
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: storeProductKeys.lists() });
-    qc.invalidateQueries({ queryKey: ["store-stats"] });
+    qc.invalidateQueries({ queryKey: storeKeys.dashboard });
     products.refetch();
     publishedProducts.refetch();
   };
 
   const productList = products.data?.results ?? [];
   const publishedList = publishedProducts.data?.results ?? [];
+  const attention = (d?.needs_attention.pending_orders ?? 0) + (d?.needs_attention.open_disputes ?? 0) > 0;
 
   return (
     <div className="mx-auto w-full max-w-6xl px-2 pb-24 pt-6 sm:px-8">
@@ -260,97 +288,143 @@ export function StoreDashboard() {
         transition={{ duration: 0.3 }}
         className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-surface-elevated via-surface to-surface p-6 sm:p-8"
       >
+        {d?.store.banner_url && <img src={d.store.banner_url} alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-15" />}
         <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-primary/20 blur-3xl" aria-hidden />
-        <div className="relative flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex items-center gap-4">
-            <div className="inline-flex h-11 w-16 sm:h-16 items-center justify-center overflow-hidden rounded-2xl bg-surface-overlay text-foreground/80 ring-1 ring-border-strong">
-              {summary.data?.data?.logo_url
-                ? <img src={summary.data.data.logo_url} alt="" className="h-full w-full object-cover" />
-                : <StoreIcon className="h-7 w-7" />
-              }
+            <div className="inline-flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-surface-overlay text-foreground/80 ring-1 ring-border-strong sm:h-16 sm:w-16">
+              {d?.store.logo_url ? <img src={d.store.logo_url} alt="" className="h-full w-full object-cover" /> : <StoreIcon className="h-7 w-7" />}
             </div>
             <div className="min-w-0">
-              <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-                {summary.data?.data?.name ?? "Your store"}
+              <h1 className="flex items-center gap-1.5 text-2xl font-semibold tracking-tight sm:text-3xl">
+                <span className="truncate">{d?.store.name ?? "Your store"}</span>
+                {d?.store.is_verified && <BadgeCheck className="h-5 w-5 shrink-0 text-primary" aria-label="Verified store" />}
               </h1>
-              <p className="mt-1 max-w-md text-sm text-muted-foreground">
-                {summary.data?.data?.description ?? "Customize your storefront, publish designs and track sales."}
-              </p>
+              <label className="mt-1.5 inline-flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={d?.store.is_accepting_orders ?? false}
+                  disabled={!d || toggleAccepting.isPending}
+                  onClick={() => d && toggleAccepting.mutate(!d.store.is_accepting_orders)}
+                  className={`relative h-5 w-9 rounded-full transition ${d?.store.is_accepting_orders ? "bg-emerald-500" : "bg-border-strong"} disabled:opacity-50`}
+                >
+                  <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${d?.store.is_accepting_orders ? "left-[18px]" : "left-0.5"}`} />
+                </button>
+                {d?.store.is_accepting_orders ? "Accepting orders" : "Orders paused"}
+              </label>
             </div>
           </div>
-          <Button asChild className="rounded-full">
-            <Link to="/catalog"><Shirt className="mr-2 h-4 w-4" /> Browse catalog</Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" className="rounded-full" onClick={() => setProfileOpen(true)}>
+              <Settings2 className="mr-2 h-4 w-4" /> Edit store
+            </Button>
+            <Button asChild className="rounded-full">
+              <Link to="/catalog"><Shirt className="mr-2 h-4 w-4" /> Catalog</Link>
+            </Button>
+          </div>
         </div>
 
-        <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <StatTile label="Products" value={String(stats.data?.total_products ?? "—")} />
-          <StatTile label="Sales" value={String(stats.data?.total_sales ?? "—")} />
-          <StatTile
-            label="Revenue"
-            value={
-              stats.data?.revenue
-                ? formatPrice(stats.data.revenue.amount, stats.data.revenue.currency)
-                : "—"
-            }
-          />
-          <StatTile label="Pending orders" value={String(stats.data?.pending_orders ?? "—")} />
-          <StatTile
-            label="Rating"
-            value={stats.data?.rating != null ? stats.data.rating.toFixed(1) : "—"}
-            sub={stats.data?.review_count ? `(${stats.data.review_count})` : undefined}
-          />
+        {/* Earnings KPIs */}
+        <div className="relative mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <HeroStat label="Today" value={money(d?.earnings.today)} loading={dash.isLoading} />
+          <HeroStat label="This week" value={money(d?.earnings.week)} delta={d?.earnings.week_delta} loading={dash.isLoading} />
+          <HeroStat label="This month" value={money(d?.earnings.month)} delta={d?.earnings.month_delta} loading={dash.isLoading} />
+          <HeroStat label="Lifetime" value={money(d?.earnings.lifetime)} loading={dash.isLoading} />
         </div>
       </motion.section>
 
-      {/* Wallet + Analytics + Suggested next step */}
-      <section className="mt-6 grid gap-4 lg:grid-cols-3">
-        <div className="flex flex-col gap-4 lg:col-span-1">
-          {/* Wallet tile — unchanged */}
-          <div className="rounded-3xl border border-border bg-surface p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <WalletIcon className="h-4 w-4" /> Wallet
+      {/* Needs attention */}
+      {d && (attention || d.promotions.active_discounts > 0 || d.promotions.available_coupons > 0) && (
+        <section className="mt-4 grid gap-3 sm:grid-cols-2">
+          {attention && (
+            <div className="flex items-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">
+              <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
+              <div className="min-w-0 text-sm">
+                <p className="font-medium">Needs your attention</p>
+                <p className="text-xs text-muted-foreground">
+                  {d.needs_attention.pending_orders > 0 && `${d.needs_attention.pending_orders} order${d.needs_attention.pending_orders === 1 ? "" : "s"} awaiting payment`}
+                  {d.needs_attention.pending_orders > 0 && d.needs_attention.open_disputes > 0 && " · "}
+                  {d.needs_attention.open_disputes > 0 && `${d.needs_attention.open_disputes} open dispute${d.needs_attention.open_disputes === 1 ? "" : "s"}`}
+                </p>
               </div>
-              <Link to="/wallet" className="inline-flex items-center text-xs font-medium text-primary hover:underline">
-                Details <ArrowUpRight className="ml-1 h-3 w-3" />
-              </Link>
             </div>
-            <div className="mt-4">
-              <div className="text-3xl font-semibold tracking-tight">
-                {wallet.data?.data
-                  ? formatPrice(wallet.data.data.available, wallet.data.data.currency)
-                  : "—"}
-              </div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                Pending <span className="text-foreground">
-                  {wallet.data?.data
-                    ? formatPrice(wallet.data.data.pending, wallet.data.data.currency)
-                    : "0.00"}
-                </span>
-              </div>
+          )}
+          <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4">
+            <Tag className="h-5 w-5 shrink-0 text-primary" />
+            <div className="text-sm">
+              <p className="font-medium">{d.promotions.active_discounts} active discount{d.promotions.active_discounts === 1 ? "" : "s"}</p>
+              <p className="text-xs text-muted-foreground">{d.promotions.available_coupons} coupons available to share</p>
             </div>
           </div>
+        </section>
+      )}
 
-          {/* Analytics link — same pattern as the Wallet tile */}
-          <Link
-            to="/analytics"
-            className="flex items-center justify-between rounded-3xl border border-border bg-surface p-6 transition hover:border-border-strong"
-          >
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <BarChart3 className="h-4 w-4" /> Analytics
-            </div>
-            <span className="inline-flex items-center text-xs font-medium text-primary">
-              View <ArrowUpRight className="ml-1 h-3 w-3" />
-            </span>
-          </Link>
+      {/* Sales / wallet / trend */}
+      <section className="mt-4 grid gap-4 lg:grid-cols-3">
+        <div className="rounded-3xl border border-border bg-surface p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground"><WalletIcon className="h-4 w-4" /> Wallet</div>
+            <Link to="/wallet" className="inline-flex items-center text-xs font-medium text-primary hover:underline">Details <ArrowUpRight className="ml-1 h-3 w-3" /></Link>
+          </div>
+          <div className="mt-4 text-3xl font-semibold tracking-tight">{money(d?.balances.available)}</div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            Pending <span className="text-foreground">{money(d?.balances.pending)}</span> · Withdrawn <span className="text-foreground">{money(d?.balances.total_withdrawn)}</span>
+          </div>
         </div>
 
-        {/* Dynamic suggestion card — adapts to user state */}
-        <DiscountSuggestionCard
-          products={productList}
-          productsLoading={products.isLoading}
-        />
+        <div className="rounded-3xl border border-border bg-surface p-6 lg:col-span-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground"><BarChart3 className="h-4 w-4" /> Last 14 days</div>
+            <Link to="/analytics" className="inline-flex items-center text-xs font-medium text-primary hover:underline">Analytics <ArrowUpRight className="ml-1 h-3 w-3" /></Link>
+          </div>
+          <Sparkline series={d?.mini_series ?? []} className="mt-3 h-16 w-full" />
+          <div className="mt-3 grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
+            <MiniFact label="Orders (week)" value={d?.sales.orders_week} />
+            <MiniFact label="Items sold (week)" value={d?.sales.items_sold_week} />
+            <MiniFact label="Views (month)" value={d?.visibility.views_month} icon={<Eye className="h-3 w-3" />} />
+            <MiniFact label="Conversion" value={d?.visibility.conversion_rate != null ? `${d.visibility.conversion_rate}%` : "—"} />
+          </div>
+        </div>
+      </section>
+
+      {/* Products overview + top sellers + suggestion */}
+      <section className="mt-4 grid gap-4 lg:grid-cols-3">
+        <div className="rounded-3xl border border-border bg-surface p-6">
+          <p className="text-sm text-muted-foreground">Products</p>
+          <p className="mt-2 text-3xl font-semibold tracking-tight">{d?.products.total ?? "—"}</p>
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            <span><b className="text-foreground">{d?.products.published ?? 0}</b> published</span>
+            <span><b className="text-foreground">{d?.products.draft ?? 0}</b> draft</span>
+            <span><b className="text-foreground">{d?.products.archived ?? 0}</b> archived</span>
+          </div>
+          <p className="mt-4 text-xs text-muted-foreground">{d ? `${d.sales.lifetime_orders} orders · ${d.sales.lifetime_items_sold} items sold lifetime` : ""}</p>
+        </div>
+
+        <div className="rounded-3xl border border-border bg-surface p-6 lg:col-span-2">
+          <p className="mb-3 text-sm font-semibold">Top products</p>
+          {dash.isLoading ? (
+            <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-10 animate-pulse rounded-xl bg-surface-elevated" />)}</div>
+          ) : (d?.top_products ?? []).length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">No sales yet — share a product link to get started.</p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {d!.top_products.map((p, i) => (
+                <li key={p.id} className="flex items-center gap-3 py-2.5 text-sm">
+                  <span className="w-4 text-center text-xs text-muted-foreground">{i + 1}</span>
+                  <span className="h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-surface-overlay">{p.thumbnail_url && <img src={p.thumbnail_url} alt="" className="h-full w-full object-cover" loading="lazy" />}</span>
+                  <span className="min-w-0 flex-1 truncate font-medium">{p.title}</span>
+                  <span className="text-xs text-muted-foreground">{p.sales} sold</span>
+                  <span className="font-semibold tabular-nums">{formatPrice(p.earnings, { symbol: p.currency_symbol })}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
+
+      <section className="mt-4">
+        <DiscountSuggestionCard products={productList} productsLoading={products.isLoading} />
       </section>
 
       {/* Products */}
@@ -399,6 +473,8 @@ export function StoreDashboard() {
 
       {/* Product list modal — opened via "Publish from designs" */}
       <ProductListModal open={productListOpen} onOpenChange={setProductListOpen} />
+
+      <StoreProfileSheet open={profileOpen} onOpenChange={setProfileOpen} />
 
       {/* Edit modal */}
       <AnimatePresence>

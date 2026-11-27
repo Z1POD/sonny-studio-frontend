@@ -18,7 +18,6 @@ const PRODUCT_PREFIX = "p_";
  * as new top-level deep-linkable sections are introduced.
  */
 const ROUTE_PARAMS: Record<string, string> = {
-  orders: "/orders",
   store: "/store",
   catalog: "/catalog",
   designs: "/designs",

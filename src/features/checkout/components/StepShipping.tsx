@@ -127,8 +127,6 @@ export function StepShipping({ onContinue }: Props) {
     setShippingOptions,
     shippingLoading,
     setShippingLoading,
-    couponCode,
-    setCouponCode,
     fieldErrors,
     setFieldErrors,
     clearFieldError,
@@ -174,7 +172,7 @@ export function StepShipping({ onContinue }: Props) {
     const subtotal = getSubtotal();
     setShippingLoading(true);
     checkoutApi
-      .getShippingOptions(shippingAddress.cityId, qty, subtotal)
+      .getShippingOptions(shippingAddress.cityId)
       .then((opts) => {
         setShippingOptions(opts);
         if (opts.delivery.length > 0 && !selectedVendorCode) {
@@ -265,7 +263,7 @@ export function StepShipping({ onContinue }: Props) {
 
                 clearFieldError("fullName");
             }}
-            placeholder="Henok Tesfaye"
+            placeholder="Full name"
             className={`h-12 rounded-xl border-border bg-surface ${
                 shippingAddress.fullName &&
                 !nameValidation.valid
@@ -535,27 +533,6 @@ export function StepShipping({ onContinue }: Props) {
           />
         </div>
 
-        {/* Coupon */}
-        <div className="space-y-1.5 mb-2">
-          <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-            Coupon code (optional)
-          </Label>
-          <Input
-            value={couponCode}
-            onChange={(e) => {
-              setCouponCode(e.target.value);
-              clearFieldError("coupon");
-            }}
-            placeholder="SAVE10"
-            className={`h-12 rounded-xl border-border bg-surface ${fieldErrors.coupon ? "border-destructive" : ""}`}
-          />
-          {fieldErrors.coupon && (
-            <p className="flex items-center gap-1 text-[11px] text-destructive">
-              <AlertCircle className="h-3 w-3" />
-              {fieldErrors.coupon}
-            </p>
-          )}
-        </div>
       </div>
 
       {/* Sticky Continue Button */}

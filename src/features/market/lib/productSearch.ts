@@ -1,6 +1,6 @@
 // src/features/market/lib/productSearch.ts
 //
-// Both /p/$slug and /product/$slug need to lift `code` (coupon),
+// Both /p/$slug and /product/$slug need to lift 
 // `ref`, and `utm_*` off the URL and forward them to the actual API
 // request — the backend reads these directly off the product-detail
 // request itself (see MarketplaceService.get_product_detail and
@@ -14,7 +14,6 @@ function str(v: unknown): string | undefined {
 
 export function parseProductSearch(search: Record<string, unknown>): ProductDetailParams {
   return {
-    code: str(search.code),
     ref: str(search.ref),
     utm_source: str(search.utm_source),
     utm_medium: str(search.utm_medium),

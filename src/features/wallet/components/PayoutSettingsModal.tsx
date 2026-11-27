@@ -9,14 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { myWithdrawalMethodsQuery, walletKeys } from "../queries";
 import { walletApi } from "../api";
-import { categoryIcon } from "../lib/wallet-format";
+import { categoryIcon, methodStatusLabel } from "../lib/wallet-format";
 import { useConfirm } from "@/shared/components/ConfirmModal";
 
 export function PayoutSettingsModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
   const [confirm, ConfirmModal] = useConfirm();
   const { data: methodsData } = useQuery(myWithdrawalMethodsQuery());
-  const methods = methodsData?.data ?? [];
+  const methods = methodsData ?? [];
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => walletApi.deleteMethod(id),
@@ -39,7 +39,7 @@ export function PayoutSettingsModal({ onClose }: { onClose: () => void }) {
   const handleDelete = async (id: string) => {
     const ok = await confirm({
       title: "Remove this withdrawal method?",
-      description: "You can add it again later, but any pending payouts tied to it may need to be re-verified.",
+      description: "You can add it again later, but it will need staff approval again before you can withdraw to it.",
       confirmLabel: "Remove",
       danger: true,
     });
@@ -51,6 +51,9 @@ export function PayoutSettingsModal({ onClose }: { onClose: () => void }) {
       <div className="space-y-5 max-h-[70dvh] overflow-y-auto pr-1 no-scrollbar">
         <div className="space-y-3">
           <Label>Your withdrawal methods</Label>
+          <p className="text-xs text-muted-foreground">
+            New methods are reviewed by our team before they can be used. Editing an approved method sends it back for approval.
+          </p>
           {methods.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border bg-surface/60 p-6 text-center text-sm text-muted-foreground">
               No withdrawal methods yet. Add one to start withdrawing.
@@ -77,22 +80,16 @@ export function PayoutSettingsModal({ onClose }: { onClose: () => void }) {
                           Default
                         </span>
                       )}
-                      {m.is_verified ? (
-                        <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
-                          Verified
-                        </span>
-                      ) : (
-                        <span className="rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
-                          Unverified
-                        </span>
-                      )}
+                      <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${methodStatusLabel(m.status).cls}`}>
+                        {methodStatusLabel(m.status).label}
+                      </span>
                     </div>
                     <div className="text-[11px] text-muted-foreground">
-                      {m.payment_method.name} · {Object.values(m.account_details)[0]}
+                      {m.payment_method.name} · {Object.values(m.account_details ?? {})[0]}
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
-                    {!m.is_default && m.status !== "archived" && (
+                    {!m.is_default && m.status === "active" && (
                       <button
                         onClick={() => setDefaultMutation.mutate(m.id)}
                         disabled={setDefaultMutation.isPending}

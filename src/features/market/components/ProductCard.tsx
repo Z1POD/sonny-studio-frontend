@@ -1,6 +1,7 @@
 // src/features/market/components/ProductCard.tsx
 
 import { Link } from "@tanstack/react-router";
+import { Palette } from "lucide-react";
 import type { ProductListItem } from "../types";
 import { formatPrice } from "@/lib/format";
 import { getStockBadge } from "../stock";
@@ -38,6 +39,39 @@ export function ProductCard({ product, size = "default", page }: Props) {
         return "rounded-3xl";
     }
   })();
+
+  // Blank products have no detail page: the card itself is the entry point and the
+  // CTA opens the blank straight in the 3D studio.
+  if (product.kind === "blank") {
+    return (
+      <div
+        className={`group relative flex flex-col overflow-hidden border border-border bg-surface transition-all duration-500 hover:border-gold ${radiusClass} ${sizeClass}`}
+      >
+        <Link to="/studio" search={{ blank: product.slug }} className="relative flex-1 overflow-hidden" aria-label={`Customize ${product.title}`}>
+          <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-[1.04]">
+            {image ? (
+              <img src={image} alt={product.title} loading="lazy" className="h-full w-full object-cover" />
+            ) : (
+              <div className="grid h-full w-full place-items-center bg-muted text-sm text-muted-foreground">{product.title}</div>
+            )}
+          </div>
+        </Link>
+        <div className="relative z-10 flex flex-col gap-2 border-t border-border bg-background/20 px-3 py-3 backdrop-blur-md md:px-5 md:py-4">
+          <div className="min-w-0">
+            <p className="truncate text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{product.store.name}</p>
+            <h3 className="mt-0.5 truncate text-sm font-semibold tracking-tight md:text-base">{product.title}</h3>
+          </div>
+          <Link
+            to="/studio"
+            search={{ blank: product.slug }}
+            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-gold text-sm font-semibold text-gold-foreground transition-transform active:scale-[0.98]"
+          >
+            <Palette className="h-4 w-4" /> Customize
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Link

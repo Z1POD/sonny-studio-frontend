@@ -5,7 +5,8 @@
  * Tap a card to open OrderDetailSheet.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearch } from "@tanstack/react-router";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -18,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ordersInfiniteQuery } from "../queries";
-import type { OrderListItem, OrderStatus } from "../api";
+import { ORDER_STATUS_LABEL, type OrderListItem, type OrderStatus } from "../api";
 import { OrderDetailSheet } from "./OrderDetailSheet";
 import { BrandLoader } from "@/components/ui/loader";
 
@@ -26,22 +27,25 @@ import { BrandLoader } from "@/components/ui/loader";
 
 const STATUS_TABS: { label: string; value: string }[] = [
   { label: "All", value: "" },
-  { label: "Pending", value: "pending" },
-  { label: "Processing", value: "processing" },
-  { label: "Shipped", value: "shipped" },
+  { label: "Pending payment", value: "pending_payment" },
+  { label: "Paid", value: "paid_verifying" },
+  { label: "In production", value: "in_production" },
   { label: "Delivered", value: "delivered" },
   { label: "Cancelled", value: "cancelled" },
 ];
 
 function statusIcon(status: OrderStatus) {
   switch (status) {
-    case "pending": return <Clock className="h-3.5 w-3.5" />;
-    case "confirmed": return <CheckCheck className="h-3.5 w-3.5" />
-    case "processing": return <LoaderIcon className="h3.5 w-3.5" />
-    case "printing": return <Loader2 className="h-3.5 w-3.5 animate-spin" />;
-    case "shipped": return <Truck className="h-3.5 w-3.5" />;
+    case "pending_payment": return <Clock className="h-3.5 w-3.5" />;
+    case "payment_processing":
+    case "paid_verifying": return <LoaderIcon className="h-3.5 w-3.5" />;
+    case "sent_to_printer": return <CheckCheck className="h-3.5 w-3.5" />;
+    case "in_production": return <Loader2 className="h-3.5 w-3.5 animate-spin" />;
+    case "handed_over": return <Truck className="h-3.5 w-3.5" />;
     case "delivered": return <CheckCircle2 className="h-3.5 w-3.5" />;
-    case "cancelled": return <XCircle className="h-3.5 w-3.5" />;
+    case "cancelled":
+    case "payment_failed":
+    case "refunded": return <XCircle className="h-3.5 w-3.5" />;
     default: return <Package className="h-3.5 w-3.5" />;
   }
 }
@@ -49,24 +53,16 @@ function statusIcon(status: OrderStatus) {
 function statusVariant(status: OrderStatus): "default" | "secondary" | "destructive" | "outline" {
   switch (status) {
     case "delivered": return "default";
-    case "cancelled": return "destructive";
-    case "pending": return "outline";
+    case "cancelled":
+    case "payment_failed":
+    case "fulfillment_exception":
+    case "disputed": return "destructive";
+    case "pending_payment": return "outline";
     default: return "secondary";
   }
 }
 
-function statusLabel(status: OrderStatus): string {
-  const map: Record<OrderStatus, string> = {
-    pending: "Pending",
-    confirmed: "Confirmed",
-    processing: "Processing",
-    printing: "Printing",
-    shipped: "Shipped",
-    delivered: "Delivered",
-    cancelled: "Cancelled",
-  };
-  return map[status] ?? status;
-}
+const statusLabel = (status: OrderStatus): string => ORDER_STATUS_LABEL[status] ?? status;
 
 function paymentBadge(paymentStatus: string) {
   if (paymentStatus === "paid") return null;
@@ -88,8 +84,7 @@ function OrderCard({
   order: OrderListItem;
   onClick: () => void;
 }) {
-  const item = order.first_item;
-  const sym = order.currency_symbol;
+  const sym = order.currency_symbol + " ";
 
   return (
     <motion.button
@@ -100,42 +95,21 @@ function OrderCard({
       onClick={onClick}
       className="w-full text-left flex items-center gap-3 rounded-2xl border border-border bg-surface p-3 transition hover:border-border/80 hover:bg-surface/80 active:scale-[0.99]"
     >
-      {/* Mockup thumbnail */}
-      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-muted">
-        {item.mockup_url ? (
-          <img
-            src={item.mockup_url}
-            alt={item.product_name}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <Package className="h-6 w-6 text-muted-foreground/40" />
-          </div>
-        )}
-        {/* color dot */}
-        {item.color_hex && (
-          <span
-            className="absolute bottom-1 right-1 h-3 w-3 rounded-full border border-white/40 shadow"
-            style={{ background: item.color_hex }}
-          />
-        )}
+      <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted">
+        <Package className="h-6 w-6 text-muted-foreground/40" />
       </div>
 
       {/* Info */}
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
-          <p className="truncate text-sm font-medium">{item.product_name}</p>
+          <p className="truncate text-sm font-medium">{order.order_number}</p>
           <Badge variant={statusVariant(order.status)} className="shrink-0 gap-1 text-[10px]">
             {statusIcon(order.status)}
             {statusLabel(order.status)}
           </Badge>
         </div>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {item.size} · {item.color} · ×{item.quantity}
-          {order.item_count > 1 && (
-            <span className="ml-1 text-muted-foreground/60">+{order.item_count - 1} more</span>
-          )}
+          {order.item_count} {order.item_count === 1 ? "item" : "items"}
         </p>
         <div className="mt-1.5 flex items-center gap-2">
           <span className="text-sm font-semibold">
@@ -144,7 +118,7 @@ function OrderCard({
           {paymentBadge(order.payment_status)}
         </div>
         <p className="mt-0.5 text-[10px] text-muted-foreground">
-          {order.order_number} ·{" "}
+          Placed{" "}
           {new Date(order.created_at).toLocaleDateString("en-US", {
             month: "short",
             day: "numeric",
@@ -180,7 +154,10 @@ function EmptyOrders({ filtered }: { filtered: boolean }) {
 
 export function OrdersPage() {
   const [activeTab, setActiveTab] = useState("");
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  // `?order=<id>` (from notifications / profile) opens that order directly.
+  const { order: orderParam } = useSearch({ strict: false }) as { order?: string };
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(orderParam ?? null);
+  useEffect(() => { if (orderParam) setSelectedOrderId(orderParam); }, [orderParam]);
 
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, error } =
     useInfiniteQuery(

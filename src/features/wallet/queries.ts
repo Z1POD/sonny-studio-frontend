@@ -3,7 +3,7 @@
  */
 
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
-import { walletApi } from "./api";
+import { hasMorePages, walletApi } from "./api";
 
 //     Keys                                                                      
 
@@ -35,27 +35,12 @@ export const walletBalanceQuery = () =>
     staleTime: 15_000,
   });
 
-export const walletTransactionsQuery = (params?: {
-  page?: number;
-  page_size?: number;
-  start_date?: string;
-  end_date?: string;
-  transaction_type?: string;
-  status?: string;
-}) =>
-  queryOptions({
-    queryKey: walletKeys.transactions(params),
-    queryFn: () => walletApi.transactions(params),
-    staleTime: 30_000,
-  });
-
 export const walletTransactionsInfiniteQuery = (pageSize = 20) =>
   infiniteQueryOptions({
     queryKey: [...walletKeys.all, "transactions", "infinite", pageSize] as const,
     queryFn: ({ pageParam = 1 }) =>
       walletApi.transactions({ page: pageParam as number, page_size: pageSize }),
-    getNextPageParam: (last) =>
-      last.pagination.next ? (last.pagination.next.match(/page=(\d+)/)?.[1] ? parseInt(last.pagination.next.match(/page=(\d+)/)![1]) : undefined) : undefined,
+    getNextPageParam: (last, all) => (hasMorePages(last, all.reduce((n, p) => n + p.results.length, 0)) ? all.length + 1 : undefined),
     initialPageParam: 1,
     staleTime: 30_000,
   });
@@ -74,24 +59,12 @@ export const myWithdrawalMethodsQuery = () =>
     staleTime: 60_000,
   });
 
-export const withdrawalsQuery = (params?: {
-  page?: number;
-  page_size?: number;
-  status?: string;
-}) =>
-  queryOptions({
-    queryKey: walletKeys.withdrawals(params),
-    queryFn: () => walletApi.withdrawals(params),
-    staleTime: 30_000,
-  });
-
 export const withdrawalsInfiniteQuery = (pageSize = 20) =>
   infiniteQueryOptions({
     queryKey: [...walletKeys.all, "withdrawals", "infinite", pageSize] as const,
     queryFn: ({ pageParam = 1 }) =>
       walletApi.withdrawals({ page: pageParam as number, page_size: pageSize }),
-    getNextPageParam: (last) =>
-      last.pagination.next ? (last.pagination.next.match(/page=(\d+)/)?.[1] ? parseInt(last.pagination.next.match(/page=(\d+)/)![1]) : undefined) : undefined,
+    getNextPageParam: (last, all) => (hasMorePages(last, all.reduce((n, p) => n + p.results.length, 0)) ? all.length + 1 : undefined),
     initialPageParam: 1,
     staleTime: 30_000,
   });

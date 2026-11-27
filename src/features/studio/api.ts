@@ -1,111 +1,80 @@
 // src/features/studio/api.ts
+//
+// Studio endpoints (see STUDIO_API.md for request / response shapes):
+//   GET  /studio/products/                 products the studio can open
+//   GET  /studio/products/{slug}/config/   everything configurable for one product (+ ?from=<published slug>)
+//   GET  /studio/artwork/                  stock artwork / stickers / shapes (paginated, filter by category)
+//   POST /studio/designs/                  create a design from the studio state
+//   PUT  /studio/designs/{id}/             re-save in the same session (no duplicates)
+// Uploads reuse the signed-upload → register flow in shared/api/assets.ts.
 
-import { api } from "@/shared/api/client";
-import type { StudioData } from "./store";
+import { api, type Page } from "@/shared/api/client";
+import { deleteAsset, uploadAsset } from "@/shared/api/assets";
+import {
+  mapArtworkItem,
+  mapSaveResponse,
+  mapStudioConfig,
+  type RawArtworkItem,
+  type RawSaveDesignBody,
+  type RawSaveDesignResponse,
+  type RawStudioConfig,
+} from "./contract";
+import type { ArtworkItem, CaptureAngle, MockupCapture, ProductConfig, ProductSummary, SaveDesignResult } from "./types";
 
-/*     Studio product                                                          */
+export interface RawStudioProductSummary {
+  id: string;
+  slug: string;
+  name: string;
+  available: boolean;
+}
 
 export const studioApi = {
-  get: async (slugOrId: string): Promise<StudioData> => {
-    return api.get<StudioData>(`/apparels/${slugOrId}/editor-config/`);
+  listProducts: async (): Promise<ProductSummary[]> => {
+    const res = await api.get<Page<RawStudioProductSummary> | RawStudioProductSummary[]>("/studio/products/");
+    const rows = Array.isArray(res) ? res : res.results;
+    return rows.map((p) => ({ id: p.id, slug: p.slug, name: p.name, available: p.available }));
+  },
+
+  getConfig: async (slug: string, opts?: { from?: string; design?: string }): Promise<ProductConfig> => {
+    const raw = await api.get<RawStudioConfig>(`/studio/products/${encodeURIComponent(slug)}/config/`, {
+      params: { from: opts?.from, design: opts?.design },
+    });
+    return mapStudioConfig(raw);
+  },
+
+  listArtwork: async (params: { category: ArtworkItem["category"]; product?: string; page?: number; pageSize?: number }) => {
+    const page = params.page ?? 1;
+    const res = await api.get<Page<RawArtworkItem>>("/studio/artwork/", {
+      params: { category: params.category, product: params.product, page, page_size: params.pageSize ?? 24 },
+    });
+    return { items: res.results.map(mapArtworkItem), page, hasNext: !!res.next };
+  },
+
+  /** Creates the design, or updates it when `designId` is given. */
+  saveDesign: async (body: RawSaveDesignBody, designId?: string | null): Promise<SaveDesignResult> => {
+    const res = designId
+      ? await api.put<RawSaveDesignResponse>(`/studio/designs/${encodeURIComponent(designId)}/`, { body })
+      : await api.post<RawSaveDesignResponse>("/studio/designs/", { body });
+    return mapSaveResponse(res);
   },
 };
 
-/*     Artwork                                                                 */
-
-/**
- * Normalised shape used throughout the studio feature.
- */
-export interface ArtworkItem {
-  id: string;
-  name: string;
-  url: string;
-  thumbnail_url: string;
-  width: number;
-  height: number;
-  created_at: string;
+/** Registers a buyer's file as a `creator_artwork` asset (the id is what a saved design references). */
+export async function uploadArtworkFile(file: File) {
+  const asset = await uploadAsset(file, "creator_artwork");
+  return { assetId: asset.id, url: asset.secure_url };
 }
 
-/** Raw shape returned by POST /store/artworks/upload/ */
-interface ArtworkUploadResponse {
-  success: boolean;
-  data: {
-    id: string;
-    name: string;
-    file_url: string;
-    metadata?: { width?: number; height?: number; thumbnail_url?: string };
-    created_at: string;
-  };
+/** Removes one of the caller's own uploads from their library (`409` while a design uses it). */
+export const deleteOwnUpload = deleteAsset;
+
+/** Uploads each captured angle as a `design_mockup` asset (in parallel). */
+export async function uploadMockups(shots: MockupCapture[]): Promise<{ assetId: string; angle: CaptureAngle }[]> {
+  return Promise.all(
+    shots.map(async (s) => {
+      const blob = await (await fetch(s.dataUrl)).blob();
+      const asset = await uploadAsset(blob, "design_mockup");
+      return { assetId: asset.id, angle: s.angle };
+    }),
+  );
 }
-
-/** Raw shape returned by GET /store/artworks/ */
-interface ArtworkListResponse {
-  results: Array<{
-    id: string;
-    name: string;
-    url?: string;
-    file_url?: string;
-    preview_url?: string;
-    thumbnail_url?: string;
-    width?: number;
-    height?: number;
-    metadata?: { width?: number; height?: number; thumbnail_url?: string };
-    created_at: string;
-  }>;
-  pagination: {
-    page: number;
-    page_size: number;
-    total: number;
-    total_pages: number;
-    has_next: boolean;
-    has_previous: boolean;
-  };
-}
-
-function normaliseArtwork(raw: ArtworkListResponse["results"][number]): ArtworkItem {
-  const url = raw.file_url ?? raw.url ?? null;
-  const width = raw.width ?? raw.metadata?.width ?? 1;
-  const height = raw.height ?? raw.metadata?.height ?? 1;
-  const thumbnail_url = raw.preview_url ?? raw.thumbnail_url ?? raw.metadata?.thumbnail_url ?? url;
-  return { id: raw.id, name: raw.name, url, thumbnail_url, width, height, created_at: raw.created_at };
-}
-
-export const artworkApi = {
-  list: async (params?: {
-    page?: number;
-    page_size?: number;
-  }): Promise<{ items: ArtworkItem[]; pagination: ArtworkListResponse["pagination"] }> => {
-    const res = await api.get<ArtworkListResponse>("/store/artworks/", {
-      params: { page: params?.page ?? 1, page_size: params?.page_size ?? 20 },
-    });
-    return {
-      items: (res.results ?? []).map(normaliseArtwork),
-      pagination: res.pagination,
-    };
-  },
-
-  upload: async (file: File): Promise<ArtworkItem> => {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("name", file.name);
-    const res = await api.post<ArtworkUploadResponse>("/store/artworks/upload/", {
-      body: formData,
-    });
-    const d = res.data;
-    return {
-      id: d.id,
-      name: d.name,
-      url: d.file_url,
-      thumbnail_url: d.metadata?.thumbnail_url ?? d.file_url,
-      width: d.metadata?.width ?? 1,
-      height: d.metadata?.height ?? 1,
-      created_at: d.created_at,
-    };
-  },
-
-  delete: async (id: string): Promise<void> => {
-    await api.delete(`/store/artworks/${id}/`);
-  },
-};
-
-

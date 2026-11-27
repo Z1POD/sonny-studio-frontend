@@ -8,6 +8,7 @@ import { discountApi } from "./discountApi";
 export const discountKeys = {
   all: ["discounts"] as const,
   rules: () => [...discountKeys.all, "rules"] as const,
+  redemptions: (ruleId: string) => [...discountKeys.all, "redemptions", ruleId] as const,
   coupons: (ruleId: string) => [...discountKeys.all, "coupons", ruleId] as const,
   productDiscounts: (productId: string) => [...discountKeys.all, "product", productId] as const,
   links: (productId: string) => [...discountKeys.all, "links", productId] as const,
@@ -42,4 +43,11 @@ export const productLinksQuery = (productId: string) =>
     queryFn: () => discountApi.listLinks(productId),
     staleTime: 30_000,
     enabled: !!productId,
+  });
+export const redemptionsQuery = (ruleId: string, page = 1) =>
+  queryOptions({
+    queryKey: [...discountKeys.redemptions(ruleId), page] as const,
+    queryFn: () => discountApi.redemptions(ruleId, { page, page_size: 20 }),
+    staleTime: 30_000,
+    enabled: !!ruleId,
   });

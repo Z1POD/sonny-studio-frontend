@@ -1,16 +1,19 @@
-// src/shared/hooks/use-store-access.ts
+// src/shared/hooks/use-store-access.ts  (CREATOR APP)
 import { useAuthStore } from "@/features/auth/store";
 
 /**
- * Store / Wallet / Analytics are creator-only surfaces, and only make sense
- * once the creator's store has passed verification.
+ * Whether the signed-in user may price and publish designs.
  *
- * `User` (see `shared/api/types.ts`) currently exposes `is_creator` and
- * `is_verified` as the closest proxies for "has a verified store". If the
- * backend later adds a dedicated field (e.g. `user.store.is_verified`),
- * swap the check below to that — this is the single place it's gated.
+ * In the split architecture every account is a buyer by default and the
+ * backend adds a creator/designer MEMBERSHIP automatically when someone uses
+ * this app — there is no role switching in the frontend any more. So access
+ * only requires a signed-in user; the one remaining gate is an explicit
+ * `is_verified === false` coming from the backend (store/KYC verification).
+ *
+ * Name kept (`useHasVerifiedStore`) so existing call sites keep working.
+ * The field is `user.creator_profile.is_verified` (shared user contract); this is the single place that reads it.
  */
 export function useHasVerifiedStore(): boolean {
   const user = useAuthStore((s) => s.user);
-  return Boolean(user?.is_creator && user?.is_verified);
+  return Boolean(user) && user?.creator_profile?.is_verified !== false;
 }

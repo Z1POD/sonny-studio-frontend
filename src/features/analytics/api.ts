@@ -1,85 +1,39 @@
 // src/features/analytics/api.ts
+//   GET /store/analytics/?range=7d|30d|90d — trends and attribution only. The order list and the status breakdown
+//   were removed (order management belongs to the orders app).
 
 import { api } from "@/shared/api/client";
+import type { Currency } from "@/shared/api/types";
+import type { SeriesPoint, TopProduct } from "@/features/store/storeApi";
 
 export type AnalyticsRange = "7d" | "30d" | "90d";
 
-//    Core types                                                              
-
-export interface RevenueSeries {
-  date: string;       // "2025-06-01"
-  earnings: number;
-  orders: number;
-}
-
-export interface TopProduct {
-  id: string;
-  name: string;
-  slug: string;
-  thumbnail_url?: string;
-  sales: number;
-  earnings: number;
-  currency_symbol: string;
-}
-
-export interface TrafficSource {
-  label: string;      // "Telegram" | "Direct" | "Referral" | ...
-  value: number;      // percentage 0-100
-}
-
-export interface OrderStatusBreakdown {
-  status: string;
-  count: number;
-  percentage: number;
-}
-
-export interface RecentOrder {
-  id: string;
-  order_number: string;
-  product_name: string;
-  customer_name: string;
-  amount: string;
-  currency_symbol: string;
-  status: string;
-  created_at: string;
-}
-
 export interface AnalyticsSummary {
   range: AnalyticsRange;
-  currency: {
-    code: string;
-    symbol: string;
+  currency: Currency;
+  totals: {
+    earnings: string;
+    earnings_delta: number | null;
+    orders: number;
+    orders_delta: number | null;
+    items_sold: number;
+    items_sold_delta: number | null;
+    views: number;
+    views_delta: number | null;
+    /** orders / views × 100 (1 decimal); null when the period had no views. */
+    conversion_rate: number | null;
+    conversion_rate_delta: number | null;
+    avg_earnings_per_order: string;
+    avg_earnings_per_order_delta: number | null;
   };
-  // KPIs
-  total_earnings: number;
-  total_earnings_delta: number | null;   // % change vs previous period
-  total_sales: number;
-  total_sales_delta: number | null;
-  total_orders: number;
-  total_orders_delta: number | null;
-  avg_earnings_per_order: number;
-  avg_earnings_per_order_delta: number | null;
-  conversion_rate: number;              // %
-  conversion_rate_delta: number | null;
-  total_views: number;
-  total_views_delta: number | null;
-  // Series
-  series: RevenueSeries[];
-  // Breakdowns
+  lifetime: { earnings: string; orders: number; items_sold: number };
+  /** Zero-filled for the whole range; carries views too. */
+  series: SeriesPoint[];
   top_products: TopProduct[];
-  traffic_sources: TrafficSource[];
-  order_status_breakdown: OrderStatusBreakdown[];
-  recent_orders: RecentOrder[];
+  /** Top 5 utm_source values of the period's product views. */
+  traffic_sources: { label: string; value: number }[];
 }
 
 export const analyticsApi = {
-  summary: async (range: AnalyticsRange): Promise<AnalyticsSummary> => {
-
-    const res = await api.get<{ success: boolean; data: AnalyticsSummary }>(
-      "/store/analytics/",
-      { params: { range } }
-    );
-    
-    return res?.data?.data ?? res?.data;
-  }
-}
+  summary: (range: AnalyticsRange) => api.get<AnalyticsSummary>("/store/analytics/", { params: { range } }),
+};

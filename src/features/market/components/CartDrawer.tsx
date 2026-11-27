@@ -33,7 +33,7 @@ export function CartDrawer() {
   const onCheckout = () => {
     if (!user) {
       close();
-      navigate({ to: "/login" });
+      navigate({ to: "/login", search: { redirect: undefined } });
       toast("Sign in to continue checkout");
       return;
     }
@@ -41,6 +41,8 @@ export function CartDrawer() {
     startCheckoutFromCart(
       items.map((i) => ({
         productId: i.product_id,
+        designId: i.design_id,
+        variantId: i.variant_id,
         title: i.title,
         thumbnailUrl: i.mockup_url ?? i.thumbnail_url,
         colorName: i.color_name,

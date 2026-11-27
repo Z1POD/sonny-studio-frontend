@@ -3,8 +3,8 @@
 "use client";
 
 import { Banknote, Ban } from "lucide-react";
-import type { Withdrawal } from "../api";
-import { formatMoney, withdrawalStatusColor } from "../lib/wallet-format";
+import { CANCELLABLE_WITHDRAWAL, type Withdrawal } from "../api";
+import { formatMoney, withdrawalStatusColor, withdrawalStatusLabel } from "../lib/wallet-format";
 
 export function WithdrawalRow({
   w,
@@ -13,8 +13,8 @@ export function WithdrawalRow({
   w: Withdrawal;
   onCancel: (id: string) => void;
 }) {
-  const symbol = w.currency.symbol;
-  const canCancel = w.status === "pending";
+  const symbol = w.currency;
+  const canCancel = CANCELLABLE_WITHDRAWAL.includes(w.status);
 
   return (
     <li className="flex items-center justify-between gap-4 px-5 py-4">
@@ -32,6 +32,8 @@ export function WithdrawalRow({
               day: "numeric",
               year: "numeric",
             })}
+            {" · "}
+            <span>{withdrawalStatusLabel(w.status)}</span>
             {w.user_notes && ` · "${w.user_notes}"`}
           </div>
           {w.rejection_reason && (
@@ -43,7 +45,9 @@ export function WithdrawalRow({
         <div className="text-right">
           <div className="text-sm font-semibold tabular-nums">{formatMoney(w.amount, symbol)}</div>
           {parseFloat(w.fee_amount) > 0 && (
-            <div className="text-[11px] text-muted-foreground">Fee {formatMoney(w.fee_amount, symbol)}</div>
+            <div className="text-[11px] text-muted-foreground">
+              Fee {formatMoney(w.fee_amount, symbol)} · You get {formatMoney(w.net_amount, symbol)}
+            </div>
           )}
         </div>
         {canCancel && (

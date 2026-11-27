@@ -10,14 +10,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { paymentMethodsQuery, walletKeys } from "../queries";
+import { paymentMethodsQuery, walletBalanceQuery, walletKeys } from "../queries";
 import { walletApi } from "../api";
 import { formatMoney, categoryIcon } from "../lib/wallet-format";
 
 export function AddMethodModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
   const { data: pmData } = useQuery(paymentMethodsQuery());
-  const paymentMethods = pmData?.data ?? [];
+  const { data: balance } = useQuery(walletBalanceQuery());
+  // Limits are in the wallet's currency — never assume "$".
+  const cur = balance?.currency;
+  const paymentMethods = pmData ?? [];
 
   const [selectedPmId, setSelectedPmId] = useState<string>("");
   const [pmExpanded, setPmExpanded] = useState(false);
@@ -42,7 +45,7 @@ export function AddMethodModal({ onClose }: { onClose: () => void }) {
         is_default: isDefault,
       }),
     onSuccess: () => {
-      toast.success("Withdrawal method added");
+      toast.success("Method submitted — it can be used once our team approves it");
       qc.invalidateQueries({ queryKey: walletKeys.myMethods() });
       onClose();
     },
@@ -74,7 +77,7 @@ export function AddMethodModal({ onClose }: { onClose: () => void }) {
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium">{selectedPm.name}</div>
               <div className="text-[11px] text-muted-foreground">
-                {selectedPm.category_display} · Min {formatMoney(selectedPm.min_withdrawal)} ·{" "}
+                {selectedPm.category_display} · Min {formatMoney(selectedPm.min_withdrawal, cur)} ·{" "}
                 {selectedPm.estimated_processing_hours}h
               </div>
             </div>
@@ -106,7 +109,7 @@ export function AddMethodModal({ onClose }: { onClose: () => void }) {
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium">{pm.name}</div>
                   <div className="text-[11px] text-muted-foreground">
-                    {pm.category_display} · Min {formatMoney(pm.min_withdrawal)} · {pm.estimated_processing_hours}h
+                    {pm.category_display} · Min {formatMoney(pm.min_withdrawal, cur)} · {pm.estimated_processing_hours ?? "—"}h
                   </div>
                 </div>
                 {selectedPmId === pm.id && <Check className="h-4 w-4 text-primary" />}

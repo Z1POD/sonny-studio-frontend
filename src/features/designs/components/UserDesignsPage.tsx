@@ -1,13 +1,12 @@
 // src/features/designs/components/UserDesignsPage.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { AnimatePresence } from "framer-motion";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { designsInfiniteQuery } from "../queries";
 import type { ProductListItem } from "@/features/store/api";
 import { DesignDetailSheet } from "./DesignDetailSheet";
-import { CheckOut } from "@/features/checkout/components/CheckOut";
 import { DesignCard } from "./DesignCard";
 import { EmptyDesigns } from "./EmptyDesigns";
 import { BrandLoader } from "@/components/ui/loader";
@@ -26,6 +25,15 @@ export function UserDesignsPage() {
   const [activeTab, setActiveTab] = useState("");
   const [selectedDesign, setSelectedDesign] = useState<ProductListItem | null>(null);
   const [editDesignId, setEditDesignId] = useState<string | null>(null);
+
+  // Arriving from the studio ("Save & Continue") → `/designs?review=<id>` opens Publish & Review for the
+  // draft that was just saved. The param is cleared right away so refresh/back doesn't reopen the modal.
+  const { review } = useSearch({ strict: false }) as { review?: string };
+  useEffect(() => {
+    if (!review) return;
+    setEditDesignId(review);
+    void navigate({ to: "/designs", search: {}, replace: true });
+  }, [review, navigate]);
 
   const {
     data,
@@ -91,7 +99,7 @@ export function UserDesignsPage() {
         ) : allDesigns.length === 0 ? (
           <EmptyDesigns
             filtered={!!activeTab}
-            onNewDesign={() => navigate({ to: "/studio" })}
+            onNewDesign={() => navigate({ to: "/catalog" })}
           />
         ) : (
           <AnimatePresence mode="popLayout">
@@ -137,9 +145,6 @@ export function UserDesignsPage() {
         onEdit={(d) => { setSelectedDesign(null); setEditDesignId(d.id); }}
         onMutated={() => refetch()}
       />
-
-      {/* Checkout overlay */}
-      <CheckOut />
 
       {/* Edit product modal — details, pricing, variants, and a way into Studio */}
       {editDesignId && (

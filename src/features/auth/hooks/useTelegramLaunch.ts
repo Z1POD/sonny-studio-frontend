@@ -49,12 +49,10 @@ export function useTelegramLaunch() {
     const target = parseStartParam(tg.initDataUnsafe?.start_param);
 
     // Navigate immediately — do not wait on auth for public destinations.
-    if (target?.type === "product") {
-      navigate({ to: "/p/$slug", params: { slug: target.id }, replace: true });
-    } else if (target?.type === "route") {
+    if (target?.type === "route") {
       navigate({ to: "/", search: { redirect: target.path }, replace: true });
     } else if (pathnameRef.current === "/") {
-      navigate({ to: "/marketplace", replace: true });
+      navigate({ to: "/catalog", replace: true });
     }
 
     // Fire-and-forget: resolves auth state in the background.

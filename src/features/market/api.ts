@@ -1,60 +1,28 @@
 // src/features/market/api.ts
 
 
-import { api } from "@/shared/api/client";
-import type {
-  CategoryDetail,
-  Homepage,
-  ProductListParams,
-  ProductListResponse,
-  StoreDetail,
-  WishlistToggleResult,
-} from "./types";
-
-interface Envelope<T> {
-  success: boolean;
-  data: T;
-}
+import { api, type Page } from "@/shared/api/client";
+import {
+  buildHomepage,
+  flattenCategories,
+  mapBlankListItem,
+  mapCategories,
+  mapPublishedDetail,
+  mapPublishedListItem,
+  pageOf,
+  type RawBlankListItem,
+  type RawCategoryNode,
+  type RawPublishedDetail,
+  type RawPublishedListItem,
+} from "./contract";
+import type { Viewer3D } from "@/features/studio/contract";
+import type { CategoryCard, Homepage, ProductListItem, ProductListParams, ProductListResponse } from "./types";
 
 export interface Currency {
   code: string;
   symbol: string;
   name?: string;
-}
-
-export interface ColorVariant {
-  name: string;
-  hex: string;
-  sizes: string[];
-  prices?: Record<string, string>;
-}
-
-export interface MockupImage {
-  id: string;
-  type: string;
-  url: string;
-  is_primary: boolean;
-  sort_order: number;
-}
-
-export interface ApparelInfo {
-  name?: string;
-  fit?: string;
-  brand?: string;
-  weight_grams?: number;
-  care_instructions?: string;
-}
-
-export interface ReviewsSummary {
-  average_rating: number;
-  total_reviews: number;
-  distribution: Record<"1" | "2" | "3" | "4" | "5", number>;
-}
-
-export interface ProductStats {
-  view_count: number;
-  sold_quantity: number;
-  wishlist_count: number;
+  decimal_places?: number;
 }
 
 export interface ProductStoreSummary {
@@ -68,128 +36,59 @@ export interface ProductStoreSummary {
   is_verified: boolean;
 }
 
-export interface RelatedProduct {
+export interface MockupImage {
   id: string;
-  title: string;
-  slug: string;
+  url: string;
   thumbnail_url: string;
-  mockup_url?: string | null;
-  retail_price: string;
-  currency: Currency;
-  store: { name: string; slug: string };
-  rating: number;
-  review_count: number;
-  sold_quantity: number;
-  is_limited_edition: boolean;
-  created_at: string;
+  /** "front" | "back" | … (free text, shown as the image caption). */
+  label: string;
+  /** Garment colour this photo shows; null = valid for every colour. */
+  color_id: string | null;
+  is_primary: boolean;
+  sort_order: number;
 }
 
-/* 3D viewer */
-
-/** A design layer already baked into a print area's decal — informational
- *  only on this (read-only) marketplace viewer; the decal itself is what
- *  gets rendered. */
-export interface PrintAreaDesignLayer {
-  type: string;
-  url: string;
-  offset_x: number;
-  offset_y: number;
-  scale: number;
-  rotation: number;
-  z_index?: number;
+export interface SizeOption {
+  id: string;
+  /** Chip text, e.g. "M". */
+  label: string;
 }
 
-export interface PrintAreaDecal {
-  url: string;
-  aspect_ratio: number;
-  scale: number;
-  rotation: number;
-  offset_x: number;
-  offset_y: number;
-  size_tier?: string;
-}
-
-export interface PrintAreaWorldBounds {
-  center: [number, number, number];
-  half_extents: [number, number, number];
-  rotation?: [number, number, number];
-}
-
-export interface PrintAreaTransformLimits {
-  min_scale: number;
-  max_scale: number;
-  min_x?: number;
-  max_x?: number;
-  min_y?: number;
-  max_y?: number;
-}
-
-export interface PrintAreaUvConfig {
-  world_bounds?: PrintAreaWorldBounds;
-  transform_limits?: PrintAreaTransformLimits;
-  uv_bounds?: { min_u: number; min_v: number; max_u: number; max_v: number };
-  /** "cylindrical" = render via real surface UV instead of a box-projected
-   *  decal — set this for bottle/mug/curved-body print zones. Defaults to
-   *  "flat" (current behavior) when omitted. */
-  surface_type?: "flat" | "cylindrical";
-}
-
-export interface ViewerPrintArea {
-  area_key: string;
+/** A garment colour with its own sizes (a size can be sold out in one colour and not in another). */
+export interface ColorOption {
+  id: string;
   name: string;
-  placement: string; // "front" | "back" | "left_sleeve" | "right_sleeve" | "hood" | "full" ...
-  width_cm: number | string;
-  height_cm: number | string;
-  mesh_name?: string;
-  uv_config?: PrintAreaUvConfig;
-  design?: { layers?: PrintAreaDesignLayer[] };
-  decal?: PrintAreaDecal | null;
+  hex: string;
+  /** At least one size of this colour can be bought. */
+  available: boolean;
+  sizes: (SizeOption & { available: boolean })[];
 }
 
-export interface Viewer3D {
-  model_url?: string;
-  usdz_url?: string;
-  preview_url?: string;
-  background?: string;
-  environment?: string;
-  model_position?: [number, number, number];
-  colorable_meshes?: string[];
-  default_view?: string;
-  material?: {
-    texture_url?: string | null;
-    normal_map_url?: string | null;
-    roughness?: number;
-    metalness?: number;
-  };
-  lighting?: {
-    type?: string;
-    intensity?: number;
-    ambient?: number;
-    key?: { position: [number, number, number]; intensity: number };
-    fill?: { position: [number, number, number]; intensity: number };
-    rim?: { position: [number, number, number]; intensity: number };
-  };
-  camera?: {
-    position?: [number, number, number];
-    fov?: number;
-    orbit?: {
-      min_distance?: number;
-      max_distance?: number;
-      min_polar_angle?: number;
-      max_polar_angle?: number;
-      enable_pan?: boolean;
-      enable_zoom?: boolean;
-    };
-  };
-  contact_shadows?: {
-    enabled?: boolean;
-    position?: [number, number, number];
-    opacity?: number;
-    scale?: number;
-    blur?: number;
-    far?: number;
-  };
-  print_areas?: ViewerPrintArea[];
+/** One orderable combination — the unit that goes in the bag and on an order line. */
+export interface VariantInfo {
+  variant_id: string;
+  sku: string;
+  color_id: string;
+  size_id: string;
+  available: boolean;
+  /** Units left; null = not tracked / plenty. */
+  stock_quantity: number | null;
+  /** Decimal string — the price of THIS variant. */
+  price: string;
+}
+
+export interface ProductDetails {
+  name?: string;
+  brand?: string;
+  fit?: string;
+  material?: string;
+  weight_grams?: number;
+  care_instructions?: string;
+}
+
+export interface ProductStats {
+  view_count: number;
+  sold_quantity: number;
 }
 
 export interface ProductDetail {
@@ -197,36 +96,32 @@ export interface ProductDetail {
   title: string;
   slug: string;
   description: string;
-  public_link?: string;
   store: ProductStoreSummary;
   pricing: {
+    /** Lowest variant price ("From"). */
     retail_price: string;
     currency: Currency;
   };
-  variants: {
-    colors: ColorVariant[];
-    sizes: string[];
-  };
+  colors: ColorOption[];
+  variants: VariantInfo[];
+  default_variant_id: string | null;
   mockups: MockupImage[];
   thumbnail_url: string;
-  /** 3D viewer config — present when the product has a rigged GLB model. */
-  viewer_3d?: Viewer3D;
-  apparel_info?: ApparelInfo;
-  reviews_summary: ReviewsSummary;
+  /** Present only when the product can be shown in 3D. */
+  viewer3d: Viewer3D | null;
+  details: ProductDetails;
   stats: ProductStats;
-  is_limited_edition: boolean;
-  max_quantity: number | null;
-  available_quantity: number | null;
   tags: string[];
   created_at: string;
-  /** Present only when a valid `code` was passed to the detail request. */
-  applied_coupon?: string;
-  user_context?: {
-    is_in_wishlist: boolean;
-    has_purchased: boolean;
-    can_review: boolean;
-  };
-  related_products: RelatedProduct[];
+  related_products: ProductListItem[];
+
+  /* ── ids used to build orders / open the studio ── */
+  /** The design an order line is created from (`design_id` at checkout). */
+  design_id: string;
+  published_product_id: string;
+  /** Slug of the blank this design is printed on. */
+  blank_slug: string;
+  allows_customization_on_top: boolean;
 }
 
 /**
@@ -244,9 +139,15 @@ export interface CartItem {
   color_hex: string;
   size: string;
   quantity: number;
+  /** "From" price of the design; the exact price is quoted at checkout. */
   unit_price: number;
   currency: Currency;
   store: ProductStoreSummary;
+  /** Contract ids used to build the order line. */
+  design_id: string;
+  variant_id: string;
+  /** Units available when added (null = untracked); caps the bag quantity. */
+  max_quantity?: number | null;
 }
 
 /**
@@ -257,48 +158,63 @@ export interface CartItem {
  * in the page's browser URL.
  */
 export interface ProductDetailParams {
-  code?: string;
   ref?: string;
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
 }
 
+const PUBLIC = { auth: false } as const;
+
+async function listPublished(params: ProductListParams) {
+  const page = params.page ?? 1;
+  const page_size = params.page_size ?? 12;
+  const res = await api.get<Page<RawPublishedListItem>>("/products/published/", {
+    ...PUBLIC,
+    params: {
+      search: params.q,
+      category: params.category,
+      brand: params.brand,
+      // Only `-published_at` is documented; other sorts fall back to newest first.
+      ordering: "-published_at",
+      page,
+      page_size,
+    },
+  });
+  const items = res.results.filter((r) => r.is_active !== false).map(mapPublishedListItem);
+  return pageOf(items, res.count, res.next, page, page_size);
+}
+
 export const marketApi = {
-  getHomepage: () => api.get<Envelope<Homepage>>("/market/").then((r) => r.data),
+  /** Synthesised from the newest published products + the category tree. */
+  getHomepage: async (): Promise<Homepage> => {
+    const [list, tree] = await Promise.all([
+      listPublished({ page_size: 12 }),
+      api.get<RawCategoryNode[]>("/catalog/categories/tree/", PUBLIC).catch(() => [] as RawCategoryNode[]),
+    ]);
+    return buildHomepage(list.products, mapCategories(tree));
+  },
 
-  listProducts: (params: ProductListParams = {}) =>
-    api
-      .get<Envelope<ProductListResponse>>("/market/products/", {
-        params: { ...params },
-      })
-      .then((r) => r.data),
+  listProducts: (params: ProductListParams = {}) => listPublished(params),
 
-  searchSuggestions: (q: string) =>
-    api
-      .get<Envelope<string[]>>("/market/search/suggestions/", { params: { q } })
-      .then((r) => r.data),
+  /** Blank products the buyer can customize (category filter includes descendants). */
+  listBlanks: async (params: ProductListParams = {}): Promise<ProductListResponse> => {
+    const page = params.page ?? 1;
+    const page_size = params.page_size ?? 12;
+    const res = await api.get<Page<RawBlankListItem>>("/catalog/blank-products/", {
+      ...PUBLIC,
+      params: { search: params.q, category: params.category, brand: params.brand, page, page_size },
+    });
+    const items = res.results.filter((r) => r.is_active !== false).map(mapBlankListItem);
+    return pageOf(items, res.count, res.next, page, page_size);
+  },
 
-  getProduct: (slug: string, params: ProductDetailParams = {}) =>
-    api
-      .get<Envelope<ProductDetail>>(`/market/p/${slug}/`, { params })
-      .then((r) => r.data),
+  getCategories: async (): Promise<CategoryCard[]> =>
+    flattenCategories(await api.get<RawCategoryNode[]>("/catalog/categories/tree/", PUBLIC)),
 
-  getStore: (slug: string) =>
-    api.get<Envelope<StoreDetail>>(`/market/stores/${slug}/`).then((r) => r.data),
-
-  getCategory: (slug: string) =>
-    api.get<Envelope<CategoryDetail>>(`/market/categories/${slug}/`).then((r) => r.data),
-
-  addToWishlist: (product_id: string) =>
-    api
-      .post<Envelope<WishlistToggleResult>>("/market/wishlist/", {
-        body: { product_id },
-      })
-      .then((r) => r.data),
-
-  removeFromWishlist: (product_id: string) =>
-    api
-      .delete<Envelope<WishlistToggleResult>>(`/market/wishlist/${product_id}/`)
-      .then((r) => r.data),
+  /** Public. `ref` / `utm_*` travel on the request itself: the server uses them to attribute the view it counts. */
+  getProduct: async (slug: string, params: ProductDetailParams = {}): Promise<ProductDetail> =>
+    mapPublishedDetail(
+      await api.get<RawPublishedDetail>(`/products/published/${encodeURIComponent(slug)}/`, { ...PUBLIC, params: { ...params } }),
+    ),
 };

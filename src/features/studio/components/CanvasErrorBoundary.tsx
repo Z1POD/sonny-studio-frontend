@@ -1,49 +1,47 @@
-// src/features/studio/components/CanvasErrorBoundary.tsx
-
-import React from "react";
-import {
-  Link,
-} from "@tanstack/react-router";
-
-interface Props {
-  children: React.ReactNode;
-  onError?: (error: unknown) => void;
-}
+import { Component, type ReactNode } from "react";
+import { useGLTF } from "@react-three/drei";
+import { StudioOverlay } from "./StudioOverlay";
 
 interface State {
-  hasError: boolean;
+  error: Error | null;
 }
 
-export class CanvasErrorBoundary extends React.Component<Props, State> {
-  state: State = {
-    hasError: false,
+interface Props {
+  children: ReactNode;
+  /** When given, the boundary reports the failure and renders nothing so the caller can show its own fallback. */
+  onError?: () => void;
+  /** Model URL to drop from drei's cache on retry (a failed load is otherwise remembered). */
+  modelUrl?: string;
+}
+
+export class CanvasErrorBoundary extends Component<Props, State> {
+  override state: State = { error: null };
+
+  static getDerivedStateFromError(error: Error): State {
+    return { error };
+  }
+
+  override componentDidCatch() {
+    this.props.onError?.();
+  }
+
+  private retry = () => {
+    if (this.props.modelUrl) useGLTF.clear(this.props.modelUrl);
+    this.setState({ error: null });
   };
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error: unknown) {
-    this.props.onError?.(error);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-6 bg-background/95 px-6 text-center backdrop-blur-xl">
-          <div className="flex h-full w-full max-w-sm flex-1 items-center justify-center rounded-xl bg-muted text-sm text-muted-foreground">
-            Unable to load 3D preview.
-          </div>
-          <Link
-            to="/designs"
-            className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90"
-          >
-            Go home
-          </Link>
-        </div>
-      );
-    }
-
-    return this.props.children;
+  override render() {
+    if (!this.state.error) return this.props.children;
+    if (this.props.onError) return null;
+    return (
+      <StudioOverlay
+        tone="error"
+        title="3D preview unavailable"
+        detail="The model or canvas couldn't load. Check your connection and try again."
+        onRetry={this.retry}
+        onSecondary={() => window.location.reload()}
+        secondaryLabel="Reload"
+      />
+    );
   }
 }

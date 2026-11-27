@@ -14,6 +14,8 @@ interface AuthState {
   hydrate: () => Promise<void>;
   setToken: (token: string, user?: User) => void;
   refreshUser: () => Promise<void>;
+  /** Replace the cached user (e.g. after a profile edit). */
+  setUser: (user: User) => void;
   logout: () => Promise<void>;
   /**
    * Exchanges Telegram initData for a session. Multiple callers (root's
@@ -22,6 +24,8 @@ interface AuthState {
    * instead of hitting /auth/telegram/ twice.
    */
   loginWithTelegram: (initData: string) => Promise<User | null>;
+  /** Browser sign-in: verifies the Telegram-delivered code and stores the session. */
+  loginWithOtp: (username: string, code: string) => Promise<User>;
 }
 
 // Module-level, not store state — these are plumbing for de-duping
@@ -83,6 +87,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
   },
 
+  setUser(user) {
+    set({ user });
+  },
+
   async refreshUser() {
     try {
       const user = await authApi.me();
@@ -111,8 +119,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return telegramLoginPromise;
   },
 
+  async loginWithOtp(username, code) {
+    const data = await authApi.otpVerify(username, code);
+    get().setToken(data.token, data.user);
+    return data.user;
+  },
+
   async logout() {
-    await authApi.logout();
+    // Best effort: a 401 means the token was already invalid and a network failure shouldn't trap the
+    // user signed-in — either way the local session is cleared.
+    try {
+      await authApi.logout();
+    } catch {
+      /* ignored on purpose */
+    }
     setStoredToken(null);
     set({ token: null, user: null, status: "unauthenticated" });
   },

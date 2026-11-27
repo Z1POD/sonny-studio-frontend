@@ -1,6 +1,6 @@
 // src/features/orders/components/OrderDetailSheet.tsx
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   X, Truck, MapPin, CheckCircle2,
@@ -16,36 +16,25 @@ import type { OrderDetail } from "../api";
 import { useConfirm } from "@/shared/components/ConfirmModal";
 import { BrandLoader } from "@/components/ui/loader";
 
-import { usePaymentVerification } from "@/features/payment/hooks/usePaymentVerification";
-import { useClipboardCopy } from "@/features/payment/hooks/useClipboardCopy";
-import {
-  AmountBanner,
-  BankSelector,
-  ReceiptSubmission,
-  VerifyingState,
-  SuccessState,
-  FailedState,
-} from "@/features/payment/components";
+import { PaymentPanel } from "@/features/payment/components/PaymentPanel";
+import { ORDER_STATUS_LABEL } from "../api";
 
 //     Status helpers                                                             
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: "Pending",
-  confirmed: "Confirmed",
-  processing: "Processing...",
-  printing: "Printing...",
-  shipped: "Shipped",
-  delivered: "Delivered",
-  cancelled: "Cancelled",
-};
+const STATUS_LABELS: Record<string, string> = ORDER_STATUS_LABEL;
 
 function statusColor(status: string) {
   switch (status) {
-    case "confirmed": return "text-emerald-500";
+    case "paid_verifying":
+    case "sent_to_printer":
+    case "in_production":
+    case "handed_over": return "text-emerald-500";
     case "delivered": return "text-blue-300";
-    case "cancelled": return "text-destructive";
-    case "shipped": return "text-blue-500";
-    case "pending": return "text-muted-foreground";
+    case "cancelled":
+    case "payment_failed":
+    case "refunded":
+    case "disputed": return "text-destructive";
+    case "pending_payment": return "text-muted-foreground";
     default: return "text-amber-500";
   }
 }
@@ -118,8 +107,10 @@ export function OrderDetailSheet({
   const [confirm, ConfirmModal] = useConfirm();
   const [section, setSection] = useState<"items" | "shipping" | "timeline">("items");
 
+  // Poll for up to 30s after opening while a just-paid order settles (see orderDetailQuery).
+  const openedAt = useMemo(() => Date.now(), [orderId]); // eslint-disable-line react-hooks/exhaustive-deps
   const { data: order, isLoading } = useQuery({
-    ...orderDetailQuery(orderId ?? ""),
+    ...orderDetailQuery(orderId ?? "", openedAt),
     enabled: !!orderId,
   });
 
@@ -129,7 +120,7 @@ export function OrderDetailSheet({
       toast.success("Order cancelled");
       queryClient.invalidateQueries({ queryKey: orderKeys.all });
     },
-    onError: (e: any) => toast.error(e?.data?.error?.message ?? "Cannot cancel this order"),
+    onError: (e: Error) => toast.error(e.message || "Cannot cancel this order"),
   });
 
   const handleCancel = async () => {
@@ -222,44 +213,15 @@ function OrderDetailContent({
   cancelPending: boolean;
   onPaymentVerified: () => void;
 }) {
-  const sym = order.pricing.currency.symbol;
-  const needsPayment =
-    (order.payment_status === "pending" || order.payment_status === "failed") &&
-    order.status !== "cancelled";
-  // True only when the order is stuck "verifying" from a previous session —
-  // there's no stored transaction id to resume polling against, so this is
-  // just an informational banner (matches the pre-refactor behavior).
-  const isVerifyingFromPriorSession =
-    order.payment_status === "pending_verification";
+  const sym = order.pricing.currency.symbol + " ";
+  const needsPayment = order.status === "pending_payment" || order.status === "payment_failed";
+  const settling = order.status === "payment_processing" || order.status === "paid_verifying";
 
-  const paymentMethods = order.invoice?.payment?.methods ?? [];
-
-  const { copiedField, copy } = useClipboardCopy();
-  const payment = usePaymentVerification({
-    orderId: order.id,
-    methods: paymentMethods,
-    fallbackAmount: order.pricing.total,
-    fallbackCurrency: order.pricing.currency.code,
-    onVerified: onPaymentVerified,
-  });
-
-  const handleSubmitReceipt = async () => {
-    try {
-      await payment.submitReceipt();
-    } catch (e: any) {
-      toast.error(e?.data?.error?.message ?? e?.message ?? "Failed to submit receipt");
-    }
-  };
-
-  const orderSteps = [
-    { label: "Order placed", key: "created", date: order.timeline.created },
-    { label: "Payment confirmed", key: "paid", date: order.timeline.paid },
-    { label: "Shipped", key: "shipped", date: order.timeline.shipped },
-    { label: "Delivered", key: "delivered", date: order.timeline.delivered },
-  ];
-
-  const stepIndex = orderSteps.findIndex((s) => !s.date);
-  const activeStepIdx = stepIndex === -1 ? orderSteps.length - 1 : stepIndex - 1;
+  // Timeline = the order's state history (one entry per status change).
+  const orderSteps = order.history.length
+    ? order.history.map((h, i) => ({ key: `${h.status}-${i}`, label: ORDER_STATUS_LABEL[h.status] ?? h.status, date: h.at }))
+    : [{ key: "created", label: "Order placed", date: order.created_at }];
+  const activeStepIdx = orderSteps.length - 1;
 
   return (
     <div className="space-y-5">
@@ -279,78 +241,28 @@ function OrderDetailContent({
         </div>
       </div>
 
-      {/* Payment action — same components/flow as checkout's payment step */}
-      {needsPayment && paymentMethods.length > 0 && (
-        <>
-          {payment.verifyState &&
-          !payment.verifyState.isTerminal &&
-          (payment.verifyState.status === "submitted" || payment.verifyState.status === "verifying") ? (
-            <VerifyingState
-              statusDisplay={payment.verifyState.statusDisplay}
-              transactionId={payment.verifyState.transactionId}
-            />
-          ) : payment.verifyState?.isVerified ? (
-            <SuccessState
-              orderNumber={order.order_number}
-              primaryLabel="Done"
-              onPrimary={() => setSection("timeline")}
-            />
-          ) : payment.verifyState?.isTerminal ? (
-            <FailedState
-              isMismatch={payment.verifyState.status === "mismatch"}
-              errorMessage={payment.verifyState.errorMessage}
-              onRetry={payment.retry}
-              onCancel={onCancel}
-              isCanceling={cancelPending}
-            />
-          ) : (
-            <div className="space-y-3">
-              <div className="flex items-start gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-                <div>
-                  <p className="text-sm font-medium text-amber-600">Payment required</p>
-                </div>
-              </div>
-
-              <AmountBanner invoice={order.invoice} />
-
-              <BankSelector
-                methods={paymentMethods}
-                selectedProviderCode={payment.selectedProviderCode}
-                onSelect={payment.setSelectedProviderCode}
-                onCopy={copy}
-                copiedField={copiedField}
-                sym={sym}
-                total={order.pricing.total}
-              />
-
-              <ReceiptSubmission
-                onSubmit={handleSubmitReceipt}
-                receiptIdentifier={payment.receiptIdentifier}
-                setReceiptIdentifier={payment.setReceiptIdentifier}
-                payerAccount={payment.payerAccount}
-                setPayerAccount={payment.setPayerAccount}
-                receiptError={payment.receiptError}
-                payerError={payment.payerError}
-                refLabel={payment.selectedMethod?.referenceLabel ?? "Transaction ID / Receipt"}
-                refPlaceholder={payment.selectedMethod?.referencePlaceholder ?? ""}
-                refHelpText={payment.selectedMethod?.referenceHelpText ?? ""}
-                requiresAccountNumber={payment.selectedMethod?.requiresPayerAccount ?? false}
-                payerAccountLabel={
-                  payment.selectedMethod?.payerAccountLabel ?? "Your account number (last 8 digits)"
-                }
-                submittingReceipt={payment.submittingReceipt}
-                clearErrors={payment.clearErrors}
-              />
-            </div>
-          )}
-        </>
+      {/* Payment — same panel as checkout's payment step */}
+      {needsPayment && (
+        <div className="space-y-3">
+          <div className="flex items-start gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+            <p className="text-sm font-medium text-amber-600">
+              {order.status === "payment_failed" ? "Payment failed — try again" : "Payment required"}
+            </p>
+          </div>
+          <PaymentPanel
+            orderId={order.id}
+            orderNumber={order.order_number}
+            amountLabel={`${sym}${order.pricing.total}`}
+            onDone={onPaymentVerified}
+          />
+        </div>
       )}
 
-      {isVerifyingFromPriorSession && !payment.verifyState && (
+      {settling && (
         <div className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3">
           <Loader2 className="h-4 w-4 animate-spin text-primary" />
-          <p className="text-sm">Verifying your payment…</p>
+          <p className="text-sm">Confirming your payment — this updates automatically.</p>
         </div>
       )}
 
@@ -462,25 +374,6 @@ function OrderDetailContent({
             )}
           </div>
 
-          {order.tracking_number && (
-            <div className="rounded-2xl border border-border bg-surface p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Tracking</p>
-              <div className="flex items-center justify-between">
-                <p className="font-mono text-sm">{order.tracking_number}</p>
-                {order.tracking_url && (
-                  <a
-                    href={order.tracking_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1 text-xs text-primary"
-                  >
-                    Track <ExternalLink className="h-3 w-3" />
-                  </a>
-                )}
-              </div>
-            </div>
-          )}
-
           {order.customer_note && (
             <div className="rounded-2xl border border-border bg-surface p-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Your note</p>
@@ -498,8 +391,8 @@ function OrderDetailContent({
               key={step.key}
               label={step.label}
               date={step.date}
-              done={!!step.date}
-              active={i === activeStepIdx + 1}
+              done={i < activeStepIdx}
+              active={i === activeStepIdx}
               last={i === orderSteps.length - 1}
             />
           ))}

@@ -13,11 +13,11 @@ export const Route = createFileRoute("/")({
   }),
   head: () => ({
     meta: [
-      { title: "M I M O — Design Studio" },
+      { title: "M I M O — Creator Studio" },
       {
         name: "description",
         content:
-          "M I M O is a creator studio for designing and selling custom apparel.",
+          "Design on 3D blanks, publish to the marketplace and track your earnings.",
       },
     ],
   }),
@@ -38,9 +38,9 @@ function IndexPage() {
   // useTelegramLaunch's background sign-in — and the landing spot for
   // users bounced here from /login by a guarded route. `redirect` (if
   // present) carries the page they were originally trying to reach, so
-  // they land there instead of always going to /marketplace.
+  // they land there instead of always going to /catalog.
   const { tgLoading, checked } = useTelegramAutoLogin({
-    redirectTo: redirect || "/marketplace",
+    redirectTo: redirect || "/catalog",
   });
 
   // Browser path: a stored token isn't proof of a valid session — verify
@@ -58,7 +58,7 @@ function IndexPage() {
       .then(() => {
         if (cancelled) return;
         if (useAuthStore.getState().status === "authenticated") {
-          navigate({ to: redirect || "/marketplace", replace: true });
+          navigate({ to: redirect || "/catalog", replace: true });
         }
       });
 

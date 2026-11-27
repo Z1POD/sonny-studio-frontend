@@ -102,7 +102,7 @@ export function ErrorPage({ error, reset }: ErrorPageProps) {
             Try Again
           </button>
           <a
-            href="/marketplace"
+            href="/catalog"
             className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-6 py-2.5 text-sm font-medium text-foreground transition hover:bg-accent"
           >
             <Home className="h-4 w-4" />

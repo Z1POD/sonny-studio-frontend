@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { ImageIcon, Plus, Search } from "lucide-react";
@@ -9,60 +9,43 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLightbox } from "@/shared/hooks/use-overlays";
-import { catalogListQuery, catalogCategoriesQuery } from "../queries";
-import type { CatalogBlank, Category } from "../api";
+import { catalogListInfiniteQuery, catalogCategoriesQuery } from "../queries";
 import { haptics } from "@/shared/lib/haptics";
 import { formatPrice } from "@/lib/format";
 
 
-function getCategorySlug(category: Category | string): string {
-  if (typeof category === "string") return category;
-  return category.slug;
-}
-
 export function CatalogPage() {
-  const { data, isLoading } = useQuery(catalogListQuery());
-  const { data: categoriesData } = useQuery(catalogCategoriesQuery());
   const lightbox = useLightbox();
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [q, setQ] = useState("");
+  const search = useDebounced(q.trim(), 300);
   const navigate = useNavigate();
+
+  // Search and category filtering happen on the server, so every blank is reachable however large the catalogue is.
+  const list = useInfiniteQuery(
+    catalogListInfiniteQuery({ search: search || undefined, category: activeCategory === "all" ? undefined : activeCategory }),
+  );
+  const { data: categoriesData } = useQuery(catalogCategoriesQuery());
+  const isLoading = list.isLoading;
 
   // Track active item for mobile tap states or desktop hovers safely
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
 
-  const categories = useMemo(() => {
-    const apiCategories = categoriesData?.data ?? [];
-    return [
-      { id: "all" as const, label: "All" },
-      ...apiCategories.map((c) => ({ id: c.slug, label: c.name })),
-    ];
-  }, [categoriesData]);
+  const categories = useMemo(
+    () => [{ id: "all", label: "All" }, ...(categoriesData ?? []).map((c) => ({ id: c.slug, label: c.name }))],
+    [categoriesData],
+  );
 
-  const items = useMemo(() => {
-    const all = data?.results ?? [];
-    return all.filter((b) => {
-      const matchCat =
-        activeCategory === "all" || getCategorySlug(b.category) === activeCategory;
-      const matchQ =
-        !q.trim() ||
-        b.name.toLowerCase().includes(q.toLowerCase()) ||
-        b.brand.name.toLowerCase().includes(q.toLowerCase());
-      return matchCat && matchQ;
-    });
-  }, [data, activeCategory, q]);
+  const items = useMemo(() => list.data?.pages.flatMap((p) => p.items) ?? [], [list.data]);
 
   const [isOpeningStudio, setIsOpeningStudio] = useState(false);
 
-  const handleCustomize = (apparelId: string) => {
+  const handleCustomize = (blankSlug: string) => {
     if (isOpeningStudio) return;
 
     setIsOpeningStudio(true);
 
-    navigate({
-      to: "/studio",
-      state: { apparelId } as Record<string, string>,
-    });
+    navigate({ to: "/studio", search: { blank: blankSlug } });
   };
 
   return (
@@ -164,32 +147,32 @@ export function CatalogPage() {
                 {/* Main Product Image */}
                 <div className="absolute inset-0 h-full w-full overflow-hidden">
                   <img
-                    src={b.thumbnail_url}
+                    src={b.thumbnailUrl}
                     alt={b.name}
                     className="h-full w-full object-cover transition-transform duration-700 ease-[0.25,1,0.5,1] group-hover:scale-105"
                   />
                 </div>
 
                 {/* Stock badge */}
-                {!b.stock.is_in_stock ? (
+                {!b.inStock ? (
                   <Badge
                     variant="destructive"
                     className="absolute left-2 top-2 z-20"
                   >
                     Out of stock
                   </Badge>
-                ) : b.stock.available_quantity < 10 ? (
+                ) : b.availableQuantity != null && b.availableQuantity < 10 ? (
                   <Badge
                     variant="secondary"
                     className="absolute left-2 top-2 z-20 bg-orange-400"
                   >
-                    Only {b.stock.available_quantity} left
+                    Only {b.availableQuantity} left
                   </Badge>
                 ) : null}
 
                 <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/40 via-black/10 to-transparent pt-8 text-white transition-opacity duration-300 group-hover:opacity-0 pointer-events-none">
                   <p className="truncate text-sm font-semibold tracking-tight">{b.name}</p>
-                  <p className="text-xs text-white/80 mt-0.5">{formatPrice(b.pricing.base_price, b.pricing.currency)}</p>
+                  <p className="text-xs text-white/80 mt-0.5">{b.price ? formatPrice(b.price.amount, { symbol: b.price.symbol, decimal_places: b.price.decimalPlaces }) : ""}</p>
                 </div>
 
                 {/* Blur Fadeup Interactive Overlay */}
@@ -216,7 +199,7 @@ export function CatalogPage() {
                           onClick={(e) => {
                             e.stopPropagation();
                             lightbox.open(
-                              [{ src: b.thumbnail_url, caption: b.name }],
+                              [{ src: b.thumbnailUrl, caption: b.name }],
                               0
                             );
                           }}
@@ -240,13 +223,13 @@ export function CatalogPage() {
                       <div className="space-y-0.5 md:space-y-2 sm:space-y-3.5 min-h-0 flex flex-col justify-end">
                         <div className="space-y-0.3 sm:space-y-1">
                           <span className="inline-block rounded bg-white/20 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider line-clamp-1">
-                            {b.brand.name}
+                            {b.brandName}
                           </span>
                           <h5 className="text-sm sm:text-base font-semibold leading-tight tracking-tight line-clamp-1 md:line-clamp-2">
                             {b.name}
                           </h5>
                           <p className="text-base sm:text-lg font-bold tracking-tight text-white/95">
-                            {formatPrice(b.pricing.base_price, b.pricing.currency)}
+                            {b.price ? formatPrice(b.price.amount, { symbol: b.price.symbol, decimal_places: b.price.decimalPlaces }) : ""}
                           </p>
                         </div>
 
@@ -258,7 +241,7 @@ export function CatalogPage() {
                               <span className="opacity-70">Colors</span>
 
                               <div className="flex items-center gap-1">
-                                {b.available_colors.colors.slice(0, 4).map((color) => (
+                                {b.colors.slice(0, 4).map((color) => (
                                   <span
                                     key={color.name}
                                     title={color.name}
@@ -267,9 +250,9 @@ export function CatalogPage() {
                                   />
                                 ))}
 
-                                {b.available_colors.colors.length > 4 && (
+                                {b.colors.length > 4 && (
                                   <span className="ml-1 text-[9px] font-medium">
-                                    +{b.available_colors.colors.length - 4}
+                                    +{b.colors.length - 4}
                                   </span>
                                 )}
                               </div>
@@ -277,7 +260,7 @@ export function CatalogPage() {
                             <div className="flex justify-between">
                               <span className="opacity-70">Sizes</span>
                               <span className="truncate max-w-[60%] text-right">
-                                {b.available_sizes.sizes.join(", ")}
+                                {b.sizes.join(", ")}
                               </span>
                             </div>
                           </div>
@@ -288,7 +271,7 @@ export function CatalogPage() {
                               <span className="opacity-70">Colors</span>
 
                               <div className="flex items-center gap-1">
-                                {b.available_colors.colors.slice(0, 4).map((color) => (
+                                {b.colors.slice(0, 4).map((color) => (
                                   <span
                                     key={color.name}
                                     title={color.name}
@@ -297,9 +280,9 @@ export function CatalogPage() {
                                   />
                                 ))}
 
-                                {b.available_colors.colors.length > 4 && (
+                                {b.colors.length > 4 && (
                                   <span className="ml-1 text-[9px] font-medium">
-                                    +{b.available_colors.colors.length - 4}
+                                    +{b.colors.length - 4}
                                   </span>
                                 )}
                               </div>
@@ -307,14 +290,14 @@ export function CatalogPage() {
                             <div className="flex items-center justify-between">
                               <span className="font-medium opacity-70">Sizes</span>
                               <span className="font-semibold truncate max-w-[70%] text-right">
-                                {b.available_sizes.sizes.join(", ")}
+                                {b.sizes.join(", ")}
                               </span>
                             </div>
                           </div>
                         </div>
 
                         <Button
-                          disabled={isOpeningStudio || !b.stock.is_in_stock}
+                          disabled={isOpeningStudio || !b.inStock}
                           size="default"
                           className="
                             pointer-events-auto
@@ -336,12 +319,12 @@ export function CatalogPage() {
                           "
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleCustomize(b.id);
+                            handleCustomize(b.slug);
                             haptics.impactOccurred("light");
                           }}
                         >
                           <Plus className="mr-1 sm:mr-1.5 h-3.5 w-3.5 sm:h-4 w-4 stroke-[2.5]" />
-                          {!b.stock.is_in_stock
+                          {!b.inStock
                             ? "Out of stock"
                             : isOpeningStudio
                               ? "Opening..."
@@ -356,6 +339,31 @@ export function CatalogPage() {
           })}
         </div>
       )}
+
+      {list.hasNextPage && (
+        <div className="mt-6 flex justify-center">
+          <Button variant="outline" size="sm" onClick={() => void list.fetchNextPage()} disabled={list.isFetchingNextPage}>
+            {list.isFetchingNextPage ? "Loading…" : "Load more"}
+          </Button>
+        </div>
+      )}
+      {list.isError && (
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          Couldn't load the catalog.{" "}
+          <button className="underline" onClick={() => void list.refetch()}>
+            Try again
+          </button>
+        </p>
+      )}
     </div>
   );
+}
+
+function useDebounced<T>(value: T, ms: number): T {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(id);
+  }, [value, ms]);
+  return v;
 }

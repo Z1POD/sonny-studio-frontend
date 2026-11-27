@@ -46,14 +46,15 @@ export interface ProductStoryFlags {
 }
 
 export interface ShareTarget {
-  id: string;
   title: string;
   url: string;
+  /** Product slug — the Telegram deep link is `?startapp=p_<slug>`, which the buyer app opens at `/p/<slug>`. */
+  slug?: string;
   imageUrl?: string;
   productId?: string;
   shouldPublish?: boolean;
-  price?: string;
-  currencySymbol?: string;
+  /** Pre-formatted price ("ETB 585.00"). */
+  priceLabel?: string;
   flags?: ProductStoryFlags;
 }
 
@@ -62,9 +63,8 @@ export interface ShareTarget {
 // 
 
 function composeStoryText(target: ShareTarget): string {
-  const { id, title, price, currencySymbol, flags } = target;
-  const sym = currencySymbol || "";
-  const priceLine = price ? `${sym}${price}` : null;
+  const { slug, title, priceLabel, flags } = target;
+  const priceLine = priceLabel || null;
 
   const ctas: string[] = [];
 
@@ -82,9 +82,9 @@ function composeStoryText(target: ShareTarget): string {
   if (priceLine) lines.push(`💰 ${priceLine}`);
   lines.push(...ctas.slice(0, 2));
 
-  if (id) {
+  if (slug) {
     const miniAppHandle = import.meta.env.VITE_MINIAPP_HANDLE;
-    lines.push(`🔗 https://t.me/${miniAppHandle}?startapp=p_${id}`);
+    lines.push(`🔗 https://t.me/${miniAppHandle}?startapp=p_${slug}`);
   }
 
   return lines.join("\n");

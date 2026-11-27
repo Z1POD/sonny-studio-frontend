@@ -24,99 +24,144 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { storeProductDetailQuery, storeProductKeys } from "../queries";
-import { storeProductApi, type ProductVariant, type UpdateProductPayload } from "../api";
+import {
+  storeProductApi,
+  priceCurrency,
+  PUBLISH_BLOCKER_TEXT,
+  type ProductDetail,
+  type ProductVariantMatrix,
+  type PublishBlocker,
+  type UpdateProductPayload,
+} from "../api";
+import { designKeys } from "@/features/designs/queries";
+import { formatPrice, type CurrencyLike } from "@/lib/format";
 import { useConfirm } from "../../../shared/components/ConfirmModal";
 import { useHasVerifiedStore } from "@/shared/hooks/use-store-access";
 
 //     Variant matrix                                                            
 
+function MarkBox({ state, onClick, label, disabled }: { state: "all" | "some" | "none"; onClick: () => void; label: string; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition disabled:cursor-not-allowed disabled:opacity-30 ${
+        state === "none"
+          ? "border-border/60 bg-surface-elevated/40 hover:border-primary/60"
+          : "border-primary bg-primary text-primary-foreground"
+      }`}
+    >
+      {state === "all" && <Check className="h-3 w-3" />}
+      {state === "some" && <span className="h-0.5 w-2.5 rounded bg-primary-foreground" />}
+    </button>
+  );
+}
+
 function VariantMatrix({
-  variants,
+  matrix,
   enabledIds,
   onToggle,
+  onSetMany,
 }: {
-  variants: ProductVariant[];
+  matrix: ProductVariantMatrix;
   enabledIds: Set<string>;
   onToggle: (id: string) => void;
+  /** Switch a group of variants on or off at once (a colour row, a size column, or everything). */
+  onSetMany: (ids: string[], on: boolean) => void;
 }) {
-  const colors = useMemo(
-    () => [...new Map(variants.map((v) => [v.color.hex, v.color])).values()],
-    [variants],
-  );
-  const sizes = useMemo(
-    () => [...new Set(variants.map((v) => v.size))],
-    [variants],
-  );
+  const sizes = useMemo(() => [...matrix.sizes].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)), [matrix.sizes]);
+  const colors = useMemo(() => [...matrix.colors].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)), [matrix.colors]);
+  const find = (colorId: string, sizeId: string) => matrix.combinations.find((v) => v.color_id === colorId && v.size_id === sizeId);
 
-  const getVariant = (hex: string, size: string) =>
-    variants.find((v) => v.color.hex === hex && v.size === size);
+  // Only variants that are in stock can be switched on.
+  const idsOf = (pred: (v: ProductVariantMatrix["combinations"][number]) => boolean) =>
+    matrix.combinations.filter((v) => v.in_stock && pred(v)).map((v) => v.variant_id);
+  const stateOf = (ids: string[]): "all" | "some" | "none" => {
+    const on = ids.filter((id) => enabledIds.has(id)).length;
+    return ids.length === 0 || on === 0 ? "none" : on === ids.length ? "all" : "some";
+  };
+  const toggleGroup = (ids: string[]) => onSetMany(ids, stateOf(ids) !== "all");
+
+  const allIds = idsOf(() => true);
+  const allState = stateOf(allIds);
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <Label className="text-xs text-muted-foreground">Enabled Variants</Label>
-        <button
-          onClick={() => {
-            const all = variants.every((v) => enabledIds.has(v.id));
-            variants.forEach((v) => {
-              if (all === enabledIds.has(v.id)) onToggle(v.id);
-            });
-          }}
-          className="text-[10px] text-primary hover:underline"
-        >
-          {variants.every((v) => enabledIds.has(v.id)) ? "Deselect all" : "Select all"}
+        <Label className="text-xs text-muted-foreground">Variants you sell</Label>
+        <button type="button" onClick={() => toggleGroup(allIds)} className="text-[11px] font-medium text-primary hover:underline">
+          {allState === "all" ? "Deselect all" : "Select all"}
         </button>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-border/40">
-        <table className="w-full min-w-[220px] text-xs">
+        <table className="w-full min-w-[240px] text-xs">
           <thead>
             <tr className="border-b border-border/40 bg-surface-elevated/40">
-              <th className="px-3 py-2 text-left font-medium text-muted-foreground">Color</th>
-              {sizes.map((s) => (
-                <th key={s} className="px-2 py-2 text-center font-medium text-muted-foreground">{s}</th>
-              ))}
+              <th className="px-3 py-2 text-left">
+                <div className="flex items-center gap-2">
+                  <MarkBox state={allState} onClick={() => toggleGroup(allIds)} label={allState === "all" ? "Deselect every variant" : "Select every variant"} disabled={allIds.length === 0} />
+                  <span className="font-medium text-muted-foreground">Color</span>
+                </div>
+              </th>
+              {sizes.map((s) => {
+                return (
+                  <th key={s.id} className="px-2 py-2 text-center font-medium text-muted-foreground">
+                    <span>{s.label}</span>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
-            {colors.map((color, i) => (
-              <tr key={color.hex} className={i % 2 === 0 ? "bg-surface/30" : "bg-surface-elevated/20"}>
-                <td className="px-3 py-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="h-3.5 w-3.5 rounded-full border border-border/40" style={{ background: color.hex }} />
-                    <span className="text-[11px]">{color.name}</span>
-                  </div>
-                </td>
-                {sizes.map((size) => {
-                  const v = getVariant(color.hex, size);
-                  if (!v) return (
-                    <td key={size} className="px-2 py-2 text-center">
-                      <span className="text-[10px] text-muted-foreground/30">—</span>
-                    </td>
-                  );
-                  const on = enabledIds.has(v.id);
-                  return (
-                    <td key={size} className="px-2 py-2 text-center">
-                      <button
-                        onClick={() => onToggle(v.id)}
-                        className={`mx-auto flex h-6 w-6 items-center justify-center rounded-md border transition ${
-                          on
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border/50 bg-surface-elevated/40 text-muted-foreground hover:border-primary/60"
-                        }`}
-                      >
-                        {on && <Check className="h-3 w-3" />}
-                      </button>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
+            {colors.map((color, i) => {
+              const rowIds = idsOf((v) => v.color_id === color.id);
+              return (
+                <tr key={color.id} className={i % 2 === 0 ? "bg-surface/30" : "bg-surface-elevated/20"}>
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <MarkBox state={stateOf(rowIds)} onClick={() => toggleGroup(rowIds)} label={`${stateOf(rowIds) === "all" ? "Deselect" : "Select"} every size of ${color.name}`} disabled={rowIds.length === 0} />
+                      <span className="h-3.5 w-3.5 rounded-full border border-border/40" style={{ background: color.hex }} />
+                      <span className="text-[11px]">{color.name}</span>
+                    </div>
+                  </td>
+                  {sizes.map((size) => {
+                    const v = find(color.id, size.id);
+                    if (!v) return (
+                      <td key={size.id} className="px-2 py-2 text-center">
+                        <span className="text-[10px] text-muted-foreground/30">—</span>
+                      </td>
+                    );
+                    const on = enabledIds.has(v.variant_id);
+                    return (
+                      <td key={size.id} className="px-2 py-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => onToggle(v.variant_id)}
+                          disabled={!v.in_stock}
+                          title={v.in_stock ? undefined : "Out of stock at the printer"}
+                          className={`mx-auto flex h-6 w-6 items-center justify-center rounded-md border transition disabled:cursor-not-allowed disabled:opacity-30 ${
+                            on
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border/50 bg-surface-elevated/40 text-muted-foreground hover:border-primary/60"
+                          }`}
+                        >
+                          {on && <Check className="h-3 w-3" />}
+                        </button>
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
       <p className="text-[10px] text-muted-foreground">
-        {enabledIds.size} of {variants.length} variants enabled
+        {enabledIds.size} of {matrix.combinations.length} variants enabled · tap a colour, a size or the corner box to mark or unmark a whole group
       </p>
     </div>
   );
@@ -124,34 +169,34 @@ function VariantMatrix({
 
 //     Pricing preview                                                           
 
+/** Cost = blank + print. The markup is a % of that cost, so the creator's margin is what they expect. */
 function PricingPreview({
-  basePrice,
+  cost,
   markupPct,
   currency,
 }: {
-  basePrice: string;
+  /** Blank + print, combined. */
+  cost: number;
   markupPct: number;
-  currency: string | { code: string; symbol: string; name: string };
+  currency: CurrencyLike;
 }) {
-  const base = parseFloat(basePrice) || 0;
-  // In edit modal we only have base price (no print cost available), markup is % of base
-  const markupAmt = (base * markupPct) / 100;
-  const retail = base + markupAmt;
-  const currencySymbol = typeof currency === "object" ? currency.symbol : currency;
+  const markupAmt = (cost * markupPct) / 100;
+  const retail = cost + markupAmt;
+  const f = (n: number) => formatPrice(n, currency);
 
   return (
     <div className="grid grid-cols-3 gap-2 rounded-xl border border-border/40 bg-surface-elevated/30 p-3 text-center text-xs">
       <div>
-        <p className="text-muted-foreground">Base</p>
-        <p className="font-semibold">{currencySymbol} {base.toFixed(2)}</p>
+        <p className="text-muted-foreground">Base price</p>
+        <p className="font-semibold">{f(cost)}</p>
       </div>
       <div>
-        <p className="text-muted-foreground">Markup</p>
-        <p className="font-semibold">+ {currencySymbol} {markupAmt.toFixed(2)}</p>
+        <p className="text-muted-foreground">Your markup</p>
+        <p className="font-semibold">+ {f(markupAmt)}</p>
       </div>
       <div>
-        <p className="text-muted-foreground">Retail</p>
-        <p className="text-base font-bold text-primary">{currencySymbol} {retail.toFixed(2)}</p>
+        <p className="text-muted-foreground">Price</p>
+        <p className="text-base font-bold text-primary">{f(retail)}</p>
       </div>
     </div>
   );
@@ -183,40 +228,53 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
   const [markupPct, setMarkupPct] = useState(0);
   const [markupInput, setMarkupInput] = useState("0");
   const [isLimited, setIsLimited] = useState(false);
+  const [allowsOnTop, setAllowsOnTop] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(false);
   const [maxQty, setMaxQty] = useState(100);
   const [enabledIds, setEnabledIds] = useState<Set<string>>(new Set());
   const [tab, setTab] = useState<Tab>("details");
   const [dirty, setDirty] = useState(false);
 
-  // Hydrate form once product loads
+  // Cost = blank + print (server-computed). The markup % is relative to it.
+  const cost = useMemo(() => (product ? (parseFloat(product.pricing.base_price) || 0) + (parseFloat(product.pricing.print_cost) || 0) : 0), [product]);
+  const currency: CurrencyLike = product ? product.pricing.currency : {};
+
+  // Hydrate the form once the product loads
   useEffect(() => {
     if (!product) return;
     setTitle(product.title ?? "");
     setDescription(product.description ?? "");
-    const base = parseFloat(product.pricing?.base_price ?? "0") || 0;
-    const retail = parseFloat(product.pricing?.retail_price ?? "0") || 0;
-    const markup = base > 0 ? ((retail - base) / base) * 100 : 0;
-    const rounded = Math.round(markup * 100) / 100;
-    setMarkupPct(rounded);
-    setMarkupInput(String(rounded));
+    const markup = parseFloat(product.pricing.markup_price) || 0;
+    const pct = cost > 0 ? Math.round((markup / cost) * 10000) / 100 : 0;
+    setMarkupPct(pct);
+    setMarkupInput(String(pct));
     setIsLimited(product.is_limited_edition);
+    setAllowsOnTop(!!product.allows_customization_on_top);
+    setIsPrivate(!!product.is_private);
     setMaxQty(product.max_quantity ?? 100);
-    setEnabledIds(new Set((product.enabled_variant ?? []).map((v) => v.id)));
-  }, [product]);
+    // Every variant of the blank is listed; `enabled` says which ones the creator sells.
+    setEnabledIds(new Set(product.variant_matrix.combinations.filter((v) => v.enabled).map((v) => v.variant_id)));
+    setDirty(false);
+  }, [product, cost]);
 
   const toggleVariant = (id: string) => {
     setDirty(true);
     setEnabledIds((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
 
-  const allVariants: ProductVariant[] = useMemo(() => {
-    if (!product) return [];
-    return product.enabled_variant ?? [];
-  }, [product]);
+  const setManyVariants = (ids: string[], on: boolean) => {
+    setDirty(true);
+    setEnabledIds((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) on ? next.add(id) : next.delete(id);
+      return next;
+    });
+  };
 
   // Slider ↔ input sync
   const handleMarkupSlider = (val: number) => {
@@ -235,30 +293,60 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
     }
   };
 
-  const mutation = useMutation({
-    mutationFn: async () => {
-      if (!product) throw new Error("No product");
+  const isPending = !!product && product.status === "pending_review";
+  const isPublished = !!product && (product.is_published || product.status === "published");
+  // A design waiting for review is locked like a published one until staff decide.
+  const isDraft = !isPublished && !isPending;
 
-      const payload: UpdateProductPayload = { title, description };
+  // What would still block publishing with the CURRENT form values (the server enforces the same rules).
+  const blockers = useMemo<PublishBlocker[]>(() => {
+    if (!product) return [];
+    const out: PublishBlocker[] = [];
+    if (markupPct <= 0) out.push("markup_required");
+    if (enabledIds.size === 0) out.push("no_variants");
+    if (product.publish_blockers.includes("no_mockups")) out.push("no_mockups");
+    return out;
+  }, [product, markupPct, enabledIds]);
 
-      if (hasStore) {
-        const base = parseFloat(product.pricing?.base_price ?? "0") || 0;
-        const markupAmt = (base * markupPct) / 100;
-        payload.markup_price = markupAmt.toFixed(2);
-        payload.enabled_variants = [...enabledIds];
+  const buildPayload = (p: ProductDetail): UpdateProductPayload => {
+    const payload: UpdateProductPayload = {};
+    if (isDraft) {
+      payload.title = title.trim() || p.title;
+      payload.description = description;
+    }
+    if (hasStore) {
+      payload.markup_price = ((cost * markupPct) / 100).toFixed(p.pricing.currency.decimal_places ?? 2);
+      payload.enabled_variant_ids = [...enabledIds];
+      payload.allows_customization_on_top = allowsOnTop;
+      if (isDraft) {
+        payload.is_private = isPrivate;
         payload.is_limited_edition = isLimited;
         payload.max_quantity = isLimited ? maxQty : null;
       }
+    }
+    return payload;
+  };
 
-      return storeProductApi.update(productId, payload);
+  const refreshCaches = () => {
+    qc.invalidateQueries({ queryKey: storeProductKeys.all });
+    qc.invalidateQueries({ queryKey: designKeys.all });
+  };
+
+  const mutation = useMutation({
+    mutationFn: async (opts: { publish: boolean }) => {
+      if (!product) throw new Error("No product");
+      const saved = dirty ? await storeProductApi.update(productId, buildPayload(product)) : product;
+      if (opts.publish) await storeProductApi.publish(productId);
+      return saved;
     },
-    onSuccess: () => {
-      toast.success("Product updated");
-      qc.invalidateQueries({ queryKey: storeProductKeys.detail(productId) });
+    onSuccess: (_saved, opts) => {
+      toast.success(opts.publish ? "Submitted for review — it goes live once approved" : "Product updated");
+      refreshCaches();
       onSaved();
     },
-    onError: (e: any) => {
-      toast.error(e?.message ?? "Failed to update product");
+    onError: (e: unknown) => {
+      toast.error(e instanceof Error ? e.message : "Failed to update product");
+      refreshCaches();
     },
   });
 
@@ -273,18 +361,20 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
     if (ok) onClose();
   };
 
-  const handleEditInStudio = () => {
+  const handleEditInStudio = async () => {
+    if (!product) return;
+    if (dirty) {
+      const ok = await confirm({
+        title: "Leave without saving?",
+        description: "Changes to the details and pricing on this screen won't be kept.",
+        confirmLabel: "Open studio",
+        danger: true,
+      });
+      if (!ok) return;
+    }
     onClose();
-    navigate({
-      to: "/studio",
-      state: {
-        productId,
-        apparelId: product?.base_apparel?.id,
-      } as any,
-    });
+    navigate({ to: "/studio", search: { blank: product.blank.slug, design: product.id } });
   };
-
-  const isDraft = !product?.is_published;
 
   return (
     <>
@@ -350,13 +440,13 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
                     <button
                       key={t}
                       onClick={() => setTab(t)}
-                      className={`px-4 py-2.5 text-xs font-medium capitalize transition border-b-2 ${
+                      className={`px-4 py-2.5 text-xs font-medium transition border-b-2 ${
                         tab === t
                           ? "border-primary text-foreground"
                           : "border-transparent text-muted-foreground hover:text-foreground"
                       }`}
                     >
-                      {t === "details" ? "Details" : "Sell in Store"}
+                      {t === "details" ? "Details" : "Pricing & variants"}
                     </button>
                   ))}
                 </div>
@@ -377,7 +467,7 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
                         <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
                           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-amber-500" />
                           <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                            This product is published. Some fields may be read-only.
+                            {isPending ? "This product is waiting for review. Editing is locked until staff approve or reject it." : "This product is published. Some fields may be read-only."}
                           </p>
                         </div>
                       )}
@@ -404,11 +494,11 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
                       </div>
 
                       {/* Edit in Studio */}
-                      {product.snapshot && (
+                      {product.status !== "archived" && (
                         <div className="rounded-xl border border-border/40 bg-surface-elevated/30 p-3">
                           <p className="text-xs font-medium">3D Mockup</p>
                           <p className="mt-0.5 text-[11px] text-muted-foreground">
-                            Reopen the studio canvas to adjust artwork placement, colors, and angles.
+                            Reopen the studio to adjust artwork placement, colors, and angles. Your design opens exactly as you saved it.
                           </p>
                           <Button
                             variant="outline"
@@ -465,7 +555,6 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
                               value={markupInput}
                               onChange={(e) => handleMarkupInput(e.target.value)}
                               onBlur={() => setMarkupInput(String(markupPct))}
-                              disabled={!isDraft}
                               className="h-7 w-16 rounded-lg px-2 text-xs text-right"
                             />
                             <span className="text-xs text-muted-foreground">%</span>
@@ -479,13 +568,43 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
                           step={1}
                           value={markupPct}
                           onChange={(e) => handleMarkupSlider(Number(e.target.value))}
-                          disabled={!isDraft}
                           className="w-full accent-primary"
                         />
-                        <PricingPreview
-                          basePrice={product.pricing?.base_price ?? "0"}
-                          markupPct={markupPct}
-                          currency={product.pricing?.currency ?? "$"}
+                        <PricingPreview cost={cost} markupPct={markupPct} currency={currency} />
+                        <p className="text-[10px] text-muted-foreground">
+                          Markup is a percentage of the base price. Buyers pay base price + your markup.
+                        </p>
+                      </div>
+
+                      {/* Visibility */}
+                      <div className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-surface-elevated/40 p-3">
+                        <div>
+                          <p className="text-sm font-medium">{isPrivate ? "Private" : "Public"}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {isDraft
+                              ? isPrivate
+                                ? "Hidden from the market and search. Only people with your share link can view and order it."
+                                : "Listed in the market and search once approved."
+                              : "Visibility can't change after submission. Copy the design to publish it with different visibility."}
+                          </p>
+                        </div>
+                        <Switch
+                          checked={isPrivate}
+                          disabled={!isDraft}
+                          aria-label="Private product"
+                          onCheckedChange={(v) => { setIsPrivate(v); setDirty(true); }}
+                        />
+                      </div>
+
+                      {/* Customization on top */}
+                      <div className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-surface-elevated/40 p-3">
+                        <div>
+                          <p className="text-sm font-medium">Allow customization on top</p>
+                          <p className="text-xs text-muted-foreground">Let buyers add their own artwork to your design in the studio.</p>
+                        </div>
+                        <Switch
+                          checked={allowsOnTop}
+                          onCheckedChange={(v) => { setAllowsOnTop(v); setDirty(true); }}
                         />
                       </div>
 
@@ -517,15 +636,16 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
                       </div>
 
                       {/* Variant matrix */}
-                      {allVariants.length === 0 ? (
+                      {product.variant_matrix.combinations.length === 0 ? (
                         <p className="py-8 text-center text-sm text-muted-foreground">
                           No variant data available.
                         </p>
                       ) : (
                         <VariantMatrix
-                          variants={allVariants}
+                          matrix={product.variant_matrix}
                           enabledIds={enabledIds}
                           onToggle={toggleVariant}
+                          onSetMany={setManyVariants}
                         />
                       )}
                     </motion.div>
@@ -534,31 +654,48 @@ export function EditProductModal({ productId, onClose, onSaved }: Props) {
               </div>
 
               {/* Footer */}
-              {isDraft && (
-                <div className="border-t border-border/40 px-5 py-16">
-                  <div className="flex gap-2">
+              <div className="border-t border-border/40 px-5 py-4">
+                {isDraft && blockers.length > 0 && (
+                  <ul className="mb-3 space-y-1 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-[11px] text-amber-700 dark:text-amber-400">
+                    {blockers.map((b) => (
+                      <li key={b} className="flex gap-1.5">
+                        <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                        {PUBLISH_BLOCKER_TEXT[b]}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={handleClose} disabled={mutation.isPending}>
+                    Cancel
+                  </Button>
+                  <Button
+                    variant={isDraft ? "outline" : "default"}
+                    className="flex-1"
+                    onClick={() => mutation.mutate({ publish: false })}
+                    disabled={mutation.isPending || !dirty}
+                  >
+                    {mutation.isPending && !mutation.variables?.publish ? (
+                      <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Saving…</>
+                    ) : (
+                      <><Sparkles className="mr-2 h-3.5 w-3.5" /> Save changes</>
+                    )}
+                  </Button>
+                  {isDraft && hasStore && (
                     <Button
-                      variant="outline"
                       className="flex-1"
-                      onClick={handleClose}
-                      disabled={mutation.isPending}
+                      onClick={() => mutation.mutate({ publish: true })}
+                      disabled={mutation.isPending || blockers.length > 0}
                     >
-                      Cancel
-                    </Button>
-                    <Button
-                      className="flex-1"
-                      onClick={() => mutation.mutate()}
-                      disabled={mutation.isPending || !dirty}
-                    >
-                      {mutation.isPending ? (
-                        <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Saving…</>
+                      {mutation.isPending && mutation.variables?.publish ? (
+                        <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Submitting…</>
                       ) : (
-                        <><Sparkles className="mr-2 h-3.5 w-3.5" /> Save changes</>
+                        <><Store className="mr-2 h-3.5 w-3.5" /> Submit for review</>
                       )}
                     </Button>
-                  </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           )}
         </motion.div>

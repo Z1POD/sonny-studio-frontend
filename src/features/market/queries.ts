@@ -13,6 +13,10 @@ export const marketKeys = {
     [...marketKeys.all, "products", params] as const,
   product: (slug: string, params: ProductDetailParams = {}) =>
     [...marketKeys.all, "product", slug, params] as const,
+  blanks: (params: Omit<ProductListParams, "page"> = {}) =>
+    [...marketKeys.all, "blanks", params] as const,
+  categories: () => [...marketKeys.all, "categories"] as const,
+  customizeSource: (slug: string) => [...marketKeys.all, "customize-source", slug] as const,
   store: (slug: string) => [...marketKeys.all, "store", slug] as const,
   category: (slug: string) => [...marketKeys.all, "category", slug] as const,
 };
@@ -44,11 +48,7 @@ export const productQuery = (slug: string, params: ProductDetailParams = {}) => 
     try {
       return await marketApi.getProduct(slug, params);
     } catch (e) {
-      const code =
-        e instanceof ApiError
-          ? (e.data as { error?: { code?: string } } | null)?.error?.code
-          : undefined;
-      if (e instanceof ApiError && (e.status === 404 || code === "PRODUCT_NOT_FOUND")) {
+      if (e instanceof ApiError && (e.status === 404 || e.code === "not_found")) {
         throw notFound();
       }
       throw e;
@@ -56,14 +56,18 @@ export const productQuery = (slug: string, params: ProductDetailParams = {}) => 
   },
 });
 
-export const storeQuery = (slug: string) =>
-  queryOptions({
-    queryKey: marketKeys.store(slug),
-    queryFn: () => marketApi.getStore(slug),
+export const blanksInfiniteQuery = (params: Omit<ProductListParams, "page"> = {}) =>
+  infiniteQueryOptions({
+    queryKey: marketKeys.blanks(params),
+    queryFn: ({ pageParam }) => marketApi.listBlanks({ ...params, page: pageParam }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => (lastPage.has_next ? lastPage.page + 1 : undefined),
+    staleTime: 30_000,
   });
 
-export const categoryQuery = (slug: string) =>
+export const categoriesQuery = () =>
   queryOptions({
-    queryKey: marketKeys.category(slug),
-    queryFn: () => marketApi.getCategory(slug),
+    queryKey: marketKeys.categories(),
+    queryFn: () => marketApi.getCategories(),
+    staleTime: 10 * 60_000,
   });

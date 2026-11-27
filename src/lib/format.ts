@@ -1,28 +1,26 @@
 // src/lib/format.ts
 
-import type { Currency } from "@/shared/api/types";
+/** Anything carrying display info for a currency (contract: `symbol`, `decimal_places`). */
+export interface CurrencyLike {
+  code?: string;
+  symbol?: string;
+  decimal_places?: number;
+}
 
-export const formatPrice = (amount: number | string, currency?: Currency) => {
-  const n = typeof amount === "string" ? parseFloat(amount) : amount;
-  const sym = currency?.symbol ?? "";
-
-  const formatted = Math.round(n).toLocaleString("en-US");
-
-  // Check if the currency is Ethiopian Birr (by code or symbol text)
-  if (sym === "Birr") {
-    return `${n.toFixed(1)} ${sym}`;
-  }
-  else if (sym === "ETB") {
-    return `${sym} ${formatted}`;
-  }
-  else if (sym === "$") {
-    return `${sym}${formatted}`;
-  }
-
-  // Fallback for all other standard international currency configurations
-  return `${sym} ${formatted}`;
+/**
+ * Formats a server amount for display. Uses the currency's own fraction digits (default 2) — never rounds to
+ * whole units — and a space between an alphabetic symbol/code and the number ("ETB 450.00"), none for "$".
+ */
+export const formatPrice = (amount: number | string | null | undefined, currency?: CurrencyLike | string | null) => {
+  const n = typeof amount === "string" ? parseFloat(amount) : (amount ?? NaN);
+  const cur: CurrencyLike = typeof currency === "string" ? { symbol: currency } : (currency ?? {});
+  const sym = cur.symbol || cur.code || "";
+  if (!Number.isFinite(n)) return "—";
+  const digits = cur.decimal_places ?? 2;
+  const num = n.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  if (!sym) return num;
+  return /[A-Za-z]$/.test(sym) ? `${sym} ${num}` : `${sym}${num}`;
 };
-
 
 export const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, {
@@ -30,5 +28,3 @@ export const formatDate = (iso: string) =>
     day: "numeric",
     year: "numeric",
   });
-
-

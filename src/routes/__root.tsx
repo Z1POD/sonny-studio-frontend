@@ -17,8 +17,8 @@ import appCss from "../styles.css?url";
 
 // Environment-derived config (only what changes per environment)
 
-const APP_URL = import.meta.env.VITE_APP_URL ?? "https://google.com";
-const MINIAPP_HANDLE = import.meta.env.VITE_MINIAPP_HANDLE ?? "BotFather";
+const APP_URL = (import.meta.env.VITE_APP_URL as string | undefined) ?? "http://localhost:3000";
+const MINIAPP_HANDLE = (import.meta.env.VITE_MINIAPP_HANDLE as string | undefined) ?? "creator_bot";
 
 const OG_IMAGE = `${APP_URL}/og-image.jpg`;
 
@@ -37,11 +37,11 @@ export const Route = createRootRouteWithContext<{
       },
 
       // Primary
-      { title: "M I M O — Personalized Apparel & Products" },
+      { title: "M I M O Creator — Design, publish & earn" },
       {
         name: "description",
         content:
-          "Design and sell premium custom apparel in 3D. A quiet, luxurious creator studio for fashion entrepreneurs.",
+          "Creator studio for M I M O: design on 3D blanks, set your price, publish and track your earnings.",
       },
       { name: "theme-color", content: "#000000" },
       { name: "color-scheme", content: "dark light" },
@@ -50,7 +50,7 @@ export const Route = createRootRouteWithContext<{
       { name: "robots", content: "index, follow, max-image-preview:large" },
 
       // Open Graph
-      { property: "og:title", content: "M I M O — Personalized Apparel & Products" },
+      { property: "og:title", content: "M I M O Creator — Design, publish & earn" },
       {
         property: "og:description",
         content: "Configure premium apparel in 3D. Quietly luxurious.",
@@ -66,7 +66,7 @@ export const Route = createRootRouteWithContext<{
       // Twitter
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@M_I_M_Oapp" },
-      { name: "twitter:title", content: "M I M O — Personalized Apparel & Products" },
+      { name: "twitter:title", content: "M I M O Creator — Design, publish & earn" },
       {
         name: "twitter:description",
         content: "Configure premium apparel in 3D. Quietly luxurious.",

@@ -14,17 +14,6 @@ export const designKeys = {
   detail: (id: string) => [...designKeys.details(), id] as const,
 };
 
-export const designsQuery = (params?: {
-  page?: number;
-  page_size?: number;
-  status?: string;
-}) =>
-  queryOptions({
-    queryKey: designKeys.list(params),
-    queryFn: () => storeProductApi.list(params),
-    staleTime: 30_000,
-  });
-
 export const designsInfiniteQuery = (params?: {
   status?: string;
   page_size?: number;
@@ -37,8 +26,7 @@ export const designsInfiniteQuery = (params?: {
         page: pageParam as number,
         page_size: params?.page_size ?? 20,
       }),
-    getNextPageParam: (last) =>
-      last.pagination.has_next ? last.pagination.page + 1 : undefined,
+    getNextPageParam: (last, all) => (last.next ? all.length + 1 : undefined),
     initialPageParam: 1,
     staleTime: 30_000,
   });
